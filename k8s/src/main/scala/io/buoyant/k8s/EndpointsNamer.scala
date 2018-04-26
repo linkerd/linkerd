@@ -129,7 +129,7 @@ abstract class EndpointsNamer(
   import EndpointsNamer._
 
   // Metadata about the state of portMap watches.
-  private[this] val portMapInstrumentation = mutable.Map[(String, String, Option[String]), (InstrumentedActivity[NumberedPortMap], WatchState[v1.Service, v1.ServiceWatch])]()
+  private[this] val portMapInstrumentation = mutable.Map[ServiceKey, InstrumentedPortMap]()
 
   /**
    * Watch the numbered-port remappings for the service named `serviceName`
@@ -144,11 +144,11 @@ abstract class EndpointsNamer(
    *       pair multiple times, you will always get back the same `Activity`,
    *       which is created the first time that pair is looked up.
    */
-  private[this] val numberedPortRemappings: (String, String, Option[String]) => Activity[NumberedPortMap] =
-    untupled(Memoize[(String, String, Option[String]), Activity[NumberedPortMap]] {
+  private[this] val numberedPortRemappings: ServiceKey => Activity[NumberedPortMap] =
+    Memoize[ServiceKey, Activity[NumberedPortMap]] {
       // memoize port remapping watch activities so that we don't have to
       // create multiple watches on the same `Services` API object.
-      case (nsName, serviceName, labelSelector) =>
+      case key@ServiceKey(nsName, serviceName, labelSelector) =>
         val portLogger = PortMapLogger(nsName, serviceName)
         val watchState = new WatchState[v1.Service, v1.ServiceWatch]()
         val instrumentedAct = mkApi(nsName)
@@ -179,16 +179,16 @@ abstract class EndpointsNamer(
                 )
                 oldMap
             }
-        portMapInstrumentation((nsName, serviceName, labelSelector)) = (instrumentedAct, watchState)
+        portMapInstrumentation(key) = InstrumentedPortMap(instrumentedAct, watchState)
         instrumentedAct.underlying
-    })
+    }
 
   // Metadata about the state of endpoint watches.
-  private[this] val endpointsInstrumentation = mutable.Map[(String, String, Option[String]), (InstrumentedActivity[ServiceEndpoints], WatchState[v1.Endpoints, v1.EndpointsWatch])]()
+  private[this] val endpointsInstrumentation = mutable.Map[ServiceKey, InstrumentedEndpoints]()
 
-  private[this] val serviceEndpoints: (String, String, Option[String]) => Activity[ServiceEndpoints] =
-    untupled(Memoize[(String, String, Option[String]), Activity[ServiceEndpoints]] {
-      case (nsName, serviceName, labelSelector) =>
+  private[this] val serviceEndpoints: ServiceKey => Activity[ServiceEndpoints] =
+    Memoize[ServiceKey, Activity[ServiceEndpoints]] {
+      case key@ServiceKey(nsName, serviceName, labelSelector) =>
         val watchState = new WatchState[v1.Endpoints, v1.EndpointsWatch]()
         val instrumentedAct = mkApi(nsName)
           .endpoints(serviceName)
@@ -197,9 +197,9 @@ abstract class EndpointsNamer(
             labelSelector = labelSelector,
             watchState = Some(watchState)
           ) { case (cache, event) => cache.update(event) }
-        endpointsInstrumentation((nsName, serviceName, labelSelector)) = (instrumentedAct, watchState)
+        endpointsInstrumentation(key) = InstrumentedEndpoints(instrumentedAct, watchState)
         instrumentedAct.underlying
-    })
+    }
 
   @inline private[this] def mkNameTree(
     id: Path,
@@ -213,9 +213,10 @@ abstract class EndpointsNamer(
 
   def adminHandlers = {
     val prefix = idPrefix.drop(1).show.drop(1) // drop leading "/#/"
-    Seq(
-      Admin.Handler(s"/namer_state/$prefix.json", new EndpointsNamerStateHandler(portMapInstrumentation, endpointsInstrumentation))
-    )
+    Seq(Admin.Handler(
+      s"/namer_state/$prefix.json",
+      new EndpointsNamerStateHandler(portMapInstrumentation, endpointsInstrumentation)
+    ))
   }
 
   private[k8s] def lookupServices(
@@ -226,7 +227,8 @@ abstract class EndpointsNamer(
     residual: Path,
     labelSelector: Option[String] = None
   ): Activity[NameTree[Name]] = {
-    val endpointsAct = serviceEndpoints(nsName, serviceName, labelSelector)
+    val key = ServiceKey(nsName, serviceName, labelSelector)
+    val endpointsAct = serviceEndpoints(key)
     // create an "unstable" activity - this will update if the existence
     // of the set of `Address`es changes *or* the values of the `Address`es
     // change.
@@ -237,7 +239,7 @@ abstract class EndpointsNamer(
         // need the port mappings from the `Service` API response,
         // so join its activity with the endpoints activity.
         endpointsAct
-          .join(numberedPortRemappings(nsName, serviceName, labelSelector))
+          .join(numberedPortRemappings(key))
           .map {
             case (endpoints, ports) =>
               endpoints.lookupNumberedPort(ports, portNumber)
@@ -261,6 +263,22 @@ abstract class EndpointsNamer(
 object EndpointsNamer {
   val DefaultBackoff: Stream[Duration] =
     Backoff.exponentialJittered(10.milliseconds, 10.seconds)
+
+  private[EndpointsNamer] case class ServiceKey(
+    nsName: String,
+    serviceName: String,
+    labelSelector: Option[String]
+  )
+
+  private[EndpointsNamer] case class InstrumentedPortMap(
+    act: InstrumentedActivity[NumberedPortMap],
+    watch: WatchState[v1.Service, v1.ServiceWatch]
+  )
+
+  private[EndpointsNamer] case class InstrumentedEndpoints(
+    act: InstrumentedActivity[ServiceEndpoints],
+    watch: WatchState[v1.Endpoints, v1.EndpointsWatch]
+  )
 
   protected type PortMap = Map[String, Int]
   protected type NumberedPortMap = Map[Int, String]
@@ -421,14 +439,14 @@ object EndpointsNamer {
    * An admin handler that exposes the internal state of Kubernetes watches.
    */
   private[EndpointsNamer] class EndpointsNamerStateHandler(
-    services: mutable.Map[(String, String, Option[String]), (InstrumentedActivity[NumberedPortMap], WatchState[v1.Service, v1.ServiceWatch])],
-    endpoints: mutable.Map[(String, String, Option[String]), (InstrumentedActivity[ServiceEndpoints], WatchState[v1.Endpoints, v1.EndpointsWatch])]
+    services: mutable.Map[ServiceKey, InstrumentedPortMap],
+    endpoints: mutable.Map[ServiceKey, InstrumentedEndpoints]
   ) extends Service[Request, Response] {
     private[this] val mapper = Parser.jsonObjectMapper(Nil)
 
     override def apply(request: Request): Future[Response] = {
       val servicesState = services.map {
-        case ((ns, svc, label), (act, watchState)) =>
+        case (ServiceKey(ns, svc, label), InstrumentedPortMap(act, watchState)) =>
           val labelStr = label match {
             case Some(s) => s":$s"
             case None => ""
@@ -439,7 +457,7 @@ object EndpointsNamer {
           )
       }
       val endpointsState = endpoints.map {
-        case ((ns, svc, label), (act, watchState)) =>
+        case (ServiceKey(ns, svc, label), InstrumentedEndpoints(act, watchState)) =>
           val labelStr = label match {
             case Some(s) => s":$s"
             case None => ""
