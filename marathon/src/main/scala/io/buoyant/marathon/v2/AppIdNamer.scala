@@ -45,16 +45,23 @@ class AppIdNamer(
       appsActivity.map { apps =>
         Trace.recordBinary("marathon.path", path.show)
         val found = possibleIds.collectFirst {
-          case app if apps(app) =>
+          case app if apps(app) => {
             Trace.recordBinary("marathon.appId", app.show)
             val residual = path.drop(app.size)
             val id = prefix ++ app
             val addr = getAndMonitorAddr(app)
-            Name.Bound(addr, id, residual)
+            addr.map {
+              case Addr.Bound(_, _) => NameTree.Leaf(Name.Bound(addr, id, residual))
+              case Addr.Pending => NameTree.Leaf(Name.Bound(addr, id, residual))
+              case Addr.Failed(_) => NameTree.Neg
+              case Addr.Neg => NameTree.Neg
+            }
+          }
         }
+
         Trace.recordBinary("marathon.found", found.isDefined)
         found match {
-          case Some(name) => NameTree.Leaf(name)
+          case Some(nameTree) => nameTree.sample()
           case None => NameTree.Neg
         }
       }
