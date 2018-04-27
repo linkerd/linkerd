@@ -21,7 +21,7 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
-import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter, TimestampHeaderFilter}
+import io.buoyant.router.http.{AddForwardedHeader, AddForwardedHeaderConfig, ForwardClientCertFilter, TimestampHeaderFilter}
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -77,7 +77,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // ensure the server-stack framing filter is placed below the stats filter
       // so that any malframed requests it fails are counted as errors
       .insertAfter(StatsFilter.role, FramingFilter.serverModule)
-      .insertBefore(AddForwardedHeader.H1.module.role, AddForwardedHeaderConfig.module)
+      .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module[Request, Response])
       .remove(ServerDtabContextFilter.role)
 
     Http.server.withStack(stk)

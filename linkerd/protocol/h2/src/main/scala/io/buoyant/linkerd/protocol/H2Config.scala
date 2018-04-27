@@ -21,8 +21,8 @@ import com.twitter.util.Monitor
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2._
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
-import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest}
-import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter}
+import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest, H2AddForwardedHeader}
+import io.buoyant.router.http.{AddForwardedHeaderConfig, ForwardClientCertFilter}
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
@@ -67,7 +67,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
       .replace(H2TraceInitializer.role, H2TraceInitializer.serverModule)
       .prepend(LinkerdHeaders.Ctx.serverModule)
       .prepend(h2.ErrorReseter.module)
-      .insertBefore(AddForwardedHeader.H2.module.role, H2AddForwardedHeaderConfig.module)
+      .insertBefore(H2AddForwardedHeader.module.role, AddForwardedHeaderConfig.module[Request, Response])
 
     H2.server.withStack(stk)
       .configured(param.Monitor(monitor))
@@ -247,7 +247,7 @@ case class RetryBufferSize(
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   var maxConcurrentStreamsPerConnection: Option[Int] = None
-  var addForwardedHeader: Option[H2AddForwardedHeaderConfig] = None
+  var addForwardedHeader: Option[AddForwardedHeaderConfig] = None
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
@@ -261,7 +261,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams
-    + H2AddForwardedHeaderConfig.Param(addForwardedHeader))
+    + AddForwardedHeaderConfig.Param(addForwardedHeader))
 }
 
 abstract class H2IdentifierConfig extends PolymorphicConfig {

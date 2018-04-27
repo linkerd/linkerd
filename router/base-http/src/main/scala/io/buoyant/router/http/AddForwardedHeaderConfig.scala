@@ -1,9 +1,7 @@
-package io.buoyant.linkerd.protocol.http
+package io.buoyant.router.http
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.{ServiceFactory, Stack, Stackable}
-import io.buoyant.router.http.{AddForwardedHeader, LabelerConfig}
 
 case class AddForwardedHeaderConfig(
   by: Option[LabelerConfig],
@@ -13,20 +11,20 @@ case class AddForwardedHeaderConfig(
   /** Appends AddForwardedHeader params to the given params. */
   @JsonIgnore
   def ++:(params: Stack.Params): Stack.Params =
-    params + AddForwardedHeader.H1.Enabled(true) + byParam(params) + forParam(params)
+    params + ForwardedHeaderLabeler.Enabled(true) + byParam(params) + forParam(params)
 
   @JsonIgnore
-  private[this] def byParam(params: Stack.Params): AddForwardedHeader.Labeler.By =
+  private[this] def byParam(params: Stack.Params): ForwardedHeaderLabeler.By =
     by match {
-      case None => AddForwardedHeader.Labeler.By.default
-      case Some(config) => AddForwardedHeader.Labeler.By(config.mk(params))
+      case None => ForwardedHeaderLabeler.By.default
+      case Some(config) => ForwardedHeaderLabeler.By(config.mk(params))
     }
 
   @JsonIgnore
-  private[this] def forParam(params: Stack.Params): AddForwardedHeader.Labeler.For =
+  private[this] def forParam(params: Stack.Params): ForwardedHeaderLabeler.For =
     `for` match {
-      case None => AddForwardedHeader.Labeler.For.default
-      case Some(config) => AddForwardedHeader.Labeler.For(config.mk(params))
+      case None => ForwardedHeaderLabeler.For.default
+      case Some(config) => ForwardedHeaderLabeler.For(config.mk(params))
     }
 }
 
@@ -47,13 +45,13 @@ object AddForwardedHeaderConfig {
    * Because `AddForwardedHeaderConfig` types may depend on stack
    * parameters (for instance, `Server.RouterLabel`)
    */
-  val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module[ServiceFactory[Request, Response]] {
+  def module[Req, Rep]: Stackable[ServiceFactory[Req, Rep]] =
+    new Stack.Module[ServiceFactory[Req, Rep]] {
       val role = Stack.Role("ConfigureAddForwardedHeader")
-      val description = AddForwardedHeader.H1.module.description
+      val description = AddForwardedHeader.module.description
       val parameters = Seq(implicitly[Stack.Param[Param]])
 
-      private type Stk = Stack[ServiceFactory[Request, Response]]
+      private type Stk = Stack[ServiceFactory[Req, Rep]]
 
       def make(params: Stack.Params, stk: Stk) = params[Param] match {
         case Param(None) => stk

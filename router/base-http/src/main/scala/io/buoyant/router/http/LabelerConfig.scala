@@ -19,21 +19,21 @@ import io.buoyant.router.RouterLabel
 ))
 trait LabelerConfig {
   @JsonIgnore
-  def mk(params: Stack.Params): AddForwardedHeader.Labeler
+  def mk(params: Stack.Params): ForwardedHeaderLabeler.Labeler
 }
 
 /** Labels an endpoint by its IP address, if it's known. */
 class IpLabelerConfig extends LabelerConfig {
 
   @JsonIgnore
-  override def mk(params: Stack.Params) = AddForwardedHeader.Labeler.ClearIp
+  override def mk(params: Stack.Params) = ForwardedHeaderLabeler.ClearIp
 }
 
 /** Labels an endpoint by its IP and port like `ip:port` */
 class IpPortLabelerConfig extends LabelerConfig {
 
   @JsonIgnore
-  override def mk(params: Stack.Params) = AddForwardedHeader.Labeler.ClearIpPort
+  override def mk(params: Stack.Params) = ForwardedHeaderLabeler.ClearIpPort
 }
 
 /** Generates a random obfuscated label for each request. */
@@ -41,7 +41,7 @@ class RequestRandomLabelerConfig extends LabelerConfig {
 
   @JsonIgnore
   override def mk(params: Stack.Params) =
-    AddForwardedHeader.Labeler.ObfuscatedRandom.PerRequest()
+    ForwardedHeaderLabeler.ObfuscatedRandom.PerRequest()
 }
 
 /** Generates a random obfuscated label for each connection. */
@@ -49,7 +49,7 @@ class ConnectionRandomLabelerConfig extends LabelerConfig {
 
   @JsonIgnore
   override def mk(params: Stack.Params) =
-    AddForwardedHeader.Labeler.ObfuscatedRandom.PerConnection()
+    ForwardedHeaderLabeler.ObfuscatedRandom.PerConnection()
 }
 
 /** Uses the router name as an obfuscated label. */
@@ -57,7 +57,7 @@ class RouterLabelerConfig extends LabelerConfig {
 
   @JsonIgnore
   override def mk(params: Stack.Params) =
-    AddForwardedHeader.Labeler.ObfuscatedStatic(params[RouterLabel.Param].label)
+    ForwardedHeaderLabeler.ObfuscatedStatic(params[RouterLabel.Param].label)
 }
 
 /** Uses the given string as an obfuscated label. */
@@ -65,5 +65,5 @@ case class StaticLabelerConfig(label: String) extends LabelerConfig {
 
   @JsonIgnore
   override def mk(params: Stack.Params) =
-    AddForwardedHeader.Labeler.ObfuscatedStatic(label)
+    ForwardedHeaderLabeler.ObfuscatedStatic(label)
 }

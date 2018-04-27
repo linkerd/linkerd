@@ -90,7 +90,7 @@ object H2 extends Router[Request, Response]
   object Server {
     val newStack: Stack[ServiceFactory[Request, Response]] = FinagleH2.Server.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
-      .insertAfter(StackServer.Role.protoTracing, AddForwardedHeader.H2.module)
+      .insertAfter(StackServer.Role.protoTracing, H2AddForwardedHeader.module)
       .replace(StatsFilter.role, StreamStatsFilter.module)
 
     private val serverResponseClassifier =

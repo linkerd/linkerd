@@ -4,7 +4,7 @@ import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Stream}
 import com.twitter.util.{Future, Time}
-import io.buoyant.router.http.{AddForwardedHeader, H2AddForwardedHeader}
+import io.buoyant.router.http.ForwardedHeaderLabeler
 import io.buoyant.test.FunSuite
 
 class H2AddForwardedHeaderTest extends FunSuite {
@@ -14,7 +14,7 @@ class H2AddForwardedHeaderTest extends FunSuite {
     Future.value(rsp)
   }
 
-  val OkStack = AddForwardedHeader.H2.module
+  val OkStack = H2AddForwardedHeader.module
     .toStack(Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(OkSvc)))
 
   def mkReq(authority: String = "svc/name", proto: String = "http") =
@@ -54,7 +54,7 @@ class H2AddForwardedHeaderTest extends FunSuite {
   }
 
   test("H2AddForwardedHeader.module obfuscates nodes by default") {
-    val params = Stack.Params.empty + AddForwardedHeader.H2.Enabled(true)
+    val params = Stack.Params.empty + ForwardedHeaderLabeler.Enabled(true)
     val factory = OkStack.make(params)
     val conn = new ClientConnection {
       override val remoteAddress = new InetSocketAddress(InetAddress.getLocalHost, 43241)
@@ -85,9 +85,9 @@ class H2AddForwardedHeaderTest extends FunSuite {
 
   test("H2AddForwardedHeader.module uses label overrides") {
     val params = Stack.Params.empty +
-      AddForwardedHeader.H2.Enabled(true) +
-      AddForwardedHeader.Labeler.By(AddForwardedHeader.Labeler.ObfuscatedStatic("http")) +
-      AddForwardedHeader.Labeler.For(AddForwardedHeader.Labeler.ClearIp)
+      ForwardedHeaderLabeler.Enabled(true) +
+      ForwardedHeaderLabeler.By(ForwardedHeaderLabeler.ObfuscatedStatic("http")) +
+      ForwardedHeaderLabeler.For(ForwardedHeaderLabeler.ClearIp)
     val factory = OkStack.make(params)
     val conn = new ClientConnection {
       override val remoteAddress = new InetSocketAddress("2001:db8:cafe::17", 43241)
