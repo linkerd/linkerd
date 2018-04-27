@@ -12,7 +12,7 @@ import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.H2ClassifierCtx
 import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
-import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter}
+import io.buoyant.router.http.ForwardClientCertFilter
 import io.buoyant.router.H2Instances._
 
 object H2 extends Router[Request, Response]

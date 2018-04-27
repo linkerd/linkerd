@@ -48,7 +48,7 @@ object AddForwardedHeaderConfig {
   def module[Req, Rep]: Stackable[ServiceFactory[Req, Rep]] =
     new Stack.Module[ServiceFactory[Req, Rep]] {
       val role = Stack.Role("ConfigureAddForwardedHeader")
-      val description = AddForwardedHeader.module.description
+      val description = "Adds params to configure an AddForwardedHeader module"
       val parameters = Seq(implicitly[Stack.Param[Param]])
 
       private type Stk = Stack[ServiceFactory[Req, Rep]]
