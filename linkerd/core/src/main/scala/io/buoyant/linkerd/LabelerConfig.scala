@@ -1,7 +1,8 @@
-package io.buoyant.router
+package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.twitter.finagle.Stack
+import io.buoyant.router._
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
