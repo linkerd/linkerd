@@ -114,7 +114,7 @@ object ServerDispatcher {
               case s: GrpcStatus => s
               case e => GrpcStatus.Internal(e.getMessage)
             }
-            frames.write(status.toTrailers).onSuccess(_ => frames.close())
+            frames.write(status.toTrailers)
         }
 
       val loopF = loop()

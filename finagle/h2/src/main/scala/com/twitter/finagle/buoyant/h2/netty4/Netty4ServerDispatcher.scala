@@ -108,7 +108,7 @@ class Netty4ServerDispatcher(
             log.info(e, "[%s S:%d] unexpected error; resetting remote: INTERNAL_ERROR", prefix, st.streamId)
             Reset.InternalError
         }
-        st.localReset(rst)
+        st.reset(rst, local = true); ()
 
       case e =>
         log.error(e, "[%s S:%d] ignoring exception", prefix, st.streamId)

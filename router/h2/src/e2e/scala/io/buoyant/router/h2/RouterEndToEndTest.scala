@@ -66,7 +66,7 @@ class RouterEndToEndTest
     try {
       val req = Request("http", Method.Get, "clifford", "/path", Stream.empty())
       req.headers.set("connection", "close")
-      assert(await(client(req).liftToTry) == Throw(StreamError.Local(Reset.ProtocolError)))
+      assert(await(client(req).liftToTry) == Throw(Reset.ProtocolError))
     } finally {
       setLogLevel(Level.OFF)
       await(client.close())
@@ -157,7 +157,7 @@ class RouterEndToEndTest
       val rspReadF = rsp.stream.read()
 
       clientLocalQ.fail(new ChannelClosedException())
-      assert(await(reqReadF.liftToTry) == Throw(Reset.Cancel))
+      assert(await(reqReadF.liftToTry) == Throw(Reset.InternalError))
 
     } finally {
       setLogLevel(Level.OFF)

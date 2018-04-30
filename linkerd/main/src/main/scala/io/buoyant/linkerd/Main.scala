@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
+import com.twitter.logging.Formatter
 import com.twitter.util._
 import io.buoyant.admin.{App, Build}
 import io.buoyant.linkerd.admin.LinkerdAdmin
@@ -18,6 +19,9 @@ import sun.misc.{Signal, SignalHandler}
  * The config file may be either JSON- or YAML-formatted
  */
 object Main extends App {
+
+
+  override def defaultFormatter: Formatter = new Formatter(truncateStackTracesAt = 1000)
 
   /**
    * Flag to validate a configuration.

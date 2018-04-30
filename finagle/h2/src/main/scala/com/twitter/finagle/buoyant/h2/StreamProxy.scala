@@ -14,6 +14,10 @@ abstract class StreamProxy(underlying: Stream) extends Stream {
    * If the stream is reset prematurely, onEnd fails with a Reset.
    */
   override def onEnd: Future[Unit] = underlying.onEnd
+
+  override def cancel(reset: Reset): Unit = underlying.cancel(reset)
+
+  override def onCancel: Future[Reset] = underlying.onCancel
 }
 /**
  * Wraps an underlying Stream with an onFrame
@@ -27,7 +31,6 @@ abstract class StreamProxy(underlying: Stream) extends Stream {
 class StreamOnFrame(underlying: Stream, onFrame: Try[Frame] => Unit)
   extends StreamProxy(underlying) {
   override def read(): Future[Frame] = underlying.read().respond(onFrame)
-  override def toString: String = s"StreamProxy($underlying, onFrame=$onFrame)"
 }
 
 /**
@@ -79,6 +82,4 @@ class StreamFlatMap(underlying: Stream, f: Frame => Seq[Frame])
       q.dequeue()
     }
   }
-
-  override def toString: String = s"StreamProxy($underlying, flatMap=$f)"
 }

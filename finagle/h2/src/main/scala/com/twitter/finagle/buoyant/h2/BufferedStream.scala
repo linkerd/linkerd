@@ -61,7 +61,7 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 16383) { buffere
         }
         forks += q
         val stream = if (underlying.isEmpty) {
-          Stream.empty(q)
+          Stream.empty()
         } else {
           new AsyncQueueReader { child =>
             override protected[this] val frameQ = q
@@ -88,6 +88,9 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 16383) { buffere
               }
             }
           }
+        }
+        stream.onCancel.onSuccess { rst =>
+          underlying.cancel(rst)
         }
         Return(stream)
       }

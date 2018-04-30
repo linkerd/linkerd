@@ -7,7 +7,9 @@ import com.twitter.finagle.param.Stats
 import com.twitter.finagle.Path
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.util.Duration
+import com.twitter.io.Buf
+import com.twitter.logging.Level
+import com.twitter.util.{Duration, Future, Throw}
 import io.buoyant.linkerd.{Linker, Router}
 import io.buoyant.linkerd.protocol.H2Initializer
 import io.buoyant.router.StackRouter.Client.PerClientParams
@@ -374,5 +376,86 @@ class H2EndToEndTest extends FunSuite {
     }
   }
 
+  test("client resets server stream") {
+    val q = new AsyncQueue[Frame]()
+    val stream = Stream(q)
 
+    val dog = Downstream.mk("dog") { req =>
+      Future.value(Response(Status.Ok, stream))
+    }
+
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/${dog.port} ;
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(config)
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = Upstream.mk(server)
+
+    val req = Request("http", Method.Get, "dog", "/", Stream.empty())
+    val rsp = await(client(req))
+
+    assert(rsp.status == Status.Ok)
+    assert(q.offer(Frame.Data("one", eos = false)))
+    val frame = await(rsp.stream.read())
+    val Buf.Utf8(s) = frame.asInstanceOf[Frame.Data].buf
+    assert(s == "one")
+
+    rsp.stream.cancel(Reset.Cancel)
+    val result = await(rsp.stream.read().liftToTry)
+    assert(result == Throw(Reset.Cancel))
+    eventually {
+      assert(!q.offer(Frame.Data("reject me", eos = false)))
+    }
+
+    await(client.close())
+    await(dog.server.close())
+    await(server.close())
+    await(router.close())
+  }
+
+  test("server resets client stream") {
+    setLogLevel(Level.TRACE)
+    val dog = Downstream.mk("dog") { req =>
+      req.stream.cancel(Reset.Cancel)
+      Future.value(Response(Status.Ok, Stream.empty))
+    }
+
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/${dog.port} ;
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(config)
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = Upstream.mk(server)
+
+    val q = new AsyncQueue[Frame]()
+    val stream = Stream(q)
+
+    val req = Request("http", Method.Get, "dog", "/", stream)
+    val rsp = await(client(req).liftToTry)
+
+    assert(rsp == Throw(Reset.Cancel))
+    assert(!q.offer(Frame.Data("reject me", eos = false)))
+
+    await(client.close())
+    await(dog.server.close())
+    await(server.close())
+    await(router.close())
+    setLogLevel(Level.OFF)
+  }
 }

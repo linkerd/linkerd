@@ -60,6 +60,8 @@ class Netty4ClientDispatcherTest extends FunSuite {
         override val isEmpty = false
         override def onEnd = req0EndP
         override def read() = req0q.poll()
+        override def cancel(reset: Reset): Unit = ???
+        override def onCancel: Future[Reset] = Future.never
       }
       Netty4Message.Request(hs, stream)
     }
