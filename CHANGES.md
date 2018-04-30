@@ -1,3 +1,23 @@
+## 1.4.0 2018-04-30
+
+Linkerd 1.4.0 upgrades us to the latest versions of Finagle and Netty and
+features lower memory usage for large payloads. Two new configuration options
+have been introduced: client connection lifetimes and access log rotation
+policy. One breaking change has been introduced around the configuration file
+syntax for loggers.  This release features contributions from ThreeComma,
+[ScalaConsultants](https://github.com/ScalaConsultants),
+[Salesforce](https://github.com/salesforce), and
+[Buoyant](https://github.com/buoyantio).
+
+* **Breaking Change**: Rename the loggers section of the Linkerd config to requestAuthorizers to match the name of the plugin type ([#1900](https://github.com/linkerd/linkerd/pull/1900))
+* Tune Netty/Finagle settings to reduce direct memory usage ([#1889](https://github.com/linkerd/linkerd/pull/1889)). This should dramatically reduce direct memory usage when transferring large payloads.
+* Introduce a ClientSession configuration section that provides ways to control client connection lifetime ([#1903](https://github.com/linkerd/linkerd/pull/1903)).
+* Expose rotation policy configuration for http and http2 access logs ([#1893](https://github.com/linkerd/linkerd/pull/1893)).
+* Stop logging harmless reader discarded errors in k8s namer ([#1901](https://github.com/linkerd/linkerd/pull/1901)).
+* Disable autoloading of the default tracer in Namerd ([#1902](https://github.com/linkerd/linkerd/pull/1902)). This prevents Namerd from attempting to connect to a Zipkin collector that doesn't exist.
+* Upgrade to Finagle 18.4.0.
+
+
 ## 1.3.7 2018-04-5
 
 Linkerd 1.3.7 includes memory leak fixes, tons of improvements for Consul, and more!  This release features contributions from ThreeComma, [NCBI](https://github.com/ncbi), WePay, [Salesforce](https://github.com/salesforce), [Homeaway](https://github.com/homeaway), Prosoft, and [Buoyant](https://github.com/buoyantio).
