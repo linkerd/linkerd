@@ -1,7 +1,8 @@
-package io.buoyant.router.http
+package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{ServiceFactory, Stack, Stackable}
+import io.buoyant.router.{ForwardedHeaderLabeler, LabelerConfig}
 
 case class AddForwardedHeaderConfig(
   by: Option[LabelerConfig],

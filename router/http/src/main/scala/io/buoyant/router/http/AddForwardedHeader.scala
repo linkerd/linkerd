@@ -1,12 +1,11 @@
 package io.buoyant.router.http
 
-import java.net._
-
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.Future
-import io.buoyant.router.http.ForwardedHeaderLabeler.Enabled
-
+import io.buoyant.router.ForwardedHeaderLabeler
+import io.buoyant.router.ForwardedHeaderLabeler.Enabled
+import java.net._
 import scala.collection.mutable
 
 /**

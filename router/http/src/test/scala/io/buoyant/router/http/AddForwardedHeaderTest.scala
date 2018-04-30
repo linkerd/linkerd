@@ -3,6 +3,7 @@ package io.buoyant.router.http
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.util.{Future, Time}
+import io.buoyant.router.ForwardedHeaderLabeler
 import io.buoyant.test.FunSuite
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -51,7 +52,7 @@ class AddForwardedHeaderTest extends FunSuite {
     assert(forwards.toSeq == Seq("for=8.8.4.4", "by=_http;for=8.8.8.8"))
   }
 
-  test("OAddForwardedHeader.module obfuscates nodes by default") {
+  test("AddForwardedHeader.module obfuscates nodes by default") {
     val params = Stack.Params.empty + ForwardedHeaderLabeler.Enabled(true)
     val factory = OkStack.make(params)
     val conn = new ClientConnection {

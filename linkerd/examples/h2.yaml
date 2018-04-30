@@ -19,6 +19,9 @@ routers:
   servers:
   - port: 4142
     maxConcurrentStreamsPerConnection: 300
+    addForwardedHeader:
+      by: {kind: "ip:port"}
+      for: {kind: "ip:port"}
     initialStreamWindowBytes: 1048576 # 1MB
   client:
     initialStreamWindowBytes: 1048576 # 1MB

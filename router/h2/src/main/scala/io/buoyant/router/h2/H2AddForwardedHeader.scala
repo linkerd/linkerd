@@ -3,8 +3,8 @@ package io.buoyant.router.h2
 import com.twitter.finagle.buoyant.h2.{Request, Response}
 import com.twitter.finagle._
 import com.twitter.util.Future
-import io.buoyant.router.http.ForwardedHeaderLabeler
-import io.buoyant.router.http.ForwardedHeaderLabeler.Enabled
+import io.buoyant.router.ForwardedHeaderLabeler
+import io.buoyant.router.ForwardedHeaderLabeler.Enabled
 import scala.collection.mutable
 
 class H2AddForwardedHeader(byLabel: () => String, forLabel: () => String) extends SimpleFilter[Request, Response] {

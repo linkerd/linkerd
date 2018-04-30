@@ -21,7 +21,7 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
-import io.buoyant.router.http.{AddForwardedHeader, AddForwardedHeaderConfig, ForwardClientCertFilter, TimestampHeaderFilter}
+import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter, TimestampHeaderFilter}
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {

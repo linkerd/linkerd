@@ -4,13 +4,13 @@ import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Stream}
 import com.twitter.util.{Future, Time}
-import io.buoyant.router.http.ForwardedHeaderLabeler
+import io.buoyant.router.ForwardedHeaderLabeler
 import io.buoyant.test.FunSuite
 
 class H2AddForwardedHeaderTest extends FunSuite {
   val OkSvc = Service.mk[Request, Response] { req =>
 
-    val rsp = Response(req.headers, Stream.const("Hello, World!"))
+    val rsp = Response(req.headers, Stream.empty)
     Future.value(rsp)
   }
 
@@ -18,7 +18,7 @@ class H2AddForwardedHeaderTest extends FunSuite {
     .toStack(Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(OkSvc)))
 
   def mkReq(authority: String = "svc/name", proto: String = "http") =
-    Request(proto, Method.Get, authority, "Some/Path", Stream.const("Hello, World!"))
+    Request(proto, Method.Get, authority, "Some/Path", Stream.empty)
 
   def service(byl: Option[String] = None, forl: Option[String] = None, req: Request = mkReq()) = {
     val forwardedBy = byl.getOrElse("")

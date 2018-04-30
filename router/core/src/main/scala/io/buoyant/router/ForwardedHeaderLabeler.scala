@@ -1,7 +1,7 @@
-package io.buoyant.router.http
+package io.buoyant.router
 
-import java.net.{Inet4Address, Inet6Address, InetSocketAddress, SocketAddress}
 import com.twitter.finagle._
+import java.net.{Inet4Address, Inet6Address, InetSocketAddress, SocketAddress}
 import scala.util.Random
 
 object ForwardedHeaderLabeler {

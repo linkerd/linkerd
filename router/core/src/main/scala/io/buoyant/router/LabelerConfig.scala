@@ -1,8 +1,7 @@
-package io.buoyant.router.http
+package io.buoyant.router
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.twitter.finagle.Stack
-import io.buoyant.router.RouterLabel
 
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,

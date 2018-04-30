@@ -1,10 +1,9 @@
-package io.buoyant.linkerd.protocol.http
+package io.buoyant.linkerd
 
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException
 import com.twitter.finagle.Stack
 import io.buoyant.config.Parser
-import io.buoyant.router.RouterLabel
-import io.buoyant.router.http.{AddForwardedHeaderConfig, ForwardedHeaderLabeler}
+import io.buoyant.router.{ForwardedHeaderLabeler, RouterLabel}
 import io.buoyant.test.FunSuite
 
 class AddForwardedHeaderConfigTest extends FunSuite {

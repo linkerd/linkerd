@@ -22,7 +22,7 @@ import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2._
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
 import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest, H2AddForwardedHeader}
-import io.buoyant.router.http.{AddForwardedHeaderConfig, ForwardClientCertFilter}
+import io.buoyant.router.http.ForwardClientCertFilter
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
