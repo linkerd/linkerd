@@ -451,7 +451,7 @@ object EndpointsNamer {
             case Some(s) => s":$s"
             case None => ""
           }
-          s"$ns/$svc$labelStr" -> Map(
+          s"${ns}/${svc}${labelStr}" -> Map(
             "state" -> act.stateSnapshot(),
             "watch" -> watchState
           )
@@ -462,7 +462,7 @@ object EndpointsNamer {
             case Some(s) => s":$s"
             case None => ""
           }
-          s"$ns/$svc$labelStr" -> Map(
+          s"${ns}/${svc}${labelStr}" -> Map(
             "state" -> act.stateSnapshot(),
             "watch" -> watchState
           )

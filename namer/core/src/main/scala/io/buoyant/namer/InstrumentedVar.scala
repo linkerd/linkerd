@@ -14,7 +14,7 @@ case class VarState[T](
 )
 
 /**
- * InstrumentedVar is a Var.async that also records metadata about itself such as whether it is
+ * InstrumentedVar holds a Var.async and also records metadata about it such as whether it is
  * running and the value of the most recent update.
  */
 class InstrumentedVar[T](init: T, update: Updatable[T] => Closable) {
@@ -80,9 +80,9 @@ object InstrumentedVar {
 }
 
 /**
- * InstrumentedActivity is an Activity backed by an InstrumentedVar.  Therefore, this Activity has
- * access to metadata about the underlying Var.async such as whether it is running and the value of
- * the most recent update.
+ * InstrumentedActivity holds an Activity backed by an InstrumentedVar.  Therefore, it has access to
+ * metadata about the underlying Var.async such as whether it is running and the value of the most
+ * recent update.
  */
 class InstrumentedActivity[T](update: Updatable[Activity.State[T]] => Closable) {
 
