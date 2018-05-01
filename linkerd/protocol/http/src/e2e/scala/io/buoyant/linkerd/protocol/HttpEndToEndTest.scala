@@ -10,6 +10,7 @@ import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
+import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
@@ -806,6 +807,54 @@ class HttpEndToEndTest
 
       ()
     }
+  }
+
+  test("requests with l5d-ctx-resolve header are not sent downstream") {
+    @volatile var headers: HeaderMap = null
+    val downstream = Downstream.mk("dog") { req =>
+      headers = req.headerMap
+      val resp = Response()
+      resp.content(Buf.Utf8("response from downstream"))
+    }
+    val dtab = Dtab.read(s"""
+      /svc/* => /$$/inet/127.1/${downstream.port} ;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.headerMap.add("l5d-ctx-resolve", "true")
+    val resp = await(client(req))
+    assert(resp.contentString != "response from downstream")
+    assert(headers == null)
+
+  }
+
+  test("requests with l5d-ctx-resolve respond with downstream service details"){
+    val downstream = Downstream.mk("dog") { req =>
+      Response()
+    }
+
+    val dtab = Dtab.read(s"""
+      /svc/* => /$$/inet/127.1/${downstream.port} ;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.headerMap.add("l5d-ctx-resolve", "true")
+    val resp = await(client(req))
+    assert(resp.contentString == s"""
+       |{"identification":"/svc/dog","selectedEndpoint":"/127.0.0.1:${downstream.port}","serverAddresses":["/127.0.0.1:${downstream.port}"]}
+     """.stripMargin.trim)
   }
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {

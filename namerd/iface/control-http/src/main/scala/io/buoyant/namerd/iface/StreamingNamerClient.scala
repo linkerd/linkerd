@@ -7,6 +7,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Closable, Future, Var}
+import io.buoyant.admin.DelegationJsonCodec
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.admin.names.DelegateApiHandler.JsonDelegateTree
 import io.buoyant.config.JsonStreamParser
@@ -62,7 +63,7 @@ class StreamingNamerClient(
       }
     )
 
-  private[this] val mapper = DelegateApiHandler.Codec.mapper
+  private[this] val mapper = DelegationJsonCodec.mapper
   mapper.registerModule(DtabModule.module)
   private[this] val parser = new JsonStreamParser(mapper)
 

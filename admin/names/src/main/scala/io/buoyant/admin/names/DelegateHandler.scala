@@ -6,7 +6,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Dtab, Service}
 import com.twitter.util.{Future, TimeoutException}
-import io.buoyant.admin.HtmlView
+import io.buoyant.admin.{DelegationJsonCodec, HtmlView}
 import io.buoyant.namer.{Delegator, RichActivity}
 
 class DelegateHandler(
@@ -50,8 +50,8 @@ class DelegateHandler(
       """,
       navHighlight = "dtab",
       tailContent = s"""
-        <script id="dtab-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtab)}</script>
-        <script id="dtab-base-data" type="application/json">${DelegateApiHandler.Codec.writeStr(dtabBase)}</script>
+        <script id="dtab-data" type="application/json">${DelegationJsonCodec.writeStr(dtab)}</script>
+        <script id="dtab-base-data" type="application/json">${DelegationJsonCodec.writeStr(dtabBase)}</script>
       """,
       csses = Seq("delegator.css"),
       showRouterDropdown = true

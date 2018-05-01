@@ -4,7 +4,7 @@ import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.{Addr, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util.Future
-import io.buoyant.admin.names.DelegateApiHandler
+import io.buoyant.admin.DelegationJsonCodec
 import io.buoyant.admin.names.DelegateApiHandler.{Addr => JsonAddr}
 import io.buoyant.namer.{Paths, RichActivity}
 
@@ -39,5 +39,5 @@ class AddrHandler(cache: NameInterpreterCache) extends Service[Request, Response
 
 object AddrHandler {
   def renderAddr(addr: Addr): Buf =
-    DelegateApiHandler.Codec.writeBuf(JsonAddr.mk(addr)).concat(Buf.Utf8("\n"))
+    DelegationJsonCodec.writeBuf(JsonAddr.mk(addr)).concat(Buf.Utf8("\n"))
 }

@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.io.Buf
 import com.twitter.util.Future
-import io.buoyant.admin.names.DelegateApiHandler
+import io.buoyant.admin.DelegationJsonCodec
 import io.buoyant.admin.names.DelegateApiHandler.JsonDelegateTree
 import io.buoyant.namer.{DelegateTree, RichActivity}
 
@@ -41,5 +41,5 @@ object BindHandler {
   def renderNameTree(tree: NameTree[Name.Bound]): Future[Buf] =
     JsonDelegateTree.mk(
       DelegateTree.fromNameTree(tree, path = null)
-    ).map(DelegateApiHandler.Codec.writeBuf).map(_.concat(Buf.Utf8("\n")))
+    ).map(DelegationJsonCodec.writeBuf).map(_.concat(Buf.Utf8("\n")))
 }
