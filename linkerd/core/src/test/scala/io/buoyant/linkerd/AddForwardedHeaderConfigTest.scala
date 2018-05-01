@@ -1,10 +1,9 @@
-package io.buoyant.linkerd.protocol.http
+package io.buoyant.linkerd
 
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException
 import com.twitter.finagle.Stack
 import io.buoyant.config.Parser
-import io.buoyant.router.RouterLabel
-import io.buoyant.router.http.AddForwardedHeader
+import io.buoyant.router.{ForwardedHeaderLabeler, RouterLabel}
 import io.buoyant.test.FunSuite
 
 class AddForwardedHeaderConfigTest extends FunSuite {
@@ -14,9 +13,9 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = (Stack.Params.empty + RouterLabel.Param("rtr")) ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By] == AddForwardedHeader.Labeler.By.default)
-    assert(params[AddForwardedHeader.Labeler.For] == AddForwardedHeader.Labeler.For.default)
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By] == ForwardedHeaderLabeler.By.default)
+    assert(params[ForwardedHeaderLabeler.For] == ForwardedHeaderLabeler.For.default)
   }
 
   test("parse by=requestRandom for=requestRandom") {
@@ -27,11 +26,11 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = Stack.Params.empty ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedRandom.PerRequest())
-    assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedRandom.PerRequest())
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedRandom.PerRequest())
+    assert(params[ForwardedHeaderLabeler.For].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedRandom.PerRequest())
   }
 
   test("parse by=connectionRandom for=connectionRandom") {
@@ -42,11 +41,11 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = Stack.Params.empty ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedRandom.PerConnection())
-    assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedRandom.PerConnection())
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedRandom.PerConnection())
+    assert(params[ForwardedHeaderLabeler.For].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedRandom.PerConnection())
   }
 
   test("parse by=ip for=ip") {
@@ -57,11 +56,11 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = Stack.Params.empty ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ClearIp)
-    assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ClearIp)
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By].labeler ==
+      ForwardedHeaderLabeler.ClearIp)
+    assert(params[ForwardedHeaderLabeler.For].labeler ==
+      ForwardedHeaderLabeler.ClearIp)
   }
 
   test("parse by=ip:port for=ip:port") {
@@ -72,11 +71,11 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = Stack.Params.empty ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ClearIpPort)
-    assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ClearIpPort)
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By].labeler ==
+      ForwardedHeaderLabeler.ClearIpPort)
+    assert(params[ForwardedHeaderLabeler.For].labeler ==
+      ForwardedHeaderLabeler.ClearIpPort)
   }
 
   test("parse by=static for=static") {
@@ -91,11 +90,11 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = Stack.Params.empty ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedStatic("router"))
-    assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedStatic("client"))
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedStatic("router"))
+    assert(params[ForwardedHeaderLabeler.For].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedStatic("client"))
   }
 
   test("parse by=router") {
@@ -106,11 +105,11 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = (Stack.Params.empty + RouterLabel.Param("bigfoot")) ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedStatic("bigfoot"))
-    assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedStatic("bigfoot"))
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedStatic("bigfoot"))
+    assert(params[ForwardedHeaderLabeler.For].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedStatic("bigfoot"))
   }
 
   test("parse by=ip:port for=router") {
@@ -121,11 +120,11 @@ class AddForwardedHeaderConfigTest extends FunSuite {
     val mapper = Parser.objectMapper(yaml, Nil)
     val config = mapper.readValue[AddForwardedHeaderConfig](yaml)
     val params = (Stack.Params.empty + RouterLabel.Param("bigfoot")) ++: config
-    assert(params[AddForwardedHeader.Enabled] == AddForwardedHeader.Enabled(true))
-    assert(params[AddForwardedHeader.Labeler.By].labeler ==
-      AddForwardedHeader.Labeler.ClearIpPort)
-    assert(params[AddForwardedHeader.Labeler.For].labeler ==
-      AddForwardedHeader.Labeler.ObfuscatedStatic("bigfoot"))
+    assert(params[ForwardedHeaderLabeler.Enabled] == ForwardedHeaderLabeler.Enabled(true))
+    assert(params[ForwardedHeaderLabeler.By].labeler ==
+      ForwardedHeaderLabeler.ClearIpPort)
+    assert(params[ForwardedHeaderLabeler.For].labeler ==
+      ForwardedHeaderLabeler.ObfuscatedStatic("bigfoot"))
   }
 
   test("test by=illegal fails") {
