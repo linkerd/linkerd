@@ -1,10 +1,12 @@
 package io.buoyant.namerd.iface
 
-import com.google.common.cache.{CacheBuilder, RemovalListener, RemovalNotification}
+import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.{Callable, ConcurrentHashMap}
+
+import com.google.common.cache.{Cache, CacheBuilder, RemovalNotification}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.util.{Return, Throw, Try}
 import io.buoyant.namerd.iface.ThriftNamerInterface.Observer
-import java.util.concurrent.{Callable, ConcurrentHashMap}
 
 class MaximumObservationsReached(maxObservations: Int)
   extends Exception(s"The maximum number of concurrent observations has been reached ($maxObservations)")
@@ -18,9 +20,9 @@ class MaximumObservationsReached(maxObservations: Int)
  *
  * The inactive cache is for Observers without outstanding requests against them.  These Observers
  * are kept open while in the inactive cache in case they receive a request and need to be moved
- * to the active cache.  The inactive cache has LRU eviction and Observers are closed upon
- * eviction.  Since Observers in the inactive cache have no outstanding requests against them,
- * this is safe to do.
+ * to the active cache. The inactive cache has LRU and time-based eviction and Observers are
+ * closed upon eviction.  Since Observers in the inactive cache have no outstanding requests against
+ * them, this is safe to do.
  *
  * When get is called, the Observer for that key is moved to the active cache if it exists or
  * created and placed in the active cache if it does not exist.  When the value of an Observer
@@ -32,11 +34,14 @@ class MaximumObservationsReached(maxObservations: Int)
  *                       instead.
  * @param inactiveCapacity The maximum size of the inactive cache.  LRU eviction is used to
  *                         maintain this constraint.
+ * @param inactiveTTLSecs The amount of time, in seconds, to keep observer in inactive cache before
+ *                        expiring them.
  * @param mkObserver The function to use to create new Observers if they are not in either cache.
  */
 class ObserverCache[K <: AnyRef, T](
   activeCapacity: Int,
   inactiveCapacity: Int,
+  inactiveTTLSecs: Int,
   stats: StatsReceiver,
   mkObserver: K => Observer[T]
 ) {
@@ -56,12 +61,13 @@ class ObserverCache[K <: AnyRef, T](
   private[this] val activeCache = new ConcurrentHashMap[K, Observer[T]]
   private[this] val inactiveCache = CacheBuilder.newBuilder()
     .maximumSize(inactiveCapacity)
-    .removalListener(new RemovalListener[K, Observer[T]] {
-      override def onRemoval(notification: RemovalNotification[K, Observer[T]]): Unit =
+    .expireAfterAccess(inactiveTTLSecs, SECONDS)
+    .removalListener(
+      (notification: RemovalNotification[K, Observer[T]]) =>
         if (notification.wasEvicted) {
           val _ = notification.getValue.close()
         }
-    })
+    )
     .build[K, Observer[T]]()
 
   private[this] val activeSize = stats.addGauge("active")(activeCache.size)
@@ -92,4 +98,9 @@ class ObserverCache[K <: AnyRef, T](
     }
     )
   }
+
+  // Only for testing purpose
+  // Caches built with CacheBuilder do not perform cleanup instantly after a value expires
+  // https://github.com/google/guava/wiki/CachesExplained#when-does-cleanup-happen
+  private[iface] def inactiveCacheCleanup() = inactiveCache.cleanUp()
 }
