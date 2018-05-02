@@ -7,7 +7,6 @@ import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 
 /**
  * Appends the [Via] (https://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-14#section-9.9) header to the request and response.
- * After the header is appended, the message is upgraded to HTTP/1.1.
  */
 object ViaHeaderAppenderFilter {
 
@@ -39,8 +38,10 @@ object ViaHeaderAppenderFilter {
 
     def apply(req: Request, svc: Service[Request, Response]) = {
       ViaLinkerd.appendViaHeader(req)
-      req.version = Http11
-      if (req.host.isEmpty) {
+
+      // Forwards HTTP/1.0 requests using HTTP/1.0 to minimize the chance that the server will send a response that
+      // uses HTTP/1.1 features, in particular Transfer-Encoding: chunked, that the HTTP/1.0 application can't handle
+      if (req.version == Http11 && req.host.isEmpty) {
         // https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.23
         // If the requested URI does not include an Internet host name for the service being
         // requested, then the Host header field MUST be given with an empty value.
@@ -51,7 +52,6 @@ object ViaHeaderAppenderFilter {
 
     private[this] val appendViaHeader: Response => Response = { resp =>
       ViaLinkerd.appendViaHeader(resp)
-      resp.version = Http11
       resp
     }
   }
