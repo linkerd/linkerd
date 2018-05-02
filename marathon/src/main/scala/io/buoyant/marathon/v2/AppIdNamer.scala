@@ -53,11 +53,11 @@ class AppIdNamer(
 
             val observation = addr.map {
               case Addr.Neg => Activity.Ok(NameTree.Neg)
-              case Addr.Pending => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
+              case Addr.Pending => Activity.Pending
               case Addr.Failed(why) => Activity.Failed(why)
               case Addr.Bound(_, _) => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
             }
-            Activity.apply(observation)
+            Activity(observation)
           }
         }
 
