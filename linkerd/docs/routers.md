@@ -221,6 +221,11 @@ If a client matches more than one config's prefix, all parameters from the
 matching configs will be applied, with parameters defined later in the
 configuration file taking precedence over those defined earlier.
 
+Note: Capture variables use greedy pattern matching.  For example (`{foo}{bar}`) is
+ambiguous.  The capture variable (`{foo}`) would capture the whole segement and
+(`{bar}`) would empty.  Similary, the pattern (`{foo}-{bar}`) on the segement
+`a-b-c` would capture `a-b` into (`{foo}`) and `c` in (`{bar}`).
+
 ### Client Parameters
 
 <aside class="notice">
