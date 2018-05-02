@@ -57,7 +57,7 @@ class AppIdNamer(
               case Addr.Failed(why) => Activity.Failed(why)
               case Addr.Bound(_, _) => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
             }
-            Activity.apply(observation)
+            Activity(observation)
           }
         }
 
