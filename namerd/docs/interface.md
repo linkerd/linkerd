@@ -41,10 +41,10 @@ Key | Default Value | Description
 -------------- | -------------- | --------------
 bindingCacheActive | `1000` | The size of the binding active cache.
 bindingCacheInactive | `100` | The size of the binding inactive cache.
-bindingCacheInactiveTTLSecs | `604800` | The amount of time, in seconds, to keep objects in the binding inactive cache before expiring them.
+bindingCacheInactiveTTLSecs | `600` | The amount of time, in seconds, to keep objects in the binding inactive cache before expiring them.
 addrCacheActive | `1000` | The size of the address active cache.
 addrCacheInactive | `100` | The size of the address inactive cache.
-addrCacheInactiveTTLSecs | `604800` | The amount of time, in seconds, to keep objects in the address inactive cache before expiring them.
+addrCacheInactiveTTLSecs | `600` | The amount of time, in seconds, to keep objects in the address inactive cache before expiring them.
 
 ## gRPC Mesh Interface
 

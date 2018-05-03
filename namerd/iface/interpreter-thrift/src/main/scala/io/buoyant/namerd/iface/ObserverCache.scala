@@ -1,12 +1,12 @@
 package io.buoyant.namerd.iface
 
+import com.google.common.base.Ticker
+import com.google.common.cache.{CacheBuilder, RemovalNotification}
+import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.util.{Return, Stopwatch, Throw, Try}
+import io.buoyant.namerd.iface.ThriftNamerInterface.Observer
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.{Callable, ConcurrentHashMap}
-
-import com.google.common.cache.{Cache, CacheBuilder, RemovalNotification}
-import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.util.{Return, Throw, Try}
-import io.buoyant.namerd.iface.ThriftNamerInterface.Observer
 
 class MaximumObservationsReached(maxObservations: Int)
   extends Exception(s"The maximum number of concurrent observations has been reached ($maxObservations)")
@@ -37,13 +37,15 @@ class MaximumObservationsReached(maxObservations: Int)
  * @param inactiveTTLSecs The amount of time, in seconds, to keep observer in inactive cache before
  *                        expiring them.
  * @param mkObserver The function to use to create new Observers if they are not in either cache.
+ * @param stopwatch Function used to measure expiration time. System.nanoTime() used by default.
  */
 class ObserverCache[K <: AnyRef, T](
   activeCapacity: Int,
   inactiveCapacity: Int,
   inactiveTTLSecs: Int,
   stats: StatsReceiver,
-  mkObserver: K => Observer[T]
+  mkObserver: K => Observer[T],
+  stopwatch: () => Long = Stopwatch.systemNanos
 ) {
 
   def get(key: K): Try[Observer[T]] =
@@ -60,6 +62,9 @@ class ObserverCache[K <: AnyRef, T](
   // ConcurrentHashMap is used to make reads lockless, but all updates are explicitly synchronized
   private[this] val activeCache = new ConcurrentHashMap[K, Observer[T]]
   private[this] val inactiveCache = CacheBuilder.newBuilder()
+    .ticker(new Ticker {
+      override def read(): Long = stopwatch()
+    })
     .maximumSize(inactiveCapacity)
     .expireAfterAccess(inactiveTTLSecs, SECONDS)
     .removalListener(

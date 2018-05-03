@@ -1,14 +1,13 @@
 package io.buoyant.namerd.iface
 
+import com.twitter.conversions.time._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namerd.iface.ThriftNamerInterface.{Observer, Stamp}
 import org.scalatest.FunSuite
-import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Seconds, Span}
 
-class ObserverCacheTest extends FunSuite with Eventually {
+class ObserverCacheTest extends FunSuite {
 
   case class TestObserver[T](obs: Observer[T], event: Event[Try[T]] with Witness[Try[T]], closed: Var[Boolean])
 
@@ -165,30 +164,37 @@ class ObserverCacheTest extends FunSuite with Eventually {
   test("observer cache removes inactive observations after ttl time") {
 
     val one = testObserver[String]()
-
     val stats = new InMemoryStatsReceiver
-    val cache = new ObserverCache[String, String](1, 5, 1, stats, {
-      case "one" => one.obs
-    })
+    val ttl = 1.second
 
-    // insert "one" into the active cache
-    assert(cache.get("one").get eq one.obs)
-    assert(activeSize(stats) == 1)
-    assert(inactiveSize(stats) == 0)
-    // update deactivates "one"
-    one.event.notify(Return("foo"))
+    Time.withCurrentTimeFrozen {
+      tc =>
+        val cache = new ObserverCache[String, String](1, 5, ttl.inSeconds, stats, {
+          case "one" => one.obs
+        }, Stopwatch.timeNanos)
 
-    assert(activeSize(stats) == 0)
-    assert(inactiveSize(stats) == 1)
-    assert(!one.closed.sample)
+        // insert "one" into the active cache
+        assert(cache.get("one").get eq one.obs)
+        assert(activeSize(stats) == 1)
+        assert(inactiveSize(stats) == 0)
+        // update deactivates "one"
+        one.event.notify(Return("foo"))
 
-    implicit val patienceConfig: PatienceConfig = PatienceConfig(Span(3, Seconds), Span(1, Seconds))
+        assert(activeSize(stats) == 0)
+        assert(inactiveSize(stats) == 1)
+        assert(!one.closed.sample)
 
-    eventually {
-      cache.inactiveCacheCleanup()
-      assert(activeSize(stats) == 0)
-      assert(inactiveSize(stats) == 0)
-      assert(one.closed.sample)
+        tc.advance(ttl/2)
+        cache.inactiveCacheCleanup()
+        assert(activeSize(stats) == 0)
+        assert(inactiveSize(stats) == 1)
+        assert(!one.closed.sample)
+
+        tc.advance(ttl/2)
+        cache.inactiveCacheCleanup()
+        assert(activeSize(stats) == 0)
+        assert(inactiveSize(stats) == 0)
+        assert(one.closed.sample)
     }
   }
 }
