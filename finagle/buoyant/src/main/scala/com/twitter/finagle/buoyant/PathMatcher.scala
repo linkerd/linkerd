@@ -36,6 +36,12 @@ trait PathMatcher {
     extract(path).map(substitutePath(_, pattern))
 }
 
+case class MatchSegment(
+  segment: String,
+  regex: Option[scala.util.matching.Regex],
+  captureKeys: Seq[String]
+)
+
 object PathMatcher {
 
   /**
@@ -58,33 +64,52 @@ object PathMatcher {
 
   private class Matcher(expr: String) extends PathMatcher {
 
-    val exprSegments = expr.split("/").dropWhile(_.isEmpty)
-
     override def extract(path: Path): Option[Map[String, String]] =
-      _extract(path.showElems, exprSegments, Map.empty)
+      _extract(path.showElems, rawSegments, Map.empty)
+
+    private[this] val segmentRegex = """\{([a-zA-Z0-9\.:-]+)\}""".r
+
+    private[this] val rawSegments: Seq[MatchSegment] = {
+      expr.split("/").dropWhile(_.isEmpty).map { exprSegment =>
+        segmentRegex.findAllIn(exprSegment) match {
+          case k if !k.isEmpty =>
+            val keys = k.toArray
+            // '.' is the only valid Path character that also has a regex meaning.  Any '.' characters must be escaped.
+            val escaped = exprSegment.replace(".", "\\.")
+            // Replace capture keys with regex captures.
+            val withCaptures = keys.foldLeft(escaped)(_.replace(_, "(.*)")).r
+            val keyNames = keys.map { key =>
+              key.drop(1).dropRight(1) // Remove the encasing '{' and '}' characters.
+            }.toSeq
+            MatchSegment(exprSegment, Some(withCaptures), keyNames)
+          case _ => MatchSegment(exprSegment, None, Seq.empty)
+        }
+      }
+    }
 
     @tailrec
     private[this] def _extract(
       pathSegments: Seq[String],
-      exprSegments: Seq[String],
+      matchSegments: Seq[MatchSegment],
       vars: Map[String, String]
     ): Option[Map[String, String]] =
-      (pathSegments.headOption, exprSegments.headOption) match {
-        case (Some(pathSegment), Some(exprSegment)) =>
-          if (exprSegment == "*")
-            _extract(pathSegments.tail, exprSegments.tail, vars)
-          else if (exprSegment == pathSegment)
-            _extract(pathSegments.tail, exprSegments.tail, vars)
-          else if (exprSegment.startsWith("{") && exprSegment.endsWith("}"))
-            _extract(
-              pathSegments.tail,
-              exprSegments.tail,
-              vars + (exprSegment.substring(1, exprSegment.length - 1) -> pathSegment)
-            )
-          else
-            None
+      (pathSegments.headOption, matchSegments.headOption) match {
+        case (_, Some(MatchSegment("*", _, _))) =>
+          _extract(pathSegments.tail, matchSegments.tail, vars)
+        case (Some(path), Some(MatchSegment(expr, None, _))) if (expr == path) =>
+          _extract(pathSegments.tail, matchSegments.tail, vars)
+        case (Some(pathSegment), Some(MatchSegment(expr, Some(regex), Seq(segments@_*)))) =>
+          regex.findAllIn(pathSegment) match {
+            case v if !v.isEmpty =>
+              _extract(
+                pathSegments.tail,
+                matchSegments.tail,
+                vars ++ segments.zipWithIndex.map { case (s, i) => s -> v.group(i + 1) }
+              )
+            case _ => None
+          }
         case (_, None) => Some(vars)
-        case (None, _) => None
+        case (_, _) => None
       }
 
     override def toString: String = expr

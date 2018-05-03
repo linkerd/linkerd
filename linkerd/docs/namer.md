@@ -817,6 +817,11 @@ If the name matches the pattern in the config, it will be replaced by the
 name in the config.  Additionally, any variables in the pattern will capture
 the value of the matching path segment and may be used in the final name.
 
+Note: Pattern matches are greedy.  For example patterns like "{foo}{bar}"
+are ambiguous.  With the capture implementation, {foo} would capture the
+whole segment and {bar} would be empty. Similarly, the pattern "{foo}-{bar}"
+on the segment "a-b-c" would capture "a-b" into foo and "c" into bar.
+
 Key     | Default Value    | Description
 ------- | ---------------- | -----------
 prefix  | _required_       | Resolves names with `/#/<prefix>`.
