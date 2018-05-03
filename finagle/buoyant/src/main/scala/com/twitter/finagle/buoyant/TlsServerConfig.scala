@@ -8,6 +8,7 @@ import java.io.File
 
 case class TlsServerConfig(
   certPath: String,
+  serverCaChainPath: Option[String],
   keyPath: String,
   caCertPath: Option[String] = None,
   ciphers: Option[Seq[String]] = None,
@@ -34,9 +35,18 @@ case class TlsServerConfig(
       case _ => FClientAuth.Off
     }
 
+    val keyCredentials = serverCaChainPath match {
+      case Some(serverCaChain) => KeyCredentials.CertKeyAndChain(
+        new File(certPath),
+        new File(keyPath),
+        new File(serverCaChain)
+      )
+      case None => KeyCredentials.CertAndKey(new File(certPath), new File(keyPath))
+    }
+
     Stack.Params.empty + Transport.ServerSsl(Some(SslServerConfiguration(
       clientAuth = clientAuth,
-      keyCredentials = KeyCredentials.CertAndKey(new File(certPath), new File(keyPath)),
+      keyCredentials = keyCredentials,
       trustCredentials = trust,
       cipherSuites = cipherSuites,
       applicationProtocols = appProtocols

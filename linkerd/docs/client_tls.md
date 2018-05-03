@@ -22,6 +22,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 enabled | true | Enable TLS on outgoing connections.
 certPath | _required_ | File path to the TLS certificate file.
+serverCaChainPath | none | Path to a file containing a CA certificate chain to support the server certificate.
 keyPath | _required_ | File path to the TLS key file.
 requireClientAuth | false | If true, only accept requests with valid client certificates.
 caCertPath | none | File path to the CA cert to validate the client certificates.
