@@ -45,7 +45,7 @@ class AppIdNamer(
       appsActivity.flatMap { apps =>
         Trace.recordBinary("marathon.path", path.show)
         val found = possibleIds.collectFirst {
-          case app if apps(app) => {
+          case app if apps(app) =>
             Trace.recordBinary("marathon.appId", app.show)
             val residual = path.drop(app.size)
             val id = prefix ++ app
@@ -58,7 +58,6 @@ class AppIdNamer(
               case Addr.Bound(_, _) => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
             }
             Activity(observation)
-          }
         }
 
         Trace.recordBinary("marathon.found", found.isDefined)

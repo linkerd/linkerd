@@ -126,7 +126,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
     case state => fail(s"$state is not a NameTree.Leaf[Name]")
   }
 
-  def assertAddrsFail(state: Activity.State[NameTree[Name]]) = state match {
+  def assertActivityFail(state: Activity.State[NameTree[Name]]) = state match {
     case Activity.Failed(reason) => assert(reason == err)
     case state => fail(s"$state is not Activity.Failed()")
   }
@@ -154,6 +154,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
     val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
+    assert(state == Activity.Pending)
 
     val addresses = Set(Address("hostname", 8080))
     promisedAddrs.setValue(addresses)
@@ -168,7 +169,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
     )
     val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    val res = namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
+    namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
     assert(state == Activity.Pending)
   }
 
@@ -242,7 +243,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/bar/residual")).states.respond(state = _)
 
-    assertAddrsFail(state)
+    assertActivityFail(state)
   }
 
   test("Namer recovers if getAddrs() fails initially") {
@@ -262,7 +263,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
     Time.withCurrentTimeFrozen { tc =>
       namer.lookup(Path.read("/bar/residual")).states.respond(state = _)
 
-      assertAddrsFail(state)
+      assertActivityFail(state)
 
       api.addrsAlive = true
       tc.advance(ttl)
