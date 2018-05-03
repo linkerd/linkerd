@@ -11,6 +11,7 @@ class ThriftInterpreterInterfaceConfigTest extends FunSuite {
       |cache:
       |  bindingCacheActive: 5000
       |  bindingCacheInactive: 1000
+      |  bindingCacheInactiveTTLSecs: 3600
       |  addrCacheActive: 6000
     """.stripMargin
 
@@ -23,8 +24,10 @@ class ThriftInterpreterInterfaceConfigTest extends FunSuite {
     val capacity = config.cache.get.capacity
     assert(capacity.bindingCacheActive == 5000)
     assert(capacity.bindingCacheInactive == 1000)
+    assert(capacity.bindingCacheInactiveTTLSecs == 3600)
     assert(capacity.addrCacheActive == 6000)
     assert(capacity.addrCacheInactive == ThriftNamerInterface.Capacity.default.addrCacheInactive)
+    assert(capacity.addrCacheInactiveTTLSecs == ThriftNamerInterface.Capacity.default.addrCacheInactiveTTLSecs)
   }
 
   test("tls") {

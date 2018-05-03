@@ -17,6 +17,7 @@ import java.nio.ByteBuffer
 import java.util.Random
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.control.NonFatal
+import com.twitter.conversions.time._
 
 object ThriftNamerInterface {
 
@@ -362,16 +363,20 @@ object ThriftNamerInterface {
   case class Capacity(
     bindingCacheActive: Int,
     bindingCacheInactive: Int,
+    bindingCacheInactiveTTLSecs: Int,
     addrCacheActive: Int,
-    addrCacheInactive: Int
+    addrCacheInactive: Int,
+    addrCacheInactiveTTLSecs: Int
   )
 
   object Capacity {
     def default = Capacity(
       bindingCacheActive = 1000,
       bindingCacheInactive = 100,
+      bindingCacheInactiveTTLSecs = 10.minutes.inSeconds,
       addrCacheActive = 1000,
-      addrCacheInactive = 100
+      addrCacheInactive = 100,
+      addrCacheInactiveTTLSecs = 10.minutes.inSeconds
     )
   }
 }
@@ -437,6 +442,7 @@ class ThriftNamerInterface(
   private[this] val bindingCache = new ObserverCache[(String, Dtab, Path), NameTree[Name.Bound]](
     activeCapacity = capacity.bindingCacheActive,
     inactiveCapacity = capacity.bindingCacheInactive,
+    inactiveTTLSecs = capacity.bindingCacheInactiveTTLSecs,
     stats = stats.scope("bindingcache"),
     mkObserver = (observeBind _).tupled
   )
@@ -541,6 +547,7 @@ class ThriftNamerInterface(
   private[this] val addrCache = new ObserverCache[Path, Option[Addr.Bound]](
     activeCapacity = capacity.addrCacheActive,
     inactiveCapacity = capacity.addrCacheInactive,
+    inactiveTTLSecs = capacity.addrCacheInactiveTTLSecs,
     stats = stats.scope("addrcache"),
     mkObserver = observeAddr
   )
@@ -603,6 +610,7 @@ class ThriftNamerInterface(
   private[this] val dtabCache = new ObserverCache[String, Dtab](
     activeCapacity = 10,
     inactiveCapacity = 1,
+    inactiveTTLSecs = 10.minutes.inSeconds,
     stats = stats.scope("delegationcache"),
     mkObserver = observeDtab
   )
