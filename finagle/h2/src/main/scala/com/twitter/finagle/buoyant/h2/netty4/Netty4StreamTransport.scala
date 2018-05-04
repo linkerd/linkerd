@@ -8,7 +8,6 @@ import com.twitter.util.{Future, Promise, Throw}
 import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
-import scala.util.control.NonFatal
 
 /**
  * Reads and writes a bi-directional HTTP/2 stream.
