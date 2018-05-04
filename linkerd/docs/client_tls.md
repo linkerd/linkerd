@@ -87,3 +87,10 @@ routers:
           certPath: /certificates/cert.pem
           keyPath: /certificates/key.pem
 ```
+
+<aside class="notice">
+When using any kind of transformer with client TLS using `io.l5d.static`, ensure that the client
+TLS's `prefix` field starts with the first transformer that is applied to a client name in the dtab.
+This will ensure that TLS is initiated between linkerd and any downstream service that matches the
+client prefix.
+</aside>
