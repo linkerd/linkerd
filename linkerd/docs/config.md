@@ -53,7 +53,7 @@ the `config/` directory.
 
 #### File Format
 
-The configuration may be specified as a JSON or YAML object. There are no requirements on field ordering, though it's generally good style to start a router with the _protocol_. Four top level keys are supported:
+The configuration may be specified as a JSON or YAML object. There are no requirements on field ordering, though it's generally good style to start a router with the _protocol_. Five top level keys are supported:
 
 Key | Required | Description
 --- | -------- | -----------
