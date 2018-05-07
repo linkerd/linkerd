@@ -42,7 +42,7 @@ class AppIdNamer(
       // each time the map of all Apps updates, find the
       // shortest-matching part of `path` that exists as an App ID.
       val possibleIds = (1 to lowercasePath.size).map(lowercasePath.take(_))
-      appsActivity.map { apps =>
+      appsActivity.flatMap { apps =>
         Trace.recordBinary("marathon.path", path.show)
         val found = possibleIds.collectFirst {
           case app if apps(app) =>
@@ -50,12 +50,20 @@ class AppIdNamer(
             val residual = path.drop(app.size)
             val id = prefix ++ app
             val addr = getAndMonitorAddr(app)
-            Name.Bound(addr, id, residual)
+
+            val observation = addr.map {
+              case Addr.Neg => Activity.Ok(NameTree.Neg)
+              case Addr.Pending => Activity.Pending
+              case Addr.Failed(why) => Activity.Failed(why)
+              case Addr.Bound(_, _) => Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual)))
+            }
+            Activity(observation)
         }
+
         Trace.recordBinary("marathon.found", found.isDefined)
         found match {
-          case Some(name) => NameTree.Leaf(name)
-          case None => NameTree.Neg
+          case Some(nameTree) => nameTree
+          case None => Activity.value(NameTree.Neg)
         }
       }
     }
@@ -111,7 +119,7 @@ class AppIdNamer(
             pending = api.getAddrs(app).respond {
               case Return(addrs) =>
                 initialized = true
-                addr() = Addr.Bound(addrs)
+                addr() = if (addrs.isEmpty) Addr.Neg else Addr.Bound(addrs)
                 if (!stopped) {
                   pending = Future.sleep(ttl).onSuccess(_ => loop())
                 }

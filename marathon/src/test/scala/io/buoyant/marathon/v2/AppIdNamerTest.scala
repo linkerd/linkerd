@@ -56,8 +56,27 @@ class AppIdNamerTest extends FunSuite with Awaits {
     assert(state == Activity.Ok(NameTree.Neg))
   }
 
+  test("Namer returns neg when appId exists but there are no bound addresses") {
+    val api = TestApi(
+      ids = Future.value(Set(Path.read("/service/name"))),
+      addrs = Future.value(Set.empty)
+    )
+    val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
+
+    val input = Path.Utf8("service", "name", "residual")
+    val output = Path.Utf8("io.l5d.marathon", "service", "name")
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(input).states.respond(state = _)
+
+    assert(state == Activity.Ok(NameTree.Neg))
+  }
+
   test("Namer handles looking up /app/id") {
-    val api = TestApi(ids = Future.value(Set(Path.read("/service/name"))))
+    val addrs = Set(Address("hostname", 8080))
+    val api = TestApi(
+      ids = Future.value(Set(Path.read("/service/name"))),
+      addrs = Future.value(addrs)
+    )
     val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
 
     val input = Path.Utf8("service", "name", "residual")
@@ -69,7 +88,11 @@ class AppIdNamerTest extends FunSuite with Awaits {
   }
 
   test("Namer handles looking up /app/id case-insensitive") {
-    val api = TestApi(ids = Future.value(Set(Path.read("/service/name"))))
+    val addrs = Set(Address("hostname", 8080))
+    val api = TestApi(
+      ids = Future.value(Set(Path.read("/service/name"))),
+      addrs = Future.value(addrs)
+    )
     val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
 
     val input = Path.Utf8("service", "Name", "residual")
@@ -82,7 +105,8 @@ class AppIdNamerTest extends FunSuite with Awaits {
 
   test("Namer updates when blocking call from getAppIds returns") {
     val promisedAppIds = new Promise[Api.AppIds]
-    val api = TestApi(ids = promisedAppIds)
+    val addrs = Set(Address("hostname", 8080))
+    val api = TestApi(ids = promisedAppIds, addrs = Future.value(addrs))
     val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
@@ -102,13 +126,9 @@ class AppIdNamerTest extends FunSuite with Awaits {
     case state => fail(s"$state is not a NameTree.Leaf[Name]")
   }
 
-  def assertAddrsFail(state: Activity.State[NameTree[Name]]) = state match {
-    case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) =>
-      bound.addr.sample() match {
-        case Addr.Bound(addrs, metadata) => fail(s"$addrs is bound")
-        case addr => assert(addr == Addr.Failed(err))
-      }
-    case state => fail(s"$state is not a NameTree.Leaf[Name]")
+  def assertActivityFail(state: Activity.State[NameTree[Name]]) = state match {
+    case Activity.Failed(reason) => assert(reason == err)
+    case state => fail(s"$state is not Activity.Failed()")
   }
 
   test("Namer returns leaf with bound addr when addr exist") {
@@ -134,20 +154,30 @@ class AppIdNamerTest extends FunSuite with Awaits {
     val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
+    assert(state == Activity.Pending)
 
-    state match {
-      case Activity.Ok(NameTree.Leaf(bound: Name.Bound)) => assert(bound.addr.sample() == Addr.Pending)
-      case state => fail(s"$state is not a NameTree.Leaf[Name.Bound]")
-    }
     val addresses = Set(Address("hostname", 8080))
     promisedAddrs.setValue(addresses)
     assertAddrs(state, addresses)
   }
 
+  test("Namer stays pending before blocking call for getAddrs returns") {
+    val promisedAddrs = new Promise[Set[Address]]
+    val api = TestApi(
+      ids = Future.value(Set(Path.Utf8("foo"), Path.Utf8("servicename"))),
+      addrs = promisedAddrs
+    )
+    val namer = new AppIdNamer(api, Path.Utf8("io.l5d.marathon"), ttl)
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/servicename/residual")).states.respond(state = _)
+    assert(state == Activity.Pending)
+  }
+
   test("Namer recovers if marathon api fails initially") {
+    val addrs = Set(Address("hostname", 8080))
     val api = TestApi(
       ids = Future.value(Set(Path.read("/foo/bar"))),
-      addrs = Future.never,
+      addrs = Future.value(addrs),
       initIdsAlive = false,
       initAddrsAlive = true
     )
@@ -173,9 +203,10 @@ class AppIdNamerTest extends FunSuite with Awaits {
   }
 
   test("Namer returns a cached address when the marathon api goes down") {
+    val addrs = Set(Address("hostname", 8080))
     val api = TestApi(
       ids = Future.value(Set(Path.read("/foo/bar"))),
-      addrs = Future.never,
+      addrs = Future.value(addrs),
       initIdsAlive = true,
       initAddrsAlive = true
     )
@@ -212,7 +243,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/bar/residual")).states.respond(state = _)
 
-    assertAddrsFail(state)
+    assertActivityFail(state)
   }
 
   test("Namer recovers if getAddrs() fails initially") {
@@ -232,7 +263,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
     Time.withCurrentTimeFrozen { tc =>
       namer.lookup(Path.read("/bar/residual")).states.respond(state = _)
 
-      assertAddrsFail(state)
+      assertActivityFail(state)
 
       api.addrsAlive = true
       tc.advance(ttl)
