@@ -13,9 +13,9 @@ class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: Re
   val GeneralNameTypeUri = 6
   val GeneralNameTypeDns = 2
 
-  val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
-
   def apply(req: Req, svc: Service[Req, Rep]): Future[Rep] = {
+    val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
+
     Transport.peerCertificate.foreach(clientCert => {
       val clientCertHeader = new mutable.StringBuilder(128)
 
