@@ -242,10 +242,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           // Pending
           case StreamState(sendState, RecvPending) =>
             val stream = Stream.empty()
-            stream.onCancel.onSuccess { rst =>
-              // If the recvMsg stream is cancelled, reset the stream.
-              reset(rst, local = true); ()
-            }
             val msg = mkRecvMsg(hdrs.headers, stream)
             if (ConnectionHeaders.detect(msg.headers)) {
               log.debug("[%s] illegal connection headers detected in %s", prefix, msg.headers)
@@ -253,6 +249,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
               false
             } else {
               if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
+                stream.onCancel.onSuccess { rst =>
+                  // If the recvMsg stream is cancelled, reset the stream.
+                  reset(rst, local = true); ()
+                }
                 recvMsg.setValue(msg)
                 if (sendState == SendClosed) {
                   resetP.setDone()
@@ -288,10 +288,6 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           case StreamState(sendState, RecvPending) =>
             val q = new AsyncQueue[Frame]
             val stream = Stream(q)
-            stream.onCancel.onSuccess { rst =>
-              // If the recvMsg stream is cancelled, reset the stream.
-              reset(rst, local = true); ()
-            }
             val msg = mkRecvMsg(hdrs.headers, stream)
             if (ConnectionHeaders.detect(msg.headers)) {
               log.debug("[%s] illegal connection headers in recv message: %s", prefix, msg.headers)
@@ -299,6 +295,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
               false
             } else {
               if (stateRef.compareAndSet(state, StreamState(sendState, RecvStreaming(q)))) {
+                stream.onCancel.onSuccess { rst =>
+                  // If the recvMsg stream is cancelled, reset the stream.
+                  reset(rst, local = true); ()
+                }
                 recvMsg.setValue(msg)
                 true
               } else recv(hdrs)
@@ -504,6 +504,9 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case state@StreamState(SendStreaming(_), recvState) if frame.isEnd =>
         if (stateRef.compareAndSet(state, StreamState(SendClosed, recvState))) {
           statsReceiver.recordLocalFrame(frame)
+          if (recvState == RecvClosed) {
+            resetP.setDone()
+          }
           transport.write(frameStream, frame).transform { _ =>
             frame.release()
           }
