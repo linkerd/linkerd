@@ -13,6 +13,7 @@ class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: Re
   val GeneralNameTypeUri = 6
   val GeneralNameTypeDns = 2
 
+  // MessageDigest is not thread-safe, so using ThreadLocal to avoid concurrency issues.
   val digest = ThreadLocal.withInitial[MessageDigest](() => MessageDigest.getInstance("SHA-256"));
 
   def apply(req: Req, svc: Service[Req, Rep]): Future[Rep] = {
