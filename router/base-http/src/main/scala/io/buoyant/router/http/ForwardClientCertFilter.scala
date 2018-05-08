@@ -13,13 +13,13 @@ class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: Re
   val GeneralNameTypeUri = 6
   val GeneralNameTypeDns = 2
 
-  def apply(req: Req, svc: Service[Req, Rep]): Future[Rep] = {
-    val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
+  val digest = ThreadLocal.withInitial[MessageDigest](() => MessageDigest.getInstance("SHA-256"));
 
+  def apply(req: Req, svc: Service[Req, Rep]): Future[Rep] = {
     Transport.peerCertificate.foreach(clientCert => {
       val clientCertHeader = new mutable.StringBuilder(128)
 
-      clientCertHeader ++= s"Hash=${printHexBinary(digest.digest(clientCert.getEncoded))}"
+      clientCertHeader ++= s"Hash=${printHexBinary(digest.get().digest(clientCert.getEncoded))}"
 
       clientCert match {
         case x509ClientCert: X509Certificate =>
