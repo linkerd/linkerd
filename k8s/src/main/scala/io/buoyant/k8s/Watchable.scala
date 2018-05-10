@@ -14,6 +14,7 @@ import com.twitter.io.Reader
 import com.twitter.io.Reader.ReaderDiscarded
 import com.twitter.util.TimeConversions._
 import com.twitter.util.{NonFatal => _, _}
+import io.buoyant.namer.InstrumentedActivity
 import scala.util.control.NonFatal
 
 /**
@@ -58,7 +59,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     labelSelector: Option[String] = None,
     fieldSelector: Option[String] = None,
     resourceVersion: Option[String] = None,
-    retryIndefinitely: Boolean = false
+    retryIndefinitely: Boolean = false,
+    watchState: Option[WatchState[G, W]] = None
   ): Future[Option[G]] = {
     val req = Api.mkreq(
       http.Method.Get,
@@ -74,9 +76,14 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       else Filter.identity[http.Request, http.Response]
 
     val retryingClient = retry andThen client
+
+    watchState.foreach(_.recordApiCall(req))
     Trace.letClear(retryingClient(req)).flatMap {
       case rep if rep.status == http.Status.NotFound => Future.value(None)
-      case rep => Api.parse[G](rep).map(Some(_))
+      case rep => Api.parse[G](rep).map { g =>
+        watchState.foreach(_.recordResponse(g))
+        Some(g)
+      }
     }
   }
 
@@ -107,7 +114,8 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     labelSelector: Option[String] = None,
     fieldSelector: Option[String] = None,
     resourceVersion: Option[String] = None,
-    state: Updatable[Activity.State[W]]
+    state: Updatable[Activity.State[W]],
+    watchState: Option[WatchState[G, W]] = None
   ): Closable = {
     val close = new AtomicReference[Closable](Closable.nop)
 
@@ -118,6 +126,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         FieldSelectorKey -> fieldSelector,
         ResourceVersionKey -> resourceVersion)
       val retryingClient = infiniteRetryFilter andThen client
+      watchState.foreach(_.recordApiCall(req))
       val initialState = Trace.letClear(retryingClient(req))
 
       close.set(Closable.make { _ =>
@@ -130,8 +139,10 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         rsp.status match {
           // NOTE: 5xx-class statuses will be retried by the infiniteRetryFilter above.
           case http.Status.Ok =>
+            watchState.foreach(_.recordStreamStart())
             close.set(Closable.make { _ =>
               log.debug("k8s watch closed")
+              watchState.foreach(_.recordStreamEnd())
               Future {
                 rsp.reader.discard()
               } handle {
@@ -175,6 +186,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
         case Some((event, ws)) =>
           import Ordering.Implicits._
+          watchState.foreach(_.recordStreamData(event))
           // Register the update only if its resource version is larger than or equal to the largest version
           // seen so far.
           if (largestEvent.forall(_ <= event)) {
@@ -220,10 +232,13 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       // again.
       log.debug("k8s restarting watch on %s, resource version %s was too old", watchPath,
         resourceVersion)
+      watchState.foreach(_.recordStreamEnd())
       restartWatches(labelSelector, fieldSelector).flatMap {
         case (ws, ver) =>
-          for (w <- ws)
+          for (w <- ws) {
+            watchState.foreach(_.recordStreamData(w))
             state.update(Activity.Ok(w))
+          }
 
           _watch(ver, backoffs0)
       }
@@ -250,14 +265,16 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
   def activity[T](
     convert: Option[G] => T,
     labelSelector: Option[String] = None,
-    fieldSelector: Option[String] = None
-  )(onEvent: (T, W) => T): Activity[T] =
-    Activity(Var.async[Activity.State[T]](Activity.Pending) { state =>
+    fieldSelector: Option[String] = None,
+    watchState: Option[WatchState[G, W]] = None
+  )(onEvent: (T, W) => T): InstrumentedActivity[T] =
+    InstrumentedActivity { state =>
       val closeRef = new AtomicReference[Closable](Closable.nop)
       val pending = get(
         labelSelector = labelSelector,
         fieldSelector = fieldSelector,
-        retryIndefinitely = true
+        retryIndefinitely = true,
+        watchState = watchState
       )
         // since we're retrying the GET request forever, this `onFailure`
         // should probably never fire. but who knows?
@@ -284,7 +301,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
           val witness = Var
             .async[Activity.State[W]](Activity.Pending) { updatable =>
-              watch(labelSelector, fieldSelector, version, updatable)
+              watch(labelSelector, fieldSelector, version, updatable, watchState)
             }
             .changes
             .foldLeft(initialState) {
@@ -302,7 +319,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         Closable.ref(closeRef).close(t)
       }
 
-    })
+    }
 }
 
 object Watchable {

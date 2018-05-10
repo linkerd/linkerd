@@ -1,5 +1,4 @@
-package io.buoyant
-package admin.names
+package io.buoyant.admin.names
 
 import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{io => _, _}

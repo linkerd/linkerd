@@ -80,7 +80,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
             log.error("k8s watch error: %s", e)
             nsMap
         }
-    }
+    }.underlying
 
   /** List all Dtab namespaces */
   def list(): Activity[Set[Ns]] = act.map(_.keySet)

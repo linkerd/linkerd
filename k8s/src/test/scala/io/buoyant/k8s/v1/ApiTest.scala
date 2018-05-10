@@ -108,7 +108,8 @@ class ApiTest extends FunSuite
     val events = new AsyncQueue[Activity.State[Any]]
     val closable = watchable.watch(
       resourceVersion = resourceVersion,
-      state = value => { val _ = events.offer(value) }
+      state = value => { val _ = events.offer(value) },
+      watchState = None
     )
     (events, closable)
   }
