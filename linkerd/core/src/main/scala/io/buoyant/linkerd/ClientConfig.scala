@@ -42,7 +42,8 @@ case class TlsClientConfig(
   disableValidation: Option[Boolean],
   commonName: Option[String],
   trustCerts: Option[Seq[String]] = None,
-  clientAuth: Option[ClientAuth] = None
+  clientAuth: Option[ClientAuth] = None,
+  protocols: Option[Seq[String]] = None
 ) {
   require(
     !disableValidation.getOrElse(false) || clientAuth.isEmpty,
@@ -54,7 +55,8 @@ case class TlsClientConfig(
       disableValidation,
       commonName.map(PathMatcher.substitute(vars, _)),
       trustCerts,
-      clientAuth
+      clientAuth,
+      protocols
     ).params
 }
 

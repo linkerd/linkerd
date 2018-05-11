@@ -4,11 +4,12 @@ import java.io.{File, InputStream}
 import java.net.InetSocketAddress
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
+
 import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.http.{Method, Status, param => _, _}
+import com.twitter.finagle.ssl._
 import com.twitter.finagle.ssl.client.SslClientConfiguration
 import com.twitter.finagle.ssl.server.SslServerConfiguration
-import com.twitter.finagle.ssl.{ClientAuth, KeyCredentials, TrustCredentials}
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.util._
@@ -56,6 +57,44 @@ class HttpTlsEndToEndTest extends FunSuite with BudgetedRetries {
       val tls = Transport.ClientSsl(Some(SslClientConfiguration(
         hostname = Some("linkerd-tls-e2e"),
         trustCredentials = TrustCredentials.CertCollection(caCert)
+      )))
+      FinagleHttp.client
+        .configured(tls)
+        .newService(srvName, id.show)
+    }
+
+    val req = Request(Method.Get, "/a/parf")
+    val rsp =
+      try await(client(req))
+      finally await(client.close().before(srv.close()))
+
+    assert(rsp.status == Status.Ok)
+  }
+
+  test("client/server works with TLSv1.2 only cipher", Retryable) {
+    val srv = {
+      val srvCert = loadPem("linkerd-tls-e2e-cert")
+      val srvKey = loadPem("linkerd-tls-e2e-key")
+      FinagleHttp.server
+        .configured(Transport.ServerSsl(Some(SslServerConfiguration(
+          keyCredentials = KeyCredentials.CertAndKey(srvCert, srvKey),
+          cipherSuites = CipherSuites.Enabled(Seq("ECDHE-RSA-AES128-GCM-SHA256"))
+        ))))
+        .serve(":*", service)
+    }
+
+    val client = {
+      val isa = srv.boundAddress.asInstanceOf[InetSocketAddress]
+      val addr = Address(isa)
+      val id = Path.read(s"/$$/inet/${isa.getAddress.getHostAddress}/${isa.getPort}")
+      val srvName = Name.Bound(Var.value(Addr.Bound(addr)), id)
+
+      val caCert = loadPem("cacert")
+
+      val tls = Transport.ClientSsl(Some(SslClientConfiguration(
+        hostname = Some("linkerd-tls-e2e"),
+        trustCredentials = TrustCredentials.CertCollection(caCert),
+        protocols = Protocols.Enabled(Seq("TLSv1.2"))
       )))
       FinagleHttp.client
         .configured(tls)
