@@ -809,7 +809,7 @@ class HttpEndToEndTest
     }
   }
 
-  test("requests with l5d-ctx-resolve header are not sent downstream") {
+  test("requests with l5d-req-evaluate header are not sent downstream") {
     @volatile var headers: HeaderMap = null
     val downstream = Downstream.mk("dog") { req =>
       headers = req.headerMap
@@ -827,14 +827,14 @@ class HttpEndToEndTest
 
     val req = Request()
     req.host = "dog"
-    req.headerMap.add("l5d-ctx-resolve", "true")
+    req.headerMap.add("l5d-req-evaluate", "true")
     val resp = await(client(req))
     assert(resp.contentString != "response from downstream")
     assert(headers == null)
 
   }
 
-  test("requests with l5d-ctx-resolve respond with downstream service details"){
+  test("requests with l5d-req-evaluate respond with downstream service details"){
     val downstream = Downstream.mk("dog") { req =>
       Response()
     }
@@ -850,11 +850,9 @@ class HttpEndToEndTest
 
     val req = Request()
     req.host = "dog"
-    req.headerMap.add("l5d-ctx-resolve", "true")
+    req.headerMap.add("l5d-req-evaluate", "true")
     val resp = await(client(req))
-    assert(resp.contentString == s"""
-       |{"identification":"/svc/dog","selectedEndpoint":"/127.0.0.1:${downstream.port}","serverAddresses":["/127.0.0.1:${downstream.port}"]}
-     """.stripMargin.trim)
+    assert(resp.contentString.contains(s"""|{"identification":"/svc/dog","selectedAddress":"/127.0.0.1:${downstream.port}","addresses":["/127.0.0.1:${downstream.port}"]""".stripMargin.trim))
   }
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
