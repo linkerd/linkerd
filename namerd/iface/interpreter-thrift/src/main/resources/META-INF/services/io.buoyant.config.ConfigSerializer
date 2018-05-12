@@ -1,0 +1,4 @@
+io.buoyant.namerd.iface.AddrReqSerializer
+io.buoyant.namerd.iface.AddrSerializer
+io.buoyant.namerd.iface.BindReqSerializer
+io.buoyant.namerd.iface.BoundSerializer
