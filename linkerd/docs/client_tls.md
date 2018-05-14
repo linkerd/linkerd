@@ -26,6 +26,7 @@ serverCaChainPath | none | Path to a file containing a CA certificate chain to s
 keyPath | _required_ | File path to the TLS key file.
 requireClientAuth | false | If true, only accept requests with valid client certificates.
 caCertPath | none | File path to the CA cert to validate the client certificates.
+protocols | unspecified | The list of TLS protocols to enable (TLSv1.2)
 
 See [Transparent TLS with Linkerd](https://blog.buoyant.io/2016/03/24/transparent-tls-with-linkerd/) for more on how to generate certificate
 and key files.
@@ -45,6 +46,8 @@ routers:
       clientAuth:
         certPath: /certificates/cert.pem
         keyPath: /certificates/key.pem
+      protocols:
+      - TLSv1.2
 ```
 
 In order to send outgoing tls traffic, the tls parameter must be defined as a
@@ -59,6 +62,7 @@ disableValidation | false                                      | Enable this to 
 commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
 trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation.
 clientAuth        | none                                       | A client auth object used to sign requests.
+protocols         | unspecified                                | The list of TLS protocols to enable
 
 If present, a client auth object must contain two properties:
 
@@ -87,6 +91,8 @@ routers:
         clientAuth:
           certPath: /certificates/cert.pem
           keyPath: /certificates/key.pem
+        protocols:
+        - TLSv1.2          
 ```
 
 ### Client TLS and transformers

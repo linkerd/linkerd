@@ -4,14 +4,13 @@ import java.io.{File, InputStream}
 import java.net.InetSocketAddress
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Paths}
-
 import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.http.{Method, Status, param => _, _}
-import com.twitter.finagle.ssl._
 import com.twitter.finagle.ssl.client.SslClientConfiguration
 import com.twitter.finagle.ssl.server.SslServerConfiguration
+import com.twitter.finagle.ssl.{CipherSuites, ClientAuth, KeyCredentials, Protocols, TrustCredentials}
 import com.twitter.finagle.transport.Transport
-import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
+import com.twitter.finagle.{Http => FinagleHttp, http => _, Status => _, _}
 import com.twitter.util._
 import io.buoyant.config.Parser
 import io.buoyant.test.{BudgetedRetries, FunSuite}
@@ -78,7 +77,8 @@ class HttpTlsEndToEndTest extends FunSuite with BudgetedRetries {
       FinagleHttp.server
         .configured(Transport.ServerSsl(Some(SslServerConfiguration(
           keyCredentials = KeyCredentials.CertAndKey(srvCert, srvKey),
-          cipherSuites = CipherSuites.Enabled(Seq("ECDHE-RSA-AES128-GCM-SHA256"))
+          cipherSuites = CipherSuites.Enabled(Seq("ECDHE-RSA-AES128-GCM-SHA256")),
+          protocols = Protocols.Enabled(Seq("TLSv1.2"))
         ))))
         .serve(":*", service)
     }
@@ -94,6 +94,7 @@ class HttpTlsEndToEndTest extends FunSuite with BudgetedRetries {
       val tls = Transport.ClientSsl(Some(SslClientConfiguration(
         hostname = Some("linkerd-tls-e2e"),
         trustCredentials = TrustCredentials.CertCollection(caCert),
+        cipherSuites = CipherSuites.Enabled(Seq("ECDHE-RSA-AES128-GCM-SHA256")),
         protocols = Protocols.Enabled(Seq("TLSv1.2"))
       )))
       FinagleHttp.client

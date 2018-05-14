@@ -28,7 +28,6 @@ case class TlsClientConfig(
         keyCredentials = keyCredentials(clientAuth),
         protocols = enabledProtocols.map(Protocols.Enabled).getOrElse(Protocols.Unspecified)
       )
-      val factory = Netty4ClientEngineFactory()
       Stack.Params.empty + Transport.ClientSsl(Some(tlsConfig)) +
         SslClientEngineFactory.Param(Netty4ClientEngineFactory())
 
