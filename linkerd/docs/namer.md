@@ -59,7 +59,7 @@ $ cat config/web
 ```
 
 <aside class="warning">
-Due to the implmentation of file watches in Java, this namer consumes a high
+Due to the implementation of file watches in Java, this namer consumes a high
 amount of CPU and is not suitable for production use.
 </aside>
 

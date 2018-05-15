@@ -281,11 +281,18 @@ class Base extends Build {
 
     /** Enable the test config for a project with basic dependencies */
     def withTests(): Project = project.dependsOn(testUtil % Test)
+    .settings(inConfig(Test)(Defaults.testSettings ++ Seq(
+      fork := true,
+      baseDirectory := new File(".")
+    )))
 
     /** Enables e2e test config for a project with basic dependencies */
     def withE2e(): Project = project
       .configs(EndToEndTest)
-      .settings(inConfig(EndToEndTest)(Defaults.testSettings ++ ScoverageSbtPlugin.projectSettings))
+      .settings(inConfig(EndToEndTest)(Defaults.testSettings ++ ScoverageSbtPlugin.projectSettings ++ Seq(
+        fork := true,
+        baseDirectory := new File(".")
+      )))
       .settings(libraryDependencies += "org.scoverage" %% "scalac-scoverage-runtime" % "1.3.0" % EndToEndTest)
       .dependsOn(testUtil % EndToEndTest)
 

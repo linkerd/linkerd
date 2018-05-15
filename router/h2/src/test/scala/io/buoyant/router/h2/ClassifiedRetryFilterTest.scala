@@ -31,7 +31,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
         ResponseClass.Success
     }
   }
-  implicit val timer = DefaultTimer
+  implicit val timer = new MockTimer
 
   def filter(stats: StatsReceiver) = new ClassifiedRetryFilter(
     stats,
@@ -87,7 +87,9 @@ class ClassifiedRetryFilterTest extends FunSuite {
 
     val svc = filter(stats).andThen(new TestService())
 
-    val rsp = await(svc(req))
+    val rsp = Time.withCurrentTimeFrozen { _ =>
+      await(svc(req))
+    }
 
     val (buf, Some(trailers)) = await(read(rsp.stream))
     assert(Buf.Utf8("goodbye") == buf)
@@ -112,7 +114,9 @@ class ClassifiedRetryFilterTest extends FunSuite {
 
     val svc = filter(stats).andThen(new TestService(tries = 1))
 
-    val rsp = await(svc(req))
+    val rsp = Time.withCurrentTimeFrozen { _ =>
+      await(svc(req))
+    }
 
     val (buf, Some(trailers)) = await(read(rsp.stream))
     assert(Buf.Utf8("goodbye") == buf)
@@ -199,7 +203,9 @@ class ClassifiedRetryFilterTest extends FunSuite {
     })
 
     // if early classification is possible, the response should not be buffered
-    val rsp = await(svc(Request(Headers.empty, Stream.empty())))
+    val rsp = Time.withCurrentTimeFrozen { _ =>
+      await(svc(Request(Headers.empty, Stream.empty())))
+    }
 
     rspQ.offer(Frame.Data("foo", eos = true))
     val frame = await(rsp.stream.read()).asInstanceOf[Frame.Data]
@@ -218,7 +224,6 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val rspQ = new AsyncQueue[Frame]()
 
     val stats = new InMemoryStatsReceiver
-    val timer = new MockTimer
 
     val svc = new ClassifiedRetryFilter(
       stats,
@@ -226,7 +231,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
       SStream.continually(0.millis),
       RetryBudget.Infinite,
       classificationTimeout = 1.second
-    )(timer).andThen(Service.mk { req: Request =>
+    ).andThen(Service.mk { req: Request =>
       Future.value(Response(Status.Ok, Stream(rspQ)))
     })
 
