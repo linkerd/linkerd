@@ -184,13 +184,13 @@ class ObserverCacheTest extends FunSuite {
         assert(inactiveSize(stats) == 1)
         assert(!one.closed.sample)
 
-        tc.advance(ttl/2)
+        tc.advance(ttl / 2)
         cache.inactiveCacheCleanup()
         assert(activeSize(stats) == 0)
         assert(inactiveSize(stats) == 1)
         assert(!one.closed.sample)
 
-        tc.advance(ttl/2)
+        tc.advance(ttl / 2)
         cache.inactiveCacheCleanup()
         assert(activeSize(stats) == 0)
         assert(inactiveSize(stats) == 0)
