@@ -39,6 +39,9 @@ interpreter uses Namerd's long-poll thrift interface
 (`io.l5d.thriftNameInterpreter`). Note that the protocol that the interpreter
 uses to talk to Namerd is unrelated to the protocols of Linkerd's routers.
 
+The internal state of the Namerd interpreter can be viewed at the
+admin endpoint: `/interpreter_state/io.l5d.namerd/<namespace>.json`.
+
 Key | Default Value | Description
 --- | ------------- | -----------
 dst | _required_ | A Finagle path locating the Namerd service.
