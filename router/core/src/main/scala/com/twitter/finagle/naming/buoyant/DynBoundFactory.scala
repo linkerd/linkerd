@@ -6,17 +6,19 @@ import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.factory.ServiceFactoryCache
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.Trace
-import com.twitter.util.{Activity, Duration, Future, Promise, Stopwatch, Time}
+import com.twitter.util._
 import scala.collection.immutable
 
 /**
  * A version of finagle's DynNameFactory that uses our Dst.Bound types.
  */
 private[buoyant] class DynBoundFactory[Req, Rep](
+  path: Path,
   name: Activity[Dst.BoundTree],
   cache: ServiceFactoryCache[Dst.BoundTree, Req, Rep],
+  timeout: Duration,
   statsReceiver: StatsReceiver = NullStatsReceiver
-) extends ServiceFactory[Req, Rep] {
+)(implicit timer: Timer) extends ServiceFactory[Req, Rep] {
 
   val latencyStat = statsReceiver.stat("bind_latency_us")
 
@@ -71,7 +73,7 @@ private[buoyant] class DynBoundFactory[Req, Rep](
   }
 
   def apply(conn: ClientConnection): Future[Service[Req, Rep]] = {
-    state match {
+    val f = state match {
       case Named(name) =>
         Trace.record("namer.success")
         cache(name, conn)
@@ -87,6 +89,21 @@ private[buoyant] class DynBoundFactory[Req, Rep](
       case Pending(_) =>
         applySync(conn)
     }
+    f.raiseWithin(timeout, DynBoundTimeout).rescue(handleDynBoundTimeout)
+  }
+
+  private val DynBoundTimeout = new DynBoundTimeoutException("dyn bound timeout")
+
+  private[this] val handleDynBoundTimeout: PartialFunction[Throwable, Future[Nothing]] = {
+    case DynBoundTimeout =>
+      state match {
+        case Pending(_) =>
+          Future.exception(new DynBoundTimeoutException(s"Exceeded $timeout binding timeout while resolving name: ${path.show}"))
+        case Named(name) =>
+          Future.exception(new DynBoundTimeoutException(s"Exceeded $timeout binding timeout while connecting to ${name.show} for name: ${path.show}"))
+        case _ =>
+          Future.exception(DynBoundTimeout)
+      }
   }
 
   private[this] def applySync(conn: ClientConnection): Future[Service[Req, Rep]] = synchronized {
@@ -132,3 +149,5 @@ private[buoyant] class DynBoundFactory[Req, Rep](
     sub.close(deadline)
   }
 }
+
+class DynBoundTimeoutException(msg: String) extends Exception(msg)

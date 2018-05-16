@@ -176,7 +176,7 @@ class DstBindingFactoryTest extends FunSuite with Awaits with Exceptions {
       time.advance(1.second)
       timer.tick()
       assert(result.isDefined)
-      assertThrows[RequestTimeoutException](await(0.seconds)(result))
+      assertThrows[DynBoundTimeoutException](await(0.seconds)(result))
     }
   }
 }
