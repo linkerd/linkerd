@@ -6,9 +6,9 @@ import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util.Future
 import io.buoyant.admin.DelegationJsonCodec
-import io.buoyant.admin.names.DelegateApiHandler.JsonDelegateTree
 import io.buoyant.config.Parser
-import io.buoyant.namer.{ConfiguredNamersInterpreter, Delegator}
+import io.buoyant.namer.DelegateTree._
+import io.buoyant.namer.{DelegateTree, Delegator}
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
@@ -17,16 +17,26 @@ case class EvaluatedRequest(
   identification: String,
   selectedAddress: String,
   addresses: Option[Set[String]],
-  dtabResolution: Option[JsonDelegateTree]
-)
+  dtabResolution: List[String]
+) {
+  override def toString() = {
+    s"""
+     |identification: $identification
+     |selectedAddress: $selectedAddress
+     |addresses: ${addresses.getOrElse(Set.empty).mkString(",")}
+     |Dtab Resolution:
+     |${dtabResolution.mkString("\n")}
+    """.stripMargin
+  }
+}
 
 class RequestEvaluator(
   endpoint: EndpointAddr,
   namer: DstBindingFactory.Namer,
   dtab: BaseDtab
 ) extends SimpleFilter[Request, Response] {
-  private val jsonMapper = Parser.jsonObjectMapper(Nil).registerModule(DelegationJsonCodec.mkModule())
-  private val evaluatorHeaderName = "l5d-req-evaluate"
+
+  private val EvaluatorHeaderName = "l5d-req-evaluate"
   private val JsonCharSet = ";charset=UTF-8"
 
   override def apply(
@@ -34,7 +44,7 @@ class RequestEvaluator(
     svc: Service[Request, Response]
   ): Future[Response] = {
 
-    req.headerMap.get(evaluatorHeaderName) match {
+    req.headerMap.get(EvaluatorHeaderName) match {
       case None => svc(req)
       case Some(_) =>
 
@@ -67,29 +77,33 @@ class RequestEvaluator(
 
         val dtreeF = namer.interpreter match {
           case delegator: Delegator => delegator.delegate(dtab.dtab(), identificationPath)
-            .flatMap(JsonDelegateTree.mk).map(Some(_))
+            .map(Some(_))
           case _ => Future.None
         }
+
         dtreeF.map { dtree =>
           val resp = Response()
-          resp.contentType = MediaType.Json + JsonCharSet
-          resp.contentString = jsonMapper
-            .writeValueAsString(
-              EvaluatedRequest(
-                identificationPath.show,
-                selectedEndpoint,
-                addresses,
-                dtree
-              )
-            )
+          val tree = RequestEvaluator.formatDTree(dtree, req.contentType, List.empty)
+          val evaluatedRequest = EvaluatedRequest(
+            tree.last,
+            selectedEndpoint,
+            addresses,
+            tree
+          )
+
+          resp.contentType = req.contentType.getOrElse(MediaType.PlainText)
+          resp.contentString = RequestEvaluator.writeContentString(resp.contentType, evaluatedRequest)
           resp
         }
-
     }
   }
 }
 
 object RequestEvaluator {
+
+  private val jsonMapper = Parser.jsonObjectMapper(Nil)
+    .registerModule(DelegationJsonCodec.mkModule())
+
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module3[EndpointAddr, RoutingFactory.BaseDtab, DstBindingFactory.Namer, ServiceFactory[Request, Response]] {
 
@@ -104,6 +118,44 @@ object RequestEvaluator {
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] = new RequestEvaluator(endpoint, interpreter, dtab)
         .andThen(next)
+    }
+
+  def formatDTree(
+    dTree: Option[DelegateTree[Name.Bound]],
+    output: Any,
+    tree: List[String]
+  ): List[String] = {
+    dTree match {
+      case None =>
+        tree
+      case Some(_: Empty) | Some(_: Fail) | Some(_: Exception) | Some(Neg(_, _)) =>
+        List.empty
+
+      case Some(Leaf(path, dentry, value)) =>
+        tree :+ path.show
+
+      case Some(Transformation(path, name, value, remainingTree)) =>
+        formatDTree(Some(remainingTree), output, tree :+ value.path.show)
+
+      case Some(Delegate(path, dentry, remainingTree)) =>
+        formatDTree(Some(remainingTree), output, tree :+ path.show)
+
+      case Some(Union(path, dentry, remainingWeightedTrees@_*)) =>
+        remainingWeightedTrees.map { wd =>
+          formatDTree(Some(wd.tree), output, tree :+ s"${wd.weight} * ${path.show}")
+        }.filter(!_.isEmpty).head
+      case Some(Alt(path, dentry, remainingTrees@_*)) =>
+        remainingTrees.map { d =>
+          formatDTree(Some(d), output, tree :+ path.show)
+        }.filter(!_.isEmpty).head
+    }
+  }
+
+  def writeContentString(contentType: Option[String], eval: EvaluatedRequest): String =
+    contentType match {
+      case Some(respContentType) if respContentType == MediaType.Json =>
+        jsonMapper.writeValueAsString(eval)
+      case _ => eval.toString
     }
 }
 

@@ -52,7 +52,7 @@ class RequestEvaluatorTest extends FunSuite {
     Contexts.local.let(DstPathCtx, Dst.Path(Path.Utf8("svc", "cat"))) {
       val resp = await(client(req))
       val resolvedResp = jsonMapper.readValue[EvaluatedRequest](resp.contentString)
-      assert(resolvedResp == EvaluatedRequest("/svc/cat", "/127.0.0.1:8081", None, Some(Neg("/svc/cat", None))))
+      assert(resolvedResp == EvaluatedRequest("/svc/cat", "/127.0.0.1:8081", None, ""))
     }
   }
 
@@ -77,7 +77,7 @@ class RequestEvaluatorTest extends FunSuite {
           "/",
           "/127.0.0.1:8081",
           Some(Set("/1.2.3.4:8080")),
-          Some(Neg("~", None))
+          ""
         )
       )
     }

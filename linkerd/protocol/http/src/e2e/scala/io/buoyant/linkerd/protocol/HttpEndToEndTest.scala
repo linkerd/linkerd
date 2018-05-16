@@ -834,7 +834,7 @@ class HttpEndToEndTest
 
   }
 
-  test("requests with l5d-req-evaluate respond with downstream service details"){
+  test("requests with l5d-req-evaluate respond with downstream service details in json"){
     val downstream = Downstream.mk("dog") { req =>
       Response()
     }
@@ -851,8 +851,39 @@ class HttpEndToEndTest
     val req = Request()
     req.host = "dog"
     req.headerMap.add("l5d-req-evaluate", "true")
+    req.contentType = "application/json"
     val resp = await(client(req))
     assert(resp.contentString.contains(s"""|{"identification":"/svc/dog","selectedAddress":"/127.0.0.1:${downstream.port}","addresses":["/127.0.0.1:${downstream.port}"]""".stripMargin.trim))
+  }
+
+  test("prints out human readable dtab resolution path"){
+    val downstream = Downstream.mk("dog") { req =>
+      Response()
+    }
+
+    val dtab = Dtab.read(s"""
+      /srv => /$$/inet/127.1/${downstream.port};
+      /svc => /srv;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.headerMap.add("l5d-req-evaluate", "true")
+    val resp = await(client(req))
+    assert(resp.contentString == s"""
+      |identification: /svc/dog
+      |selectedAddress: /127.0.0.1:${downstream.port}
+      |addresses: /127.0.0.1:${downstream.port}
+      |Dtab Resolution:
+      |/svc/dog
+      |/srv/dog
+      |/$$/inet/127.1/${downstream.port}/dog
+    """.stripMargin)
   }
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
