@@ -12,7 +12,8 @@ case class TlsServerConfig(
   keyPath: String,
   caCertPath: Option[String] = None,
   ciphers: Option[Seq[String]] = None,
-  requireClientAuth: Option[Boolean] = None
+  requireClientAuth: Option[Boolean] = None,
+  protocols: Option[Seq[String]] = None
 ) {
   def params(
     alpnProtocols: Option[Seq[String]],
@@ -49,7 +50,8 @@ case class TlsServerConfig(
       keyCredentials = keyCredentials,
       trustCredentials = trust,
       cipherSuites = cipherSuites,
-      applicationProtocols = appProtocols
+      applicationProtocols = appProtocols,
+      protocols = protocols.map(Protocols.Enabled).getOrElse(Protocols.Unspecified)
     ))) + SslServerEngineFactory.Param(sslServerEngine)
   }
 }

@@ -3,6 +3,7 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.buoyant.config.Parser
 import io.buoyant.test.FunSuite
+import org.scalatest.Matchers._
 
 class ClientConfigTest extends FunSuite {
 
@@ -35,6 +36,21 @@ class ClientConfigTest extends FunSuite {
       """.stripMargin
     Parser.objectMapper(yaml, Nil).readValue[TlsClientConfig](yaml)
 
+  }
+
+  test("should parse tls protocols") {
+    val yaml =
+      """
+        |commonName: foo
+        |clientAuth:
+        |  certPath: cert.pem
+        |  keyPath: key.pem
+        |protocols:
+        |  - TLSv1.0
+        |  - TLSv1.2
+      """.stripMargin
+    val config = Parser.objectMapper(yaml, Nil).readValue[TlsClientConfig](yaml)
+    config.protocols.get should contain only ("TLSv1.0", "TLSv1.2")
   }
 
 }
