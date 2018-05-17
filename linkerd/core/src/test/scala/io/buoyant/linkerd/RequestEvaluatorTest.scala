@@ -4,16 +4,30 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.context.Contexts
-import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.http.{MediaType, Request, Response}
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.io.Buf
-import com.twitter.util.{Future, Var}
-import io.buoyant.admin.names.DelegateApiHandler.JsonDelegateTree.Neg
+import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.config.Parser
-import io.buoyant.namer.ConfiguredNamersInterpreter
+import io.buoyant.namer.{ConfiguredNamersInterpreter, DelegateTree, Delegator}
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 import io.buoyant.test.FunSuite
+
+class TestNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpreter with Delegator {
+  def delegate(
+    dtab: Dtab,
+    tree: NameTree[Name.Path]
+  ): Future[DelegateTree[Name.Bound]] = Future.value(delegation)
+
+  def dtab: Activity[Dtab] = ???
+
+  override def bind(
+    dtab: Dtab,
+    path: Path
+  ): Activity[NameTree[Name.Bound]] = ???
+}
 
 class RequestEvaluatorTest extends FunSuite {
   val jsonMapper = Parser.jsonObjectMapper(Nil)
@@ -40,19 +54,24 @@ class RequestEvaluatorTest extends FunSuite {
   }
 
   test("prints out request identification ") {
+    val addrSet = Var.apply(
+      Addr.Bound(Address("1.2.3.4", 8080))
+    )
+    val path = Path.Utf8("io.l5d.fs", "cat")
     val filter = new RequestEvaluator(
       EndpointAddr(Address("127.0.0.1", 8081)),
-      DstBindingFactory.Namer(ConfiguredNamersInterpreter(Seq())),
+      DstBindingFactory.Namer(new TestNamer(DelegateTree.Leaf(path, Dentry.nop, Name.Bound(addrSet, path)))),
       BaseDtab(() => Dtab.empty)
     )
     val client = filter.andThen(testService)
     val req = Request()
     req.headerMap.add("l5d-req-evaluate", "true")
     req.host = "cat"
-    Contexts.local.let(DstPathCtx, Dst.Path(Path.Utf8("svc", "cat"))) {
+    req.contentType = MediaType.Json
+    Contexts.local.let(DstPathCtx, Dst.Path(path)) {
       val resp = await(client(req))
       val resolvedResp = jsonMapper.readValue[EvaluatedRequest](resp.contentString)
-      assert(resolvedResp == EvaluatedRequest("/svc/cat", "/127.0.0.1:8081", None, ""))
+      assert(resolvedResp == EvaluatedRequest(path.show, "/127.0.0.1:8081", None, List(path.show)))
     }
   }
 
@@ -60,24 +79,26 @@ class RequestEvaluatorTest extends FunSuite {
     val addrSet = Var.apply(
       Addr.Bound(Address("1.2.3.4", 8080))
     )
+    val path = Path.Utf8("io.l5d.fs", "cat")
     val filter = new RequestEvaluator(
       EndpointAddr(Address("127.0.0.1", 8081)),
-      DstBindingFactory.Namer(ConfiguredNamersInterpreter(Seq())),
+      DstBindingFactory.Namer(new TestNamer(DelegateTree.Leaf(path, Dentry.nop, Name.empty))),
       BaseDtab(() => Dtab.empty)
     )
     val client = filter.andThen(testService)
     val req = Request()
     req.headerMap.add("l5d-req-evaluate", "true")
     req.host = "cat"
+    req.contentType = MediaType.Json
     Contexts.local.let(DstBoundCtx, Dst.Bound(addrSet, Path.empty)) {
       val resp = await(client(req))
       val resolvedResp = jsonMapper.readValue[EvaluatedRequest](resp.contentString)
       assert(
         resolvedResp == EvaluatedRequest(
-          "/",
+          path.show,
           "/127.0.0.1:8081",
           Some(Set("/1.2.3.4:8080")),
-          ""
+          List(path.show)
         )
       )
     }

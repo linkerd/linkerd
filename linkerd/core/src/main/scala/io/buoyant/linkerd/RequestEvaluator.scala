@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
-import com.twitter.util.Future
+import com.twitter.util.{Future, Return, Throw, Try}
 import io.buoyant.admin.DelegationJsonCodec
 import io.buoyant.config.Parser
 import io.buoyant.namer.DelegateTree._
@@ -21,11 +21,11 @@ case class EvaluatedRequest(
 ) {
   override def toString() = {
     s"""
-     |identification: $identification
-     |selectedAddress: $selectedAddress
-     |addresses: ${addresses.getOrElse(Set.empty).mkString(",")}
-     |Dtab Resolution:
-     |${dtabResolution.mkString("\n")}
+                                 |identification: $identification
+                                 |selectedAddress: $selectedAddress
+                                 |addresses: ${addresses.getOrElse(Set.empty).mkString(",")}
+                                 |Dtab Resolution:
+                                 |${dtabResolution.mkString("\n")}
     """.stripMargin
   }
 }
@@ -85,14 +85,18 @@ class RequestEvaluator(
           val resp = Response()
           val tree = RequestEvaluator.formatDTree(dtree, req.contentType, List.empty)
           val evaluatedRequest = EvaluatedRequest(
-            tree.last,
+            Try(tree.last) match {
+              case Throw(_) => "Unknown identification"
+              case Return(id) => id
+            },
             selectedEndpoint,
             addresses,
             tree
           )
 
           resp.contentType = req.contentType.getOrElse(MediaType.PlainText)
-          resp.contentString = RequestEvaluator.writeContentString(resp.contentType, evaluatedRequest)
+          resp.contentString = RequestEvaluator
+            .writeContentString(resp.contentType, evaluatedRequest)
           resp
         }
     }
