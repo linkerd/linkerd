@@ -10,23 +10,23 @@ import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.config.Parser
-import io.buoyant.namer.{ConfiguredNamersInterpreter, DelegateTree, Delegator}
+import io.buoyant.namer.{DelegateTree, Delegator}
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 import io.buoyant.test.FunSuite
 
-class TestNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpreter with Delegator {
+class EvaluatorNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpreter with Delegator {
   def delegate(
     dtab: Dtab,
     tree: NameTree[Name.Path]
   ): Future[DelegateTree[Name.Bound]] = Future.value(delegation)
 
-  def dtab: Activity[Dtab] = ???
+  def dtab: Activity[Dtab] = Activity.pending
 
   override def bind(
     dtab: Dtab,
     path: Path
-  ): Activity[NameTree[Name.Bound]] = ???
+  ): Activity[NameTree[Name.Bound]] = Activity.pending
 }
 
 class RequestEvaluatorTest extends FunSuite {
@@ -60,7 +60,7 @@ class RequestEvaluatorTest extends FunSuite {
     val path = Path.Utf8("io.l5d.fs", "cat")
     val filter = new RequestEvaluator(
       EndpointAddr(Address("127.0.0.1", 8081)),
-      DstBindingFactory.Namer(new TestNamer(DelegateTree.Leaf(path, Dentry.nop, Name.Bound(addrSet, path)))),
+      DstBindingFactory.Namer(new EvaluatorNamer(DelegateTree.Leaf(path, Dentry.nop, Name.Bound(addrSet, path)))),
       BaseDtab(() => Dtab.empty)
     )
     val client = filter.andThen(testService)
@@ -82,7 +82,7 @@ class RequestEvaluatorTest extends FunSuite {
     val path = Path.Utf8("io.l5d.fs", "cat")
     val filter = new RequestEvaluator(
       EndpointAddr(Address("127.0.0.1", 8081)),
-      DstBindingFactory.Namer(new TestNamer(DelegateTree.Leaf(path, Dentry.nop, Name.empty))),
+      DstBindingFactory.Namer(new EvaluatorNamer(DelegateTree.Leaf(path, Dentry.nop, Name.empty))),
       BaseDtab(() => Dtab.empty)
     )
     val client = filter.andThen(testService)

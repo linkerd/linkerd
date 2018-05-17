@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 package protocol
 
+import com.sun.corba.se.impl.orb.ORBConfiguratorImpl.ConfigParser
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
@@ -12,6 +13,7 @@ import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.io.Buf
 import com.twitter.util._
+import io.buoyant.config.Parser
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
 import java.io.File
@@ -835,6 +837,7 @@ class HttpEndToEndTest
   }
 
   test("requests with l5d-req-evaluate respond with downstream service details in json"){
+    val jsonMapper = Parser.jsonObjectMapper(Nil)
     val downstream = Downstream.mk("dog") { req =>
       Response()
     }
@@ -851,9 +854,15 @@ class HttpEndToEndTest
     val req = Request()
     req.host = "dog"
     req.headerMap.add("l5d-req-evaluate", "true")
-    req.contentType = "application/json"
+    req.contentType = MediaType.Json
     val resp = await(client(req))
-    assert(resp.contentString.contains(s"""|{"identification":"/svc/dog","selectedAddress":"/127.0.0.1:${downstream.port}","addresses":["/127.0.0.1:${downstream.port}"]""".stripMargin.trim))
+    assert(jsonMapper.readValue[EvaluatedRequest](resp.contentString) ==
+      EvaluatedRequest(
+      s"/$$/inet/127.1/${downstream.port}",
+      s"/127.0.0.1:${downstream.port}",
+      Some(Set(s"/127.0.0.1:${downstream.port}")),
+      List("/svc/dog", s"/$$/inet/127.1/${downstream.port}")
+    ))
   }
 
   test("prints out human readable dtab resolution path"){
@@ -876,7 +885,7 @@ class HttpEndToEndTest
     req.headerMap.add("l5d-req-evaluate", "true")
     val resp = await(client(req))
     assert(resp.contentString == s"""
-      |identification: /svc/dog
+      |identification: /$$/inet/127.1/${downstream.port}/dog
       |selectedAddress: /127.0.0.1:${downstream.port}
       |addresses: /127.0.0.1:${downstream.port}
       |Dtab Resolution:
