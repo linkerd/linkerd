@@ -7,7 +7,7 @@ import com.twitter.finagle.param.Stats
 import com.twitter.finagle.Path
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.util.Duration
+import com.twitter.util.{Duration, Future}
 import io.buoyant.linkerd.{Linker, Router}
 import io.buoyant.linkerd.protocol.H2Initializer
 import io.buoyant.router.StackRouter.Client.PerClientParams
@@ -374,5 +374,41 @@ class H2EndToEndTest extends FunSuite {
     }
   }
 
+  test("context headers") {
 
+    val dog = Downstream.mk("dog") { req =>
+      assert(req.headers.get(LinkerdHeaders.Ctx.Dtab.CtxKey) == Some("/foo=>/bar"))
+      assert(req.headers.contains(LinkerdHeaders.Ctx.Trace.Key))
+      Future.value(Response(Status.Ok, Stream.const("woof")))
+    }
+
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/${dog.port} ;
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(config)
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = Upstream.mk(server)
+    val req = Request(Headers(
+      Headers.Authority -> "dog",
+      Headers.Path -> "/",
+      LinkerdHeaders.Ctx.Dtab.UserKey -> "/foo=>/bar"
+    ), Stream.empty())
+    val rsp = await(client(req))
+
+    assert(rsp.status == Status.Ok)
+    assert(await(rsp.stream.readDataString) == "woof")
+
+    await(client.close())
+    await(dog.server.close())
+    await(server.close())
+    await(router.close())
+  }
 }

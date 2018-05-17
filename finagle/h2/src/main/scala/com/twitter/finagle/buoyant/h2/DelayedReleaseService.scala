@@ -7,7 +7,7 @@ import com.twitter.util.{Future, Promise, Return, Time}
 import java.util.concurrent.atomic.AtomicBoolean
 
 object DelayedRelease {
-  val role = StackClient.Role.prepFactory
+  val role = StackClient.Role.prepConn
   val description = "Prevents an H2 service from being closed until its response stream completes"
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module0[ServiceFactory[Request, Response]] {
