@@ -45,7 +45,7 @@ case class ClientTlsConfig(commonName: String, caCert: Option[String]) {
       enabled = Some(true),
       disableValidation = Some(false),
       commonName = Some(commonName),
-      trustCerts = caCert.map(Seq(_)),
+      trustCerts = caCert,
       clientAuth = None
     ).params
   }

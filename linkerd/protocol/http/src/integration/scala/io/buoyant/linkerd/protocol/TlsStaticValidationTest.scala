@@ -31,8 +31,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |  client:
              |    tls:
              |      commonName: linkerd
-             |      trustCerts:
-             |      - ${certs.caCert.getPath}
+             |      trustCerts: ${certs.caCert.getPath}
              |""".stripMargin
         val linker = init.load(linkerConfig)
         val router = linker.routers.head.initialize()
@@ -78,8 +77,7 @@ class TlsStaticValidationTest extends FunSuite with Awaits {
              |  client:
              |    tls:
              |      commonName: wrong
-             |      trustCerts:
-             |      - ${certs.caCert.getPath}
+             |      trustCerts: ${certs.caCert.getPath}
              |""".stripMargin
         val linker = init.load(linkerConfig)
         val router = linker.routers.head.initialize()

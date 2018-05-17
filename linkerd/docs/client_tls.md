@@ -60,7 +60,7 @@ Key               | Default Value                              | Description
 ----------------- | ------------------------------------------ | -----------
 disableValidation | false                                      | Enable this to skip hostname validation (unsafe). Setting `disableValidation: true` is incompatible with `clientAuth`.
 commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
-trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation.
+trustCerts        | none                                       | A path to CA certs bundle to use for validation.
 clientAuth        | none                                       | A client auth object used to sign requests.
 protocols         | unspecified                                | The list of TLS protocols to enable
 
@@ -86,8 +86,7 @@ routers:
     - prefix: /#/io.l5d.fs/{service}
       tls:
         commonName: "{service}.linkerd.io"
-        trustCerts:
-        - /certificates/cacert.pem
+        trustCerts: /certificates/cacert.pem
         clientAuth:
           certPath: /certificates/cert.pem
           keyPath: /certificates/key.pem
@@ -119,8 +118,7 @@ routers:
     - prefix: /%/io.l5d.port/4141/#/io.l5d.fs/
       tls:
         commonName: "linkerd.io"
-        trustCerts:
-        - /certificates/cacert.pem
+        trustCerts: /certificates/cacert.pem
         clientAuth:
           certPath: /certificates/cert.pem
           keyPath: /certificates/key.pem

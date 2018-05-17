@@ -52,8 +52,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |    - prefix: "/#/io.l5d.fs/{host}"
              |      tls:
              |        commonName: "{host}.buoyant.io"
-             |        trustCerts:
-             |        - ${certs.caCert.getPath}
+             |        trustCerts: ${certs.caCert.getPath}
              |""".
               stripMargin
           withLinkerdClient(linkerConfig) { client =>
@@ -113,8 +112,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |    - prefix: "/#/io.l5d.fs/bill"
             |      tls:
             |        commonName: "bill.buoyant.io"
-            |        trustCerts:
-            |        - ${certs.caCert.getPath}
+            |        trustCerts: ${certs.caCert.getPath}
             |""".
             stripMargin
           withLinkerdClient(linkerConfig) { client =>
@@ -179,13 +177,11 @@ class TlsBoundPathTest extends FunSuite with Awaits {
             |    - prefix: "/#/io.l5d.fs/bill"
             |      tls:
             |        commonName: excellent
-            |        trustCerts:
-            |        - ${certs.caCert.getPath}
+            |        trustCerts: ${certs.caCert.getPath}
             |    - prefix: "/#/io.l5d.fs/ted"
             |      tls:
             |        commonName: righteous
-            |        trustCerts:
-            |        - ${certs.caCert.getPath}            
+            |        trustCerts: ${certs.caCert.getPath}
             |""".
             stripMargin
           withLinkerdClient(linkerConfig) { client =>
@@ -255,8 +251,7 @@ class TlsBoundPathTest extends FunSuite with Awaits {
              |    - prefix: "/#/io.l5d.fs/{host}"
              |      tls:
              |        commonName: "{host}.buoyant.io"
-             |        trustCerts:
-             |        - ${certs.caCert.getPath}             
+             |        trustCerts: ${certs.caCert.getPath}
              |""".stripMargin
           withLinkerdClient(linkerConfig) { client =>
             val billRsp = {
