@@ -92,18 +92,23 @@ private[buoyant] class DynBoundFactory[Req, Rep](
     f.raiseWithin(timeout, DynBoundTimeout).rescue(handleDynBoundTimeout)
   }
 
+  // This is raised for binding timeouts.
   private val DynBoundTimeout = new DynBoundTimeoutException("dyn bound timeout")
 
-  private[this] val handleDynBoundTimeout: PartialFunction[Throwable, Future[Nothing]] = {
-    case DynBoundTimeout =>
-      state match {
-        case Pending(_) =>
-          Future.exception(new DynBoundTimeoutException(s"Exceeded $timeout binding timeout while resolving name: ${path.show}"))
-        case Named(name) =>
-          Future.exception(new DynBoundTimeoutException(s"Exceeded $timeout binding timeout while connecting to ${name.show} for name: ${path.show}"))
-        case _ =>
-          Future.exception(DynBoundTimeout)
-      }
+  /* If we receive a DynBoundTimeout while in a Pending or Named state, we transform the exception
+   * into a DynBoundTimeoutException with a nice error message which depends on the current state.
+   */
+  private[this] val handleDynBoundTimeout: PartialFunction[Throwable, Future[Nothing]] = new PartialFunction[Throwable, Future[Nothing]] {
+
+    val exceptionPf: PartialFunction[State, Throwable] = {
+      case Pending(_) =>
+        new DynBoundTimeoutException(s"Exceeded $timeout binding timeout while resolving name: ${path.show}")
+      case Named(name) =>
+        new DynBoundTimeoutException(s"Exceeded $timeout binding timeout while connecting to ${name.show} for name: ${path.show}")
+    }
+
+    override def isDefinedAt(e: Throwable): Boolean = e == DynBoundTimeout && exceptionPf.isDefinedAt(state)
+    override def apply(v1: Throwable): Future[Nothing] = Future.exception(exceptionPf(state))
   }
 
   private[this] def applySync(conn: ClientConnection): Future[Service[Req, Rep]] = synchronized {
