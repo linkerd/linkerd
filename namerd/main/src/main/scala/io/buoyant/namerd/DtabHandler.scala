@@ -3,7 +3,7 @@ package io.buoyant.namerd
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.{Dtab, Service}
 import com.twitter.util.{Future, Return, Throw}
-import io.buoyant.admin.names.DelegateApiHandler
+import io.buoyant.admin.DelegationJsonCodec
 import io.buoyant.namer.RichActivity
 
 class DtabHandler(
@@ -42,8 +42,7 @@ class DtabHandler(
           </div>
 
           <script id="data" type="application/json">{"namespace": "$name", "dtab": ${
-      DelegateApiHandler
-        .Codec.writeStr(dtab)
+      DelegationJsonCodec.writeStr(dtab)
     }}</script>
           <script data-main="../files/js/main-namerd" src="../files/js/lib/require.js"></script>
       """
