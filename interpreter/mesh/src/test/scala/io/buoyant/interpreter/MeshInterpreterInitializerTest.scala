@@ -24,8 +24,7 @@ class MeshInterpreterInitializerTest extends FunSuite {
                    |tls:
                    |  disableValidation: false
                    |  commonName: "{service}"
-                   |  trustCerts:
-                   |  - /foo/caCert.pem
+                   |  trustCerts: /foo/caCert.pem
                    |  clientAuth:
                    |    certPath: /namerd-cert.pem
                    |    keyPath: /namerd-key.pk8
@@ -41,7 +40,7 @@ class MeshInterpreterInitializerTest extends FunSuite {
     val tls = namerd.tls.get
     assert(tls.disableValidation == Some(false))
     assert(tls.commonName == Some("{service}"))
-    assert(tls.trustCerts == Some(List("/foo/caCert.pem")))
+    assert(tls.trustCerts == Some("/foo/caCert.pem"))
     assert(tls.clientAuth.get.certPath == "/namerd-cert.pem")
     assert(tls.clientAuth.get.keyPath == "/namerd-key.pk8")
   }

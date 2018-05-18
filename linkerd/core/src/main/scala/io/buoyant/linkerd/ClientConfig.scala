@@ -41,7 +41,7 @@ case class TlsClientConfig(
   enabled: Option[Boolean],
   disableValidation: Option[Boolean],
   commonName: Option[String],
-  trustCerts: Option[Seq[String]] = None,
+  trustCerts: Option[String] = None,
   clientAuth: Option[ClientAuth] = None,
   protocols: Option[Seq[String]] = None
 ) {

@@ -92,8 +92,7 @@ class MarathonTest extends FunSuite {
                   |tls:
                   |  disableValidation: false
                   |  commonName: master.mesos
-                  |  trustCerts:
-                  |    - /foo/caCert.pem
+                  |  trustCerts: /foo/caCert.pem
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(MarathonInitializer)))
@@ -108,7 +107,7 @@ class MarathonTest extends FunSuite {
     val tls = marathon.tls.get
     assert(tls.disableValidation.contains(false))
     assert(tls.commonName.contains("master.mesos"))
-    assert(tls.trustCerts.contains(List("/foo/caCert.pem")))
+    assert(tls.trustCerts == Some("/foo/caCert.pem"))
 
     assert(!marathon.disabled)
   }
