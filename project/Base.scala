@@ -106,7 +106,15 @@ class Base extends Build {
         Some("snapshots" at nexus + "content/repositories/snapshots")
       else
         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-    }
+    },
+    mappings in (Compile, packageBin) ~= { (ms: Seq[(File,String)]) => ms filter {
+      case (file,toPath) => {
+        file.getPath match {
+          case nodeModulesRE() => false
+          case _ => true
+        }
+      }
+    }}
   )
 
   val aggregateSettings = Seq(
