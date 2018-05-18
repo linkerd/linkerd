@@ -11,7 +11,9 @@ case class VarState[T](
   lastStoppedAt: Option[String],
   lastUpdatedAt: Option[String],
   value: T
-)
+) {
+  def map[U](f: T => U): VarState[U] = copy(value = f(value))
+}
 
 /**
  * InstrumentedVar holds a Var.async and also records metadata about it such as whether it is
@@ -84,9 +86,11 @@ object InstrumentedVar {
  * metadata about the underlying Var.async such as whether it is running and the value of the most
  * recent update.
  */
-class InstrumentedActivity[T](update: Updatable[Activity.State[T]] => Closable) {
+class InstrumentedActivity[T](run: InstrumentedVar[Activity.State[T]]) {
 
-  private[this] val run = new InstrumentedVar[Activity.State[T]](Activity.Pending, update)
+  def this(update: Updatable[Activity.State[T]] => Closable) = {
+    this(new InstrumentedVar[Activity.State[T]](Activity.Pending, update))
+  }
 
   def underlying: Activity[T] = Activity(run.underlying)
 
