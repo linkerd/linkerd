@@ -20,9 +20,9 @@ class StreamState[Req, Rep] {
   @JsonIgnore
   def recordResponse(rep: Try[Rep]): Unit = synchronized {
     lastResponseAt = Some(Time.now.toString)
-    streaming = true
     rep match {
       case Return(r) =>
+        streaming = true
         response = Some(r)
         error = None
       case Throw(e) =>

@@ -191,11 +191,7 @@ object Client {
             path.show -> binds.map {
               case ((dtab, _), InstrumentedBind(act, stream)) =>
                 val snapshot = act.stateSnapshot().map { treeOpt =>
-                  treeOpt.map { tree =>
-                    tree.map { bound =>
-                      Map("id" -> bound.id, "path" -> bound.path)
-                    }
-                  }
+                  treeOpt.map(_.show)
                 }
                 dtab.show -> Map(
                   "state" -> snapshot,
@@ -206,7 +202,7 @@ object Client {
         val resolveState = resolves.map {
           case (path, InstrumentedResolve(act, stream)) =>
             path.show -> Map(
-              "state" -> act.stateSnapshot(),
+              "state" -> act.stateSnapshot().map,
               "watch" -> stream
             )
         }
