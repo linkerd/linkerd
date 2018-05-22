@@ -101,7 +101,7 @@ object Client {
     }
 
     /**
-     * When observed, streams dtabs from the mesh server and
+     * When observed, streams dtabs from the mesh server.
      */
     override lazy val dtab: Activity[Dtab] = {
       dtabCacheMu.synchronized {
@@ -202,7 +202,7 @@ object Client {
         val resolveState = resolves.map {
           case (path, InstrumentedResolve(act, stream)) =>
             path.show -> Map(
-              "state" -> act.stateSnapshot().map,
+              "state" -> act.stateSnapshot(),
               "watch" -> stream
             )
         }
