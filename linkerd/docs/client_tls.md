@@ -66,10 +66,11 @@ protocols         | unspecified                                | The list of TLS
 
 If present, a client auth object must contain two properties:
 
-Key      | Default Value | Description
----------|---------------|-------------
-certPath | _required_    | File path to the TLS certificate file.
-keyPath  | _required_    | File path to the TLS key file.  Must be in PKCS#8 format.
+Key               | Default Value | Description
+------------------|---------------|-------------
+certPath          | _required_    | File path to the TLS certificate file.
+clientCaChainPath | none          | Path to a file containing a CA certificate chain to support the client certificate.
+keyPath           | _required_    | File path to the TLS key file.  Must be in PKCS#8 format.
 
 <aside class="warning">
 Setting `disableValidation: true` will force the use of the JDK SSL provider which does not support client auth. Therefore, `disableValidation: true` and `clientAuth` are incompatible.

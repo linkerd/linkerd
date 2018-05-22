@@ -75,9 +75,16 @@ case class TlsClientConfig(
 
   private[this] def keyCredentials(clientAuth: Option[ClientAuth]): KeyCredentials =
     clientAuth match {
-      case Some(ClientAuth(cert, key)) => KeyCredentials.CertAndKey(new File(cert), new File(key))
+      case Some(ClientAuth(cert, None, key)) =>
+        KeyCredentials.CertAndKey(new File(cert), new File(key))
+      case Some(ClientAuth(cert, Some(clientCaChain), key)) =>
+        KeyCredentials.CertKeyAndChain(new File(cert), new File(key), new File(clientCaChain))
       case None => KeyCredentials.Unspecified
     }
 }
 
-case class ClientAuth(certPath: String, keyPath: String)
+case class ClientAuth(
+  certPath: String,
+  clientCaChainPath: Option[String],
+  keyPath: String
+)
