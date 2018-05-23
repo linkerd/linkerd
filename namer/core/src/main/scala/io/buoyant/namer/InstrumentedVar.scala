@@ -11,7 +11,9 @@ case class VarState[T](
   lastStoppedAt: Option[String],
   lastUpdatedAt: Option[String],
   value: T
-)
+) {
+  def map[U](f: T => U): VarState[U] = copy(value = f(value))
+}
 
 /**
  * InstrumentedVar holds a Var.async and also records metadata about it such as whether it is

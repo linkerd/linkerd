@@ -1,3 +1,4 @@
+io.buoyant.config.types.ByteBufferSerializer
 io.buoyant.config.types.DirectorySerializer
 io.buoyant.config.types.DtabSerializer
 io.buoyant.config.types.FileSerializer
