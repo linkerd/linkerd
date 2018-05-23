@@ -77,14 +77,14 @@ case class TlsClientConfig(
     clientAuth match {
       case Some(ClientAuth(cert, None, key)) =>
         KeyCredentials.CertAndKey(new File(cert), new File(key))
-      case Some(ClientAuth(cert, Some(clientCaChain), key)) =>
-        KeyCredentials.CertKeyAndChain(new File(cert), new File(key), new File(clientCaChain))
+      case Some(ClientAuth(cert, Some(intermediate), key)) =>
+        KeyCredentials.CertKeyAndChain(new File(cert), new File(key), new File(intermediate))
       case None => KeyCredentials.Unspecified
     }
 }
 
 case class ClientAuth(
   certPath: String,
-  clientCaChainPath: Option[String],
+  intermediateCertsPath: Option[String],
   keyPath: String
 )

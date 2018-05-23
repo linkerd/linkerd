@@ -15,7 +15,7 @@ routers:
       clientAuth:
         certPath: /foo/clientCert.pem
         keyPath: /foo/clientKey.pem
-        clientCaChainPath: /foo/intermediateCa.pem
+        intermediateCertsPath: /foo/intermediateCa.pem
   servers:
   - port: 4140
     # Expect the incoming connection to be encryped.
