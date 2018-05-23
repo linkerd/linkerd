@@ -2,114 +2,152 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter.EndpointAddr
-import com.twitter.finagle.http.{MediaType, Request, Response}
+import com.twitter.finagle.http.{Status, _}
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
-import com.twitter.util.{Future, Return, Throw, Try}
-import io.buoyant.admin.DelegationJsonCodec
-import io.buoyant.config.Parser
+import com.twitter.util._
 import io.buoyant.namer.DelegateTree._
 import io.buoyant.namer.{DelegateTree, Delegator}
+import io.buoyant.router.RouterLabel
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 
-case class EvaluatedRequest(
-  identification: String,
-  selectedAddress: String,
-  addresses: Option[Set[String]],
-  dtabResolution: List[String]
-) {
-  override def toString() = {
-    s"""
-                                 |identification: $identification
-                                 |selectedAddress: $selectedAddress
-                                 |addresses: ${addresses.getOrElse(Set.empty).mkString(",")}
-                                 |Dtab Resolution:
-                                 |${dtabResolution.mkString("\n")}
-    """.stripMargin
-  }
-}
-
 class RequestEvaluator(
   endpoint: EndpointAddr,
   namer: DstBindingFactory.Namer,
-  dtab: BaseDtab
+  dtab: BaseDtab,
+  label: String
 ) extends SimpleFilter[Request, Response] {
 
-  private val EvaluatorHeaderName = "l5d-req-evaluate"
-  private val JsonCharSet = ";charset=UTF-8"
+  private[this] val RequestTracerMaxDepthHeader = "l5d-max-depth"
+
+  private[this] def evaluatedRequest(
+    routerLabel: String,
+    serviceName: String,
+    clientName: String,
+    selectedAddress: String,
+    addresses: Option[Set[String]],
+    dtabResolution: List[String]
+  ) = {
+    s"""
+       |--- Router: $routerLabel ---
+       |service name: $serviceName
+       |client name: $clientName
+       |selected address: $selectedAddress
+       |addresses: [${addresses.getOrElse(Set.empty).mkString(", ")}]
+       |dtab resolution:
+       |${dtabResolution.map("  " + _).mkString("\n")}
+    """.stripMargin
+  }
+
+  private[this] def formatDTree(
+    dTree: DelegateTree[Name.Bound],
+    tree: List[String],
+    searchPath: Path
+  ): List[String] = {
+    dTree match {
+      case Leaf(path, _, _) if path == searchPath =>
+        tree :+ path.show
+      case Transformation(_, _, value, remainingTree) =>
+        formatDTree(remainingTree, tree :+ value.path.show, searchPath)
+      case Delegate(path, _, remainingTree) =>
+        formatDTree(remainingTree, tree :+ path.show, searchPath)
+      case Union(path, _, remainingWeightedTrees@_*) =>
+        remainingWeightedTrees.map { wd =>
+          formatDTree(wd.tree, tree :+ s"${wd.weight} * ${path.show}", searchPath)
+        }.filter(!_.isEmpty).head
+      case Alt(path, _, remainingTrees@_*) =>
+        remainingTrees.map { d =>
+          formatDTree(d, tree :+ path.show, searchPath)
+        }.filter(!_.isEmpty).head
+      case _ => List.empty
+    }
+  }
+
+  private[this] def getRouterCtx(prevResp: Response) = {
+
+    val serviceName = DstPathCtx.current match {
+      case Some(dstPath) => dstPath.path
+      case None => Path.empty
+    }
+
+    val selectedEndpoint = endpoint.addr match {
+      case inetAddr: Address.Inet => inetAddr.addr.toString.stripPrefix("/")
+      case _ => ""
+    }
+
+    val clientPath = DstBoundCtx.current match {
+      case None => Path.empty
+      case Some(addrSet) => addrSet.name.id.asInstanceOf[Path]
+    }
+
+    val lbSet = DstBoundCtx.current match {
+      case None => Future.value(Addr.Neg)
+      case Some(addrSet) => addrSet.name.addr.changes.toFuture
+    }
+
+    val addresses = lbSet.map {
+      case Addr.Bound(a, _) => Some(
+        a.map {
+          case inetAddr: Address.Inet => inetAddr.addr.toString.stripPrefix("/")
+          case _ => ""
+        }
+      )
+      case _ => None
+    }
+
+    val dtreeF = namer.interpreter match {
+      case delegator: Delegator => delegator.delegate(dtab.dtab(), serviceName)
+        .map(Some(_))
+      case _ => Future.None
+    }
+
+    dtreeF.joinWith(addresses) {
+      case (Some(dTree), Some(addrSet)) =>
+        val resp = Response()
+        val tree = formatDTree(dTree, List.empty, clientPath)
+        resp.contentType
+        resp.contentString = Seq(
+          prevResp.contentString,
+          evaluatedRequest(
+            label,
+            serviceName.show,
+            clientPath.show,
+            selectedEndpoint,
+            Some(addrSet),
+            tree
+          )
+        ).mkString("\n").trim
+        resp
+      case (_, _) => Response(Status.BadRequest)
+    }
+  }
 
   override def apply(
     req: Request,
     svc: Service[Request, Response]
   ): Future[Response] = {
 
-    req.headerMap.get(EvaluatorHeaderName) match {
-      case None => svc(req)
-      case Some(_) =>
+    val maxTraceDepth = req.headerMap.get(RequestTracerMaxDepthHeader).map(_.toInt)
+    val httpMethod = req.method
 
-        val identificationPath = DstPathCtx.current match {
-          case Some(dstPath) => dstPath.path
-          case None => Path.empty
+    (httpMethod, maxTraceDepth) match {
+      case (Method.Trace, Some(0)) =>
+        getRouterCtx(Response())
+      case (Method.Trace, Some(num)) if num > 0 =>
+        req.headerMap.set(RequestTracerMaxDepthHeader, (num - 1).toString)
+        svc(req).flatMap(getRouterCtx).ensure {
+          req.headerMap.set(RequestTracerMaxDepthHeader, num.toString); ()
         }
-
-        val selectedEndpoint = endpoint.addr match {
-          case inetAddr: Address.Inet => inetAddr.addr.toString
-          case _ => ""
-        }
-
-        val lbSet = DstBoundCtx.current match {
-          case None => Addr.Neg
-          case Some(addrSet) => addrSet.name.addr.sample()
-        }
-
-        val addresses = lbSet match {
-          case Addr.Neg | Addr.Failed(_) | Addr.Pending => None
-          case Addr.Bound(a, _) => Some(
-            a.map { address: Address =>
-              address match {
-                case inetAddr: Address.Inet => inetAddr.addr.toString
-                case _ => ""
-              }
-            }
-          )
-        }
-
-        val dtreeF = namer.interpreter match {
-          case delegator: Delegator => delegator.delegate(dtab.dtab(), identificationPath)
-            .map(Some(_))
-          case _ => Future.None
-        }
-
-        dtreeF.map { dtree =>
-          val resp = Response()
-          val tree = RequestEvaluator.formatDTree(dtree, req.contentType, List.empty)
-          val evaluatedRequest = EvaluatedRequest(
-            Try(tree.last) match {
-              case Throw(_) => "Unknown identification"
-              case Return(id) => id
-            },
-            selectedEndpoint,
-            addresses,
-            tree
-          )
-
-          resp.contentType = req.contentType.getOrElse(MediaType.PlainText)
-          resp.contentString = RequestEvaluator
-            .writeContentString(resp.contentType, evaluatedRequest)
-          resp
-        }
+      case (_, _) => svc(req)
     }
   }
 }
 
 object RequestEvaluator {
 
-  private val jsonMapper = Parser.jsonObjectMapper(Nil)
-    .registerModule(DelegationJsonCodec.mkModule())
-
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module3[EndpointAddr, RoutingFactory.BaseDtab, DstBindingFactory.Namer, ServiceFactory[Request, Response]] {
+    new Stack.Module4[EndpointAddr, RoutingFactory.BaseDtab, DstBindingFactory.Namer, RouterLabel.Param, ServiceFactory[Request, Response]] {
 
       override def role: Stack.Role = Stack.Role("RequestEvaluator")
 
@@ -119,47 +157,10 @@ object RequestEvaluator {
         endpoint: EndpointAddr,
         dtab: BaseDtab,
         interpreter: DstBindingFactory.Namer,
+        label: RouterLabel.Param,
         next: ServiceFactory[Request, Response]
-      ): ServiceFactory[Request, Response] = new RequestEvaluator(endpoint, interpreter, dtab)
-        .andThen(next)
-    }
-
-  def formatDTree(
-    dTree: Option[DelegateTree[Name.Bound]],
-    output: Any,
-    tree: List[String]
-  ): List[String] = {
-    dTree match {
-      case None =>
-        tree
-      case Some(_: Empty) | Some(_: Fail) | Some(_: Exception) | Some(Neg(_, _)) =>
-        List.empty
-
-      case Some(Leaf(path, dentry, value)) =>
-        tree :+ path.show
-
-      case Some(Transformation(path, name, value, remainingTree)) =>
-        formatDTree(Some(remainingTree), output, tree :+ value.path.show)
-
-      case Some(Delegate(path, dentry, remainingTree)) =>
-        formatDTree(Some(remainingTree), output, tree :+ path.show)
-
-      case Some(Union(path, dentry, remainingWeightedTrees@_*)) =>
-        remainingWeightedTrees.map { wd =>
-          formatDTree(Some(wd.tree), output, tree :+ s"${wd.weight} * ${path.show}")
-        }.filter(!_.isEmpty).head
-      case Some(Alt(path, dentry, remainingTrees@_*)) =>
-        remainingTrees.map { d =>
-          formatDTree(Some(d), output, tree :+ path.show)
-        }.filter(!_.isEmpty).head
-    }
-  }
-
-  def writeContentString(contentType: Option[String], eval: EvaluatedRequest): String =
-    contentType match {
-      case Some(respContentType) if respContentType == MediaType.Json =>
-        jsonMapper.writeValueAsString(eval)
-      case _ => eval.toString
+      ): ServiceFactory[Request, Response] =
+        new RequestEvaluator(endpoint, interpreter, dtab, label.label).andThen(next)
     }
 }
 
