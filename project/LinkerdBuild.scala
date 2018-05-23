@@ -484,7 +484,7 @@ object LinkerdBuild extends Base {
 
     val mesh = projectDir("interpreter/mesh")
       .withTests()
-      .dependsOn(Namer.core, Mesh.core, Grpc.runtime)
+      .dependsOn(Namer.core, Mesh.core, Grpc.runtime, admin)
 
     val subnet = projectDir("interpreter/subnet")
       .dependsOn(Namer.core)
