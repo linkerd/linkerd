@@ -1,9 +1,10 @@
 package io.buoyant.namerd
 
-import com.twitter.util.{Await, Closable}
+import com.twitter.util.{Await, Closable, Duration}
 import io.buoyant.admin.{App, Build}
 import java.io.File
 import scala.io.Source
+import sun.misc.{Signal, SignalHandler}
 
 object Main extends App {
 
@@ -11,6 +12,10 @@ object Main extends App {
    * Flag to validate a configuration.
    */
   private val validate = flag.apply("validate", false, "Only validate a configuration and finish with a proper status code")
+  private[this] val DefaultShutdownGrace =
+    Duration.fromSeconds(10)
+
+  private[this] var shutdownGracePeriod: Option[Int] = null
 
   def main(): Unit = {
     val build = Build.load("/io/buoyant/namerd/build.properties")
@@ -23,6 +28,7 @@ object Main extends App {
           return
 
         val namerd = config.mk()
+        shutdownGracePeriod = config.admin.flatMap(_.shutdownGraceMs)
 
         val admin = namerd.admin.serve(this, NamerdAdmin(config, namerd))
         log.info("serving %s on %s", namerd.admin.scheme, admin.boundAddress)
@@ -33,7 +39,7 @@ object Main extends App {
           server
         }
         val telemeters = namerd.telemeters.map(_.run())
-
+        registerTerminationSignalHandler(shutdownGracePeriod)
         closeOnExit(Closable.sequence(
           Closable.all(servers: _*),
           Closable.all(telemeters: _*),
@@ -60,4 +66,21 @@ object Main extends App {
     NamerdConfig.loadNamerd(configText)
   }
 
+  private def registerTerminationSignalHandler(shutdownGraceMs: Option[Int]): Unit = {
+    val shutdownHandler = new SignalHandler {
+      override def handle(sig: Signal): Unit = {
+        log.info("Received %s. Shutting down ...", sig)
+        val closeTimeOut = shutdownGraceMs.map(Duration.fromMilliseconds(_)).getOrElse(DefaultShutdownGrace)
+        Await.result(close(closeTimeOut))
+      }
+    }
+
+    Signal.handle(new Signal("INT"), shutdownHandler)
+    val _ = Signal.handle(new Signal("TERM"), shutdownHandler)
+  }
+
+  override def defaultCloseGracePeriod: Duration =
+    shutdownGracePeriod
+      .map(Duration.fromMilliseconds(_))
+      .getOrElse(DefaultShutdownGrace)
 }

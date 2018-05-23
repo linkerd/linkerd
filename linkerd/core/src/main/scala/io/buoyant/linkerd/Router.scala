@@ -170,7 +170,7 @@ trait RouterConfig {
     val prms = params ++ routerParams
     val param.Label(label) = prms[param.Label]
     val announcers = _announcers.toSeq.flatten.map { announcer =>
-      announcer.prefix -> announcer.mk
+      announcer.prefix -> announcer.mk(params)
     }
     protocol.router.configured(prms)
       .serving(servers.map(_.mk(protocol, label)))

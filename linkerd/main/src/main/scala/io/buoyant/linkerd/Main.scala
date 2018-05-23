@@ -27,6 +27,8 @@ object Main extends App {
   private[this] val DefaultShutdownGrace =
     Duration.fromSeconds(10)
 
+  private[this] var shutdownGracePeriod: Option[Int] = null
+
   def main() {
     val build = Build.load("/io/buoyant/linkerd/build.properties")
     log.info("linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
@@ -43,7 +45,8 @@ object Main extends App {
         val routers = linker.routers.map(initRouter(_))
 
         log.info("initialized")
-        registerTerminationSignalHandler(config.admin.flatMap(_.shutdownGraceMs))
+        shutdownGracePeriod = config.admin.flatMap(_.shutdownGraceMs)
+        registerTerminationSignalHandler(shutdownGracePeriod)
         closeOnExit(Closable.sequence(
           Closable.all(routers: _*),
           Closable.all(telemeters: _*),
@@ -161,4 +164,8 @@ object Main extends App {
     val _ = Signal.handle(new Signal("TERM"), shutdownHandler)
   }
 
+  override def defaultCloseGracePeriod: Duration =
+    shutdownGracePeriod
+      .map(Duration.fromMilliseconds(_))
+      .getOrElse(DefaultShutdownGrace)
 }

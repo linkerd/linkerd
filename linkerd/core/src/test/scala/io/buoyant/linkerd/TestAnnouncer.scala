@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.{Path, Announcement}
+import com.twitter.finagle.{Announcement, Path, Stack}
 import com.twitter.util.{Closable, Future}
 import java.net.InetSocketAddress
 
@@ -17,7 +17,8 @@ class TestAnnouncerConfig extends AnnouncerConfig {
   @JsonIgnore
   override def defaultPrefix: Path = Path.read("/io.l5d.test")
 
-  override def mk(): Announcer = new TestAnnouncer
+  override def mk(params: Stack.Params): Announcer = new TestAnnouncer
+
 }
 
 class TestAnnouncer extends Announcer {
