@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter.EndpointAddr
-import com.twitter.finagle.http.{Status, _}
+import com.twitter.finagle.http._
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util._
 import io.buoyant.namer.DelegateTree._
@@ -21,7 +21,8 @@ class RequestEvaluator(
 
   private[this] val RequestTracerMaxDepthHeader = "l5d-max-depth"
 
-  private[this] def evaluatedRequest(
+  private[this] def printEvaluatedRequest(
+    prependText: String,
     routerLabel: String,
     serviceName: String,
     clientName: String,
@@ -29,15 +30,18 @@ class RequestEvaluator(
     addresses: Option[Set[String]],
     dtabResolution: List[String]
   ) = {
-    s"""
-       |--- Router: $routerLabel ---
-       |service name: $serviceName
-       |client name: $clientName
-       |selected address: $selectedAddress
-       |addresses: [${addresses.getOrElse(Set.empty).mkString(", ")}]
-       |dtab resolution:
-       |${dtabResolution.map("  " + _).mkString("\n")}
+    Seq(
+      prependText,
+      s"""
+         |--- Router: $routerLabel ---
+         |service name: $serviceName
+         |client name: $clientName
+         |selected address: $selectedAddress
+         |addresses: [${addresses.getOrElse(Set.empty).mkString(", ")}]
+         |dtab resolution:
+         |${dtabResolution.map("  " + _).mkString("\n")}
     """.stripMargin
+    ).mkString("\n").trim
   }
 
   private[this] def formatDTree(
@@ -46,7 +50,7 @@ class RequestEvaluator(
     searchPath: Path
   ): List[String] = {
     dTree match {
-      case Leaf(path, _, _) if path == searchPath =>
+      case Leaf(path, _, bound) if bound.id == searchPath =>
         tree :+ path.show
       case Transformation(_, _, value, remainingTree) =>
         formatDTree(remainingTree, tree :+ value.path.show, searchPath)
@@ -78,7 +82,10 @@ class RequestEvaluator(
 
     val clientPath = DstBoundCtx.current match {
       case None => Path.empty
-      case Some(addrSet) => addrSet.name.id.asInstanceOf[Path]
+      case Some(addrSet) => addrSet.name.id match {
+        case p: Path => p
+        case _ => Path.empty
+      }
     }
 
     val lbSet = DstBoundCtx.current match {
@@ -103,23 +110,18 @@ class RequestEvaluator(
     }
 
     dtreeF.joinWith(addresses) {
-      case (Some(dTree), Some(addrSet)) =>
+      case (dTree: Option[DelegateTree[Name.Bound]], addrSet: Option[Set[String]]) =>
         val resp = Response()
-        val tree = formatDTree(dTree, List.empty, clientPath)
-        resp.contentType
-        resp.contentString = Seq(
-          prevResp.contentString,
-          evaluatedRequest(
+        val tree = formatDTree(dTree.getOrElse(DelegateTree.Empty(Path.empty, Dentry.nop)), List.empty, clientPath)
+        resp.contentString = printEvaluatedRequest(
+            prevResp.contentString,
             label,
             serviceName.show,
             clientPath.show,
             selectedEndpoint,
-            Some(addrSet),
-            tree
-          )
-        ).mkString("\n").trim
+            addrSet,
+            tree)
         resp
-      case (_, _) => Response(Status.BadRequest)
     }
   }
 

@@ -811,10 +811,12 @@ class HttpEndToEndTest
     }
   }
 
-  test("requests with l5d-req-evaluate header are not sent downstream") {
+  test("requests with l5d-max-depth header and method TRACE are sent downstream") {
     @volatile var headers: HeaderMap = null
+    @volatile var method: Method = null
     val downstream = Downstream.mk("dog") { req =>
       headers = req.headerMap
+      method = req.method
       val resp = Response()
       resp.content(Buf.Utf8("response from downstream"))
     }
@@ -829,40 +831,13 @@ class HttpEndToEndTest
 
     val req = Request()
     req.host = "dog"
-    req.headerMap.add("l5d-req-evaluate", "true")
+    req.headerMap.add("l5d-max-depth", "5")
+    req.method = Method.Trace
     val resp = await(client(req))
     assert(resp.contentString != "response from downstream")
-    assert(headers == null)
+    assert(headers.contains("l5d-max-depth"))
+    assert(method == Method.Trace)
 
-  }
-
-  test("requests with l5d-req-evaluate respond with downstream service details in json"){
-    val jsonMapper = Parser.jsonObjectMapper(Nil)
-    val downstream = Downstream.mk("dog") { req =>
-      Response()
-    }
-
-    val dtab = Dtab.read(s"""
-      /svc/* => /$$/inet/127.1/${downstream.port} ;
-    """)
-
-    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
-    val router = linker.routers.head.initialize()
-    val server = router.servers.head.serve()
-    val client = upstream(server)
-
-    val req = Request()
-    req.host = "dog"
-    req.headerMap.add("l5d-req-evaluate", "true")
-    req.contentType = MediaType.Json
-    val resp = await(client(req))
-    assert(jsonMapper.readValue[EvaluatedRequest](resp.contentString) ==
-      EvaluatedRequest(
-      s"/$$/inet/127.1/${downstream.port}",
-      s"/127.0.0.1:${downstream.port}",
-      Some(Set(s"/127.0.0.1:${downstream.port}")),
-      List("/svc/dog", s"/$$/inet/127.1/${downstream.port}")
-    ))
   }
 
   test("prints out human readable dtab resolution path"){
@@ -882,17 +857,19 @@ class HttpEndToEndTest
 
     val req = Request()
     req.host = "dog"
-    req.headerMap.add("l5d-req-evaluate", "true")
+    req.method = Method.Trace
+    req.headerMap.add("l5d-max-depth", "5")
     val resp = await(client(req))
-    assert(resp.contentString == s"""
-      |identification: /$$/inet/127.1/${downstream.port}/dog
-      |selectedAddress: /127.0.0.1:${downstream.port}
-      |addresses: /127.0.0.1:${downstream.port}
-      |Dtab Resolution:
-      |/svc/dog
-      |/srv/dog
-      |/$$/inet/127.1/${downstream.port}/dog
-    """.stripMargin)
+    assert(resp.contentString ==
+      s"""|--- Router: http ---
+          |service name: /svc/dog
+          |client name: /$$/inet/127.1/${downstream.port}
+          |selected address: 127.0.0.1:${downstream.port}
+          |addresses: [127.0.0.1:${downstream.port}]
+          |dtab resolution:
+          |  /svc/dog
+          |  /srv/dog
+          |  /$$/inet/127.1/${downstream.port}/dog""".stripMargin)
   }
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {

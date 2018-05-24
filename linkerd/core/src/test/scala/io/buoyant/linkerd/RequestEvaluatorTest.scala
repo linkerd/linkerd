@@ -4,13 +4,11 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.context.Contexts
-import com.twitter.finagle.http.{MediaType, Request, Response}
+import com.twitter.finagle.http.{Method, Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.naming.buoyant.DstBindingFactory
-import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future, Var}
-import io.buoyant.config.Parser
 import io.buoyant.namer.{DelegateTree, Delegator}
+import io.buoyant.router.RouterLabel
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 import io.buoyant.test.FunSuite
@@ -30,77 +28,71 @@ class EvaluatorNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpret
 }
 
 class RequestEvaluatorTest extends FunSuite {
-  val jsonMapper = Parser.jsonObjectMapper(Nil)
 
-  val successMessage = "request succeeded"
-  val testService = Service.mk[Request, Response] { req =>
+  private[this] val successMessage = "request succeeded"
+  private[this] val testService = Service.mk[Request, Response] { req =>
     val rsp = Response()
-    rsp.content = Buf.Utf8(successMessage)
+    rsp.contentString = successMessage
     Future.value(rsp)
   }
 
-  val testStack = DstPathCtx.Setter.module.toStack(
-    RequestEvaluator.module.toStack(
-      Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
-    )
-  )
+  private[this] val testStack =  RequestEvaluator.module +:
+    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
 
-  test("lets requests without the required header to pass through") {
+  private[this] def mkTracerRequest = {
     val req = Request()
-    val service = testStack.make(Stack.Params.empty)
-    val resp = await(service.toService(req))
+    req.method = Method.Trace
+    req.headerMap.add("l5d-max-depth", "1")
+    req
+  }
 
+  test("lets requests without TRACE method to pass through") {
+    val req = Request()
+    val serviceFactory = testStack.make(Stack.Params.empty)
+    val resp = await(serviceFactory.toService(req))
     assert(resp.contentString == successMessage)
   }
 
-  test("prints out request identification ") {
-    val addrSet = Var.apply(
-      Addr.Bound(Address("1.2.3.4", 8080))
+  test("prints client and service name"){
+    val addrSet = Var.apply(Addr.Bound(Address("1.2.3.4", 8080)))
+    val boundPath = Path.Utf8("client", "name")
+    val pathCtx = Path.Utf8("svc","cat")
+    Contexts.local.let(Seq(
+      Contexts.local.KeyValuePair(DstPathCtx, Dst.Path(pathCtx)),
+      Contexts.local.KeyValuePair(DstBoundCtx, Dst.Bound(addrSet, boundPath)))
+    ){
+      val serviceFactory = testStack.make(Stack.Params.empty)
+      val client = serviceFactory.toService
+      val resp = await(client(mkTracerRequest))
+      assert(resp.contentString.contains(s"service name: ${pathCtx.show}"))
+      assert(resp.contentString.contains(s"client name: ${boundPath.show}"))
+    }
+
+  }
+
+  test("prints selected endpoint ip address") {
+    val endpointAddr = EndpointAddr(Address("127.0.0.1", 8081))
+    val serviceFactory = testStack.make(
+      Stack.Params.empty + endpointAddr + RouterLabel.Param("routerLabel")
     )
-    val path = Path.Utf8("io.l5d.fs", "cat")
-    val filter = new RequestEvaluator(
-      EndpointAddr(Address("127.0.0.1", 8081)),
-      DstBindingFactory.Namer(new EvaluatorNamer(DelegateTree.Leaf(path, Dentry.nop, Name.Bound(addrSet, path)))),
-      BaseDtab(() => Dtab.empty)
-    )
-    val client = filter.andThen(testService)
-    val req = Request()
-    req.headerMap.add("l5d-req-evaluate", "true")
-    req.host = "cat"
-    req.contentType = MediaType.Json
-    Contexts.local.let(DstPathCtx, Dst.Path(path)) {
-      val resp = await(client(req))
-      val resolvedResp = jsonMapper.readValue[EvaluatedRequest](resp.contentString)
-      assert(resolvedResp == EvaluatedRequest(path.show, "/127.0.0.1:8081", None, List(path.show)))
+
+    Contexts.local.let(DstPathCtx, Dst.Path(Path.empty)) {
+      val client = serviceFactory.toService
+      val resp = await(client(mkTracerRequest))
+      assert(resp.contentString.contains(s"selected address: 127.0.0.1:8081"))
     }
   }
 
-  test("prints out all address sets for endpoints") {
+  test("prints endpoints set") {
     val addrSet = Var.apply(
       Addr.Bound(Address("1.2.3.4", 8080))
     )
-    val path = Path.Utf8("io.l5d.fs", "cat")
-    val filter = new RequestEvaluator(
-      EndpointAddr(Address("127.0.0.1", 8081)),
-      DstBindingFactory.Namer(new EvaluatorNamer(DelegateTree.Leaf(path, Dentry.nop, Name.empty))),
-      BaseDtab(() => Dtab.empty)
-    )
-    val client = filter.andThen(testService)
-    val req = Request()
-    req.headerMap.add("l5d-req-evaluate", "true")
-    req.host = "cat"
-    req.contentType = MediaType.Json
+
     Contexts.local.let(DstBoundCtx, Dst.Bound(addrSet, Path.empty)) {
-      val resp = await(client(req))
-      val resolvedResp = jsonMapper.readValue[EvaluatedRequest](resp.contentString)
-      assert(
-        resolvedResp == EvaluatedRequest(
-          path.show,
-          "/127.0.0.1:8081",
-          Some(Set("/1.2.3.4:8080")),
-          List(path.show)
-        )
-      )
+      val serviceFactory = testStack.make(Stack.Params.empty)
+      val client = serviceFactory.toService
+      val resp = await(client(mkTracerRequest))
+      assert(resp.contentString.contains("addresses: [1.2.3.4:8080]"))
     }
   }
 }
