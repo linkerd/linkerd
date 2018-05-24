@@ -1,7 +1,11 @@
 package io.buoyant.admin.names
 
 import com.fasterxml.jackson.annotation._
-import com.fasterxml.jackson.core.{io => _}
+import com.fasterxml.jackson.core.{io => _, _}
+import com.fasterxml.jackson.databind._
+import com.fasterxml.jackson.databind.module.SimpleModule
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.conversions.time._
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
@@ -9,7 +13,6 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Path, Addr => FAddr, Address => FAddress, Status => _, TimeoutException => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.admin.DelegationJsonCodec
 import io.buoyant.namer._
 import java.net.InetSocketAddress
 
@@ -186,6 +189,62 @@ object DelegateApiHandler {
     def mkDentry(d: Dentry): Option[Dentry] = Some(d).filterNot(Dentry.equiv.equiv(Dentry.nop, _))
   }
 
+  object Codec {
+    private[this] def mkModule() = {
+      val module = new SimpleModule
+
+      module.addSerializer(classOf[Path], new JsonSerializer[Path] {
+        override def serialize(path: Path, json: JsonGenerator, p: SerializerProvider) {
+          json.writeString(path.show)
+        }
+      })
+      module.addDeserializer(classOf[Path], new JsonDeserializer[Path] {
+        override def deserialize(json: JsonParser, ctx: DeserializationContext) =
+          Path.read(json.getValueAsString)
+      })
+
+      module.addSerializer(classOf[Dentry.Prefix], new JsonSerializer[Dentry.Prefix] {
+        override def serialize(pfx: Dentry.Prefix, json: JsonGenerator, p: SerializerProvider) {
+          json.writeString(pfx.show)
+        }
+      })
+      module.addDeserializer(classOf[Dentry.Prefix], new JsonDeserializer[Dentry.Prefix] {
+        override def deserialize(json: JsonParser, ctx: DeserializationContext) =
+          Dentry.Prefix.read(json.getValueAsString)
+      })
+
+      module.addSerializer(classOf[NameTree[Path]], new JsonSerializer[NameTree[Path]] {
+        override def serialize(
+          nameTree: NameTree[Path],
+          json: JsonGenerator,
+          p: SerializerProvider
+        ) {
+          json.writeString(nameTree.show)
+        }
+      })
+
+      module.addDeserializer(classOf[NameTree[Path]], new JsonDeserializer[NameTree[Path]] {
+        override def deserialize(json: JsonParser, ctx: DeserializationContext) =
+          NameTree.read(json.getValueAsString)
+      })
+
+      module
+    }
+
+    val mapper = new ObjectMapper with ScalaObjectMapper
+    mapper.registerModule(DefaultScalaModule)
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    mapper.setSerializationInclusion(JsonInclude.Include.NON_ABSENT)
+    mapper.registerModule(mkModule())
+
+    def writeStr[T](t: T): String = mapper.writeValueAsString(t)
+    def writeBuf[T](t: T): Buf = Buf.ByteArray.Owned(mapper.writeValueAsBytes(t))
+    def readBuf[T: Manifest](buf: Buf): Try[T] = {
+      val Buf.ByteBuffer.Owned(bb) = Buf.ByteBuffer.coerce(buf)
+      Try { mapper.readValue[T](bb.array) }
+    }
+  }
+
   private implicit val timer = DefaultTimer
 
   def getDelegateRsp(dtab: String, path: String, delegator: Delegator): Future[Response] = {
@@ -196,7 +255,7 @@ object DelegateApiHandler {
         delegator.delegate(d, p)
           .flatMap(JsonDelegateTree.mk).map { tree =>
             val rsp = Response()
-            rsp.content = DelegationJsonCodec.writeBuf(tree)
+            rsp.content = Codec.writeBuf(tree)
             rsp.contentType = MediaType.Json
             rsp
           }.within(2.seconds).rescue {
@@ -225,7 +284,7 @@ object DelegateApiHandler {
 
     object JsonCodec extends DelegationRequestCodec {
       val contentTypes = Set(MediaType.Json)
-      def read(buf: Buf): Try[DelegationRequest] = DelegationJsonCodec.readBuf[DelegationRequest](buf)
+      def read(buf: Buf): Try[DelegationRequest] = Codec.readBuf[DelegationRequest](buf)
     }
 
     def byContentType(ct: String): Option[DelegationRequestCodec] =
