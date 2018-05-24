@@ -72,7 +72,7 @@ class ConsulTest extends FunSuite {
     assert(consul.failFast == Some(true))
     assert(consul.preferServiceAddress == Some(false))
     assert(consul.weights == Some(Seq(TagWeight("primary", 100.0))))
-    val clientAuth = ClientAuth("/certificates/cert.pem", "/certificates/key.pem")
+    val clientAuth = ClientAuth("/certificates/cert.pem", None, "/certificates/key.pem")
     val tlsConfig = TlsClientConfig(None, Some(false), Some("consul.io"), Some(List("/certificates/cacert.pem")), Some(clientAuth))
     assert(consul.tls == Some(tlsConfig))
     assert(!consul.disabled)

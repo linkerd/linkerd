@@ -22,4 +22,4 @@ routers:
     tls:
       certPath: /foo/cert.pem
       keyPath: /foo/key.pem
-      serverCaChainPath: /foo/ca-chain.pem
+      intermediateCertsPath: /foo/ca-chain.pem
