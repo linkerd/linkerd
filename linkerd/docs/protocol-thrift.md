@@ -53,3 +53,4 @@ Key | Default Value | Description
 --- | ------------- | -----------
 thriftFramed | `true` | If `true`, a framed thrift transport is used for outgoing requests; otherwise, a buffered transport is used. Typically this setting matches the router's servers' `thriftFramed` param.
 attemptTTwitterUpgrade | `false` | Controls whether thrift protocol upgrade should be attempted.
+clientId | no clientId | If set, the given clientId is added to upgraded outgoing protocol requests when one is not given in the incoming client request.

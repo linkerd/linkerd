@@ -63,4 +63,33 @@ class ThriftInitializerTest extends FunSuite with Exceptions {
     val params = linker.routers.head.params[PerClientParams].paramsFor(Path.read("/foo"))
     assert(!params[param.AttemptTTwitterUpgrade].upgrade)
   }
+
+  test("clientId defaults None") {
+    val config = """
+                   |routers:
+                   |- protocol: thrift
+                   |  thriftProtocol: compact
+                   |  client:
+                   |    thriftFramed: true
+                 """.stripMargin
+
+    val linker = Linker.Initializers(Seq(ThriftInitializer)).load(config)
+    val params = linker.routers.head.params[PerClientParams].paramsFor(Path.read("/foo"))
+    assert(params[param.ClientId].clientId.isEmpty)
+  }
+
+  test("clientId can be customized") {
+    val config = """
+                   |routers:
+                   |- protocol: thrift
+                   |  thriftProtocol: compact
+                   |  client:
+                   |    thriftFramed: true
+                   |    clientId: fooClient
+                 """.stripMargin
+
+    val linker = Linker.Initializers(Seq(ThriftInitializer)).load(config)
+    val params = linker.routers.head.params[PerClientParams].paramsFor(Path.read("/foo"))
+    assert(params[param.ClientId].clientId.get.name == "fooClient")
+  }
 }

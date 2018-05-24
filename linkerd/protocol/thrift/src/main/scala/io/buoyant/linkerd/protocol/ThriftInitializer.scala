@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes,
 import com.twitter.finagle.Stack
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
+import com.twitter.finagle.thrift.ClientId
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftServerPrep, ThriftTraceInitializer}
 import io.buoyant.config.types.ThriftProtocol
@@ -96,9 +97,11 @@ trait ThriftClientConfig extends ClientConfig {
 
   var thriftFramed: Option[Boolean] = None
   var attemptTTwitterUpgrade: Option[Boolean] = None
+  var clientId: Option[String] = None
 
   @JsonIgnore
   override def params(vars: Map[String, String]) = super.params(vars)
     .maybeWith(thriftFramed.map(param.Framed(_))) +
-    param.AttemptTTwitterUpgrade(attemptTTwitterUpgrade.getOrElse(false))
+    param.AttemptTTwitterUpgrade(attemptTTwitterUpgrade.getOrElse(false)) +
+    param.ClientId(clientId.map(new ClientId(_)))
 }
