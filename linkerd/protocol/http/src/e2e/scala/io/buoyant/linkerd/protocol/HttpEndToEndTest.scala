@@ -1,7 +1,6 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.sun.corba.se.impl.orb.ORBConfiguratorImpl.ConfigParser
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
@@ -13,7 +12,6 @@ import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.config.Parser
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
 import java.io.File
