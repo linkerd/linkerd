@@ -789,6 +789,7 @@ object LinkerdBuild extends Base {
     .settings(aggregateSettings ++ unidocSettings)
     .aggregate(
       admin,
+      adminNames,
       configCore,
       consul,
       etcd,
