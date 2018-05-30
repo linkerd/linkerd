@@ -12,12 +12,22 @@ import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 
-class RequestEvaluator(
+class RequestActiveTracer(
   endpoint: EndpointAddr,
   namer: DstBindingFactory.Namer,
   dtab: BaseDtab,
   label: String
 ) extends SimpleFilter[Request, Response] {
+
+  private[this] case class Node(path: String, dentry: String, treeNode: DelegateTree[_]) {
+    override def toString: String = {
+      treeNode match {
+        case DelegateTree.Delegate(_, d, _) if d == Dentry.nop => s"$path"
+        case _ => s"$path ($dentry)"
+      }
+
+    }
+  }
 
   private[this] val RequestTracerMaxDepthHeader = "l5d-max-depth"
 
@@ -36,8 +46,8 @@ class RequestEvaluator(
          |--- Router: $routerLabel ---
          |service name: $serviceName
          |client name: $clientName
-         |selected address: $selectedAddress
          |addresses: [${addresses.getOrElse(Set.empty).mkString(", ")}]
+         |selected address: $selectedAddress
          |dtab resolution:
          |${dtabResolution.map("  " + _).mkString("\n")}
     """.stripMargin
@@ -46,23 +56,31 @@ class RequestEvaluator(
 
   private[this] def formatDTree(
     dTree: DelegateTree[Name.Bound],
-    tree: List[String],
+    tree: List[Node],
     searchPath: Path
-  ): List[String] = {
+  ): List[Node] = {
     dTree match {
-      case Leaf(path, _, bound) if bound.id == searchPath =>
-        tree :+ path.show
-      case Transformation(_, _, value, remainingTree) =>
-        formatDTree(remainingTree, tree :+ value.path.show, searchPath)
-      case Delegate(path, _, remainingTree) =>
-        formatDTree(remainingTree, tree :+ path.show, searchPath)
-      case Union(path, _, remainingWeightedTrees@_*) =>
+      case l@Leaf(leafPath, dentry, bound) if bound.id == searchPath =>
+        tree.lastOption.map {
+          case Node(nodePath, nodeDentry, Transformation(_, _, _, _)) =>
+            tree.dropRight(1) :+ Node(
+              nodePath,
+              dentry.show,
+              DelegateTree.Empty(Path.empty, Dentry.nop)
+            ) :+ Node(leafPath.show, nodeDentry, DelegateTree.Empty(Path.empty, Dentry.nop))
+          case _ => tree :+ Node(leafPath.show, dentry.show, l)
+        }.getOrElse(List.empty)
+      case t@Transformation(path, name, _, remainingTree) =>
+        formatDTree(remainingTree, tree :+ Node(path.show, name, t), searchPath)
+      case d@Delegate(path, dentry, remainingTree) =>
+        formatDTree(remainingTree, tree :+ Node(path.show, dentry.show, d), searchPath)
+      case u@Union(path, dentry, remainingWeightedTrees@_*) =>
         remainingWeightedTrees.map { wd =>
-          formatDTree(wd.tree, tree :+ s"${wd.weight} * ${path.show}", searchPath)
+          formatDTree(wd.tree, tree :+ Node(path.show, dentry.show, u), searchPath)
         }.filter(!_.isEmpty).head
-      case Alt(path, _, remainingTrees@_*) =>
+      case a@Alt(path, dentry, remainingTrees@_*) =>
         remainingTrees.map { d =>
-          formatDTree(d, tree :+ path.show, searchPath)
+          formatDTree(d, tree :+ Node(path.show, dentry.show, a), searchPath)
         }.filter(!_.isEmpty).head
       case _ => List.empty
     }
@@ -114,13 +132,14 @@ class RequestEvaluator(
         val resp = Response()
         val tree = formatDTree(dTree.getOrElse(DelegateTree.Empty(Path.empty, Dentry.nop)), List.empty, clientPath)
         resp.contentString = printEvaluatedRequest(
-            prevResp.contentString,
-            label,
-            serviceName.show,
-            clientPath.show,
-            selectedEndpoint,
-            addrSet,
-            tree)
+          prevResp.contentString,
+          label,
+          serviceName.show,
+          clientPath.show,
+          selectedEndpoint,
+          addrSet,
+          tree.foldLeft(List[String]())((a, b) => a :+ b.toString)
+        )
         resp
     }
   }
@@ -146,7 +165,7 @@ class RequestEvaluator(
   }
 }
 
-object RequestEvaluator {
+object RequestActiveTracer {
 
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module4[EndpointAddr, RoutingFactory.BaseDtab, DstBindingFactory.Namer, RouterLabel.Param, ServiceFactory[Request, Response]] {
@@ -162,7 +181,7 @@ object RequestEvaluator {
         label: RouterLabel.Param,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] =
-        new RequestEvaluator(endpoint, interpreter, dtab, label.label).andThen(next)
+        new RequestActiveTracer(endpoint, interpreter, dtab, label.label).andThen(next)
     }
 }
 

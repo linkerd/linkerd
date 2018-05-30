@@ -10,7 +10,6 @@ import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
@@ -816,7 +815,8 @@ class HttpEndToEndTest
       headers = req.headerMap
       method = req.method
       val resp = Response()
-      resp.content(Buf.Utf8("response from downstream"))
+      resp.contentString = "response from downstream"
+      resp
     }
     val dtab = Dtab.read(s"""
       /svc/* => /$$/inet/127.1/${downstream.port} ;

@@ -13,7 +13,7 @@ import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 import io.buoyant.test.FunSuite
 
-class EvaluatorNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpreter with Delegator {
+class TracerNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpreter with Delegator {
   def delegate(
     dtab: Dtab,
     tree: NameTree[Name.Path]
@@ -27,7 +27,7 @@ class EvaluatorNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpret
   ): Activity[NameTree[Name.Bound]] = Activity.pending
 }
 
-class RequestEvaluatorTest extends FunSuite {
+class RequestActiveTracerTest extends FunSuite {
 
   private[this] val successMessage = "request succeeded"
   private[this] val testService = Service.mk[Request, Response] { req =>
@@ -36,7 +36,7 @@ class RequestEvaluatorTest extends FunSuite {
     Future.value(rsp)
   }
 
-  private[this] val testStack =  RequestEvaluator.module +:
+  private[this] val testStack =  RequestActiveTracer.module +:
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
 
   private[this] def mkTracerRequest = {

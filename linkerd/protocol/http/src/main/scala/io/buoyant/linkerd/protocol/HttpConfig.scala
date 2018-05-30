@@ -47,7 +47,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // ensure the client-stack framing filter is placed below the stats filter
       // so that any malframed responses it fails are counted as errors
       .insertAfter(FailureAccrualFactory.role, FramingFilter.clientModule)
-      .insertAfter(FailureAccrualFactory.role, RequestEvaluator.module)
+      .insertAfter(FailureAccrualFactory.role, RequestActiveTracer.module)
       .remove(ClientDtabContextFilter.role)
 
     Http.router
