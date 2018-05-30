@@ -16,7 +16,7 @@ class RequestActiveTracer(
   endpoint: EndpointAddr,
   namer: DstBindingFactory.Namer,
   dtab: BaseDtab,
-  label: String
+  routerLabel: String
 ) extends SimpleFilter[Request, Response] {
 
   private[this] case class Node(path: String, dentry: String, treeNode: DelegateTree[_]) {
@@ -33,13 +33,12 @@ class RequestActiveTracer(
 
   private[this] def printEvaluatedRequest(
     prependText: String,
-    routerLabel: String,
     serviceName: String,
     clientName: String,
     selectedAddress: String,
     addresses: Option[Set[String]],
     dtabResolution: List[String]
-  ) = {
+  ): String = {
     Seq(
       prependText,
       s"""
@@ -51,10 +50,19 @@ class RequestActiveTracer(
          |dtab resolution:
          |${dtabResolution.map("  " + _).mkString("\n")}
     """.stripMargin
-    ).mkString("\n").trim
+    ).mkString("\n").trim.concat("\n")
   }
 
-  private[this] def formatDTree(
+  /**
+   * formatDelegation prints out path the proxy used to resolve the client name.
+   * It 'walks' a DelegateTree of Name.Bound and finds a DelegateLeaf that matches
+   * the client path provided.
+   * @param dTree
+   * @param tree
+   * @param searchPath
+   * @return
+   */
+  private[this] def formatDelegation(
     dTree: DelegateTree[Name.Bound],
     tree: List[Node],
     searchPath: Path
@@ -71,22 +79,22 @@ class RequestActiveTracer(
           case _ => tree :+ Node(leafPath.show, dentry.show, l)
         }.getOrElse(List.empty)
       case t@Transformation(path, name, _, remainingTree) =>
-        formatDTree(remainingTree, tree :+ Node(path.show, name, t), searchPath)
+        formatDelegation(remainingTree, tree :+ Node(path.show, name, t), searchPath)
       case d@Delegate(path, dentry, remainingTree) =>
-        formatDTree(remainingTree, tree :+ Node(path.show, dentry.show, d), searchPath)
+        formatDelegation(remainingTree, tree :+ Node(path.show, dentry.show, d), searchPath)
       case u@Union(path, dentry, remainingWeightedTrees@_*) =>
         remainingWeightedTrees.map { wd =>
-          formatDTree(wd.tree, tree :+ Node(path.show, dentry.show, u), searchPath)
-        }.filter(!_.isEmpty).head
+          formatDelegation(wd.tree, tree :+ Node(path.show, dentry.show, u), searchPath)
+        }.find(!_.isEmpty).toList.flatten
       case a@Alt(path, dentry, remainingTrees@_*) =>
         remainingTrees.map { d =>
-          formatDTree(d, tree :+ Node(path.show, dentry.show, a), searchPath)
-        }.filter(!_.isEmpty).head
+          formatDelegation(d, tree :+ Node(path.show, dentry.show, a), searchPath)
+        }.find(!_.isEmpty).toList.flatten
       case _ => List.empty
     }
   }
 
-  private[this] def getRouterCtx(prevResp: Response) = {
+  private[this] def getRequestTraceResponse(prevResp: Response) = {
 
     val serviceName = DstPathCtx.current match {
       case Some(dstPath) => dstPath.path
@@ -129,18 +137,18 @@ class RequestActiveTracer(
 
     dtreeF.joinWith(addresses) {
       case (dTree: Option[DelegateTree[Name.Bound]], addrSet: Option[Set[String]]) =>
-        val resp = Response()
-        val tree = formatDTree(dTree.getOrElse(DelegateTree.Empty(Path.empty, Dentry.nop)), List.empty, clientPath)
-        resp.contentString = printEvaluatedRequest(
+        val tree = formatDelegation(dTree.getOrElse(DelegateTree.Empty(Path.empty, Dentry.nop)), List.empty, clientPath)
+        prevResp.contentString = printEvaluatedRequest(
           prevResp.contentString,
-          label,
           serviceName.show,
           clientPath.show,
           selectedEndpoint,
           addrSet,
           tree.foldLeft(List[String]())((a, b) => a :+ b.toString)
         )
-        resp
+        //We set the content length of the response in order to view the content string entirely
+        prevResp.contentLength = prevResp.content.length
+        prevResp
     }
   }
 
@@ -149,15 +157,18 @@ class RequestActiveTracer(
     svc: Service[Request, Response]
   ): Future[Response] = {
 
-    val maxTraceDepth = req.headerMap.get(RequestTracerMaxDepthHeader).map(_.toInt)
-    val httpMethod = req.method
+    val maxTraceDepth = Try(req.headerMap.get(RequestTracerMaxDepthHeader).map(_.toInt))
 
-    (httpMethod, maxTraceDepth) match {
-      case (Method.Trace, Some(0)) =>
-        getRouterCtx(Response())
-      case (Method.Trace, Some(num)) if num > 0 =>
+    (req.method, maxTraceDepth) match {
+      case (Method.Trace, Throw(_: NumberFormatException)) =>
+        val resp = Response()
+        resp.contentString = s"Invalid value for $RequestTracerMaxDepthHeader header"
+        Future.value(resp)
+      case (Method.Trace, Return(Some(0) | None)) =>
+        getRequestTraceResponse(Response())
+      case (Method.Trace, Return(Some(num))) if num > 0 =>
         req.headerMap.set(RequestTracerMaxDepthHeader, (num - 1).toString)
-        svc(req).flatMap(getRouterCtx).ensure {
+        svc(req).flatMap(getRequestTraceResponse).ensure {
           req.headerMap.set(RequestTracerMaxDepthHeader, num.toString); ()
         }
       case (_, _) => svc(req)
