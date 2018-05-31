@@ -862,12 +862,13 @@ class HttpEndToEndTest
       s"""|--- Router: http ---
           |service name: /svc/dog
           |client name: /$$/inet/127.1/${downstream.port}
-          |selected address: 127.0.0.1:${downstream.port}
           |addresses: [127.0.0.1:${downstream.port}]
+          |selected address: 127.0.0.1:${downstream.port}
           |dtab resolution:
           |  /svc/dog
-          |  /srv/dog
-          |  /$$/inet/127.1/${downstream.port}/dog""".stripMargin)
+          |  /srv/dog (/svc=>/srv)
+          |  /$$/inet/127.1/${downstream.port}/dog (/srv=>/$$/inet/127.1/${downstream.port})
+          |""".stripMargin)
   }
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
