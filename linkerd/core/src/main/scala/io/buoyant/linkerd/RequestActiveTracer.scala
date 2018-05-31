@@ -164,7 +164,7 @@ class RequestActiveTracer(
         val resp = Response()
         resp.contentString = s"Invalid value for $RequestTracerMaxDepthHeader header"
         Future.value(resp)
-      case (Method.Trace, Return(Some(0) | None)) =>
+      case (Method.Trace, Return(Some(0))) =>
         getRequestTraceResponse(Response())
       case (Method.Trace, Return(Some(num))) if num > 0 =>
         req.headerMap.set(RequestTracerMaxDepthHeader, (num - 1).toString)
