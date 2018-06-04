@@ -42,7 +42,8 @@ class RequestActiveTracerTest extends FunSuite {
   private[this] def mkTracerRequest = {
     val req = Request()
     req.method = Method.Trace
-    req.headerMap.add("l5d-max-depth", "1")
+    req.headerMap.add("Max-Forwards", "1")
+    req.headerMap.add("l5d-add-context", "true")
     req
   }
 
@@ -53,7 +54,14 @@ class RequestActiveTracerTest extends FunSuite {
     assert(resp.contentString == successMessage)
   }
 
-  test("prints client and service name"){
+  test("returns response with decremented Max-Forwards header but not router context"){
+    val req = Request()
+    val serviceFactory = testStack.make(Stack.Params.empty)
+    val resp = await(serviceFactory.toService(req))
+
+  }
+
+  test("returns client and service name"){
     val addrSet = Var.apply(Addr.Bound(Address("1.2.3.4", 8080)))
     val boundPath = Path.Utf8("client", "name")
     val pathCtx = Path.Utf8("svc","cat")
@@ -70,7 +78,7 @@ class RequestActiveTracerTest extends FunSuite {
 
   }
 
-  test("prints selected endpoint ip address") {
+  test("returns selected endpoint ip address") {
     val endpointAddr = EndpointAddr(Address("127.0.0.1", 8081))
     val serviceFactory = testStack.make(
       Stack.Params.empty + endpointAddr + RouterLabel.Param("routerLabel")
@@ -83,7 +91,7 @@ class RequestActiveTracerTest extends FunSuite {
     }
   }
 
-  test("prints endpoints set") {
+  test("returns endpoints set") {
     val addrSet = Var.apply(
       Addr.Bound(Address("1.2.3.4", 8080))
     )

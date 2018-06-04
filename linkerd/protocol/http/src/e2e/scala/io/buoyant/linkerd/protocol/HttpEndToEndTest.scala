@@ -829,11 +829,13 @@ class HttpEndToEndTest
 
     val req = Request()
     req.host = "dog"
-    req.headerMap.add("l5d-max-depth", "5")
+    req.headerMap.add("Max-Forwards", "5")
+    req.headerMap.add("l5d-add-context", "true")
     req.method = Method.Trace
     val resp = await(client(req))
     assert(resp.contentString != "response from downstream")
-    assert(headers.contains("l5d-max-depth"))
+    assert(headers.contains("Max-Forwards"))
+    assert(headers.contains("l5d-add-context"))
     assert(method == Method.Trace)
 
   }
@@ -856,19 +858,18 @@ class HttpEndToEndTest
     val req = Request()
     req.host = "dog"
     req.method = Method.Trace
-    req.headerMap.add("l5d-max-depth", "5")
+    req.headerMap.add("Max-Forwards", "5")
+    req.headerMap.add("l5d-add-context", "true")
     val resp = await(client(req))
-    assert(resp.contentString ==
-      s"""|--- Router: http ---
-          |service name: /svc/dog
-          |client name: /$$/inet/127.1/${downstream.port}
+    assert(resp.contentString.contains(
+      s"""|client name: /$$/inet/127.1/${downstream.port}
           |addresses: [127.0.0.1:${downstream.port}]
           |selected address: 127.0.0.1:${downstream.port}
           |dtab resolution:
           |  /svc/dog
           |  /srv/dog (/svc=>/srv)
           |  /$$/inet/127.1/${downstream.port}/dog (/srv=>/$$/inet/127.1/${downstream.port})
-          |""".stripMargin)
+          |""".stripMargin))
   }
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
