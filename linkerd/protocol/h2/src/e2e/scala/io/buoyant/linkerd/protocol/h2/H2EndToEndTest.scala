@@ -7,7 +7,6 @@ import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.param.Stats
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.io.Buf
 import com.twitter.logging.Level
 import com.twitter.util.{Duration, Future, Throw}
 import io.buoyant.linkerd.protocol.H2Initializer
@@ -16,6 +15,7 @@ import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.FunSuite
 import io.buoyant.test.h2.StreamTestUtils._
 import java.io.File
+import java.nio.charset.StandardCharsets
 import org.scalatest.time.{Millis, Seconds, Span}
 import scala.io.Source
 import scala.util.Random
@@ -405,7 +405,7 @@ class H2EndToEndTest extends FunSuite {
     assert(rsp.status == Status.Ok)
     assert(q.offer(Frame.Data("one", eos = false)))
     val frame = await(rsp.stream.read())
-    val Buf.Utf8(s) = frame.asInstanceOf[Frame.Data].buf
+    val s = frame.asInstanceOf[Frame.Data].buf.toString(StandardCharsets.UTF_8)
     assert(s == "one")
 
     rsp.stream.cancel(Reset.Cancel)
