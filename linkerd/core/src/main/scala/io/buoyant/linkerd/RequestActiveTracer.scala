@@ -21,8 +21,8 @@ import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
  * for a given router as well as any other TRACE responses received from downstream
  * services.
  *
- * A router that receives a tracer request with an l5d-max-depth
- * greater than 0 decrements the l5d-max-depth header by 1 and
+ * A router that receives a tracer request with a Max-Forwards
+ * greater than 0 decrements the Max-Forwards header by 1 and
  * forwards the tracer request to a downstream service that may perform
  * additional processing of the request.
  *
@@ -38,23 +38,17 @@ class RequestActiveTracer(
   routerLabel: String
 ) extends SimpleFilter[Request, Response] {
 
-  private[this] case class PathNode(
+  private[this] case class DelegationNode(
     path: String,
     dentry: String,
     dTreeNode: DelegateTree[_] = DelegateTree.Empty(Path.empty, Dentry.nop)
   ) {
-    override def toString: String = {
-      dTreeNode match {
-        case DelegateTree.Delegate(_, d, _) if d == Dentry.nop => s"$path"
-        case _ => s"$path ($dentry)"
-      }
-
-    }
+    override def toString: String = if (dentry.length == 0) s"$path" else s"$path ($dentry)"
   }
 
   private[this] val AddRouterContextHeader = "l5d-add-context"
 
-  private def formatRouterContext(
+  private[this] def formatRouterContext(
     prependText: String,
     serviceName: String,
     clientName: String,
@@ -62,36 +56,41 @@ class RequestActiveTracer(
     addresses: Option[Set[String]],
     dtabResolution: List[String],
     elapsedTimestamp: String
-  ) = {
+  ):String = {
     Seq(
-      prependText,
-      s"""
-      |--- Router: $routerLabel ---
-      |request duration: $elapsedTimestamp ms
-      |service name: $serviceName
-      |client name: $clientName
-      |addresses: [${addresses.getOrElse(Set.empty).mkString(", ")}]
-      |selected address: $selectedAddress
-      |dtab resolution:
-      |${dtabResolution.map("  " + _).mkString("\n")}
-    """.stripMargin
-    ).mkString("\n").trim.concat("\n")
+      prependText.trim,  // trim the prepend text so we have consistent line spacing
+      System.lineSeparator,
+      System.lineSeparator,
+      s"""|--- Router: $routerLabel ---
+          |request duration: $elapsedTimestamp ms
+          |service name: $serviceName
+          |client name: $clientName
+          |addresses: [${addresses.getOrElse(Set.empty).mkString(", ")}]
+          |selected address: $selectedAddress
+          |dtab resolution:
+          |${dtabResolution.map("  " + _).mkString(System.lineSeparator)}""".stripMargin,
+      System.lineSeparator,
+      System.lineSeparator
+    ).mkString
   }
 
+  // Ensure we use an empty string over the Dentry.nop default string
+  private[this] val checkDentryNop = (dentry: Dentry) => if (dentry == Dentry.nop) "" else dentry.show
+
   /**
-   * Returns a list of [[PathNode]] that represents a delegate tree path that identifies how a
+   * Returns a list of DelegationNode that represents a delegate tree path that identifies how a
    * router binds a service name.
    *
    * @param dTree DelegateTree with a bound name.
-   * @param nodes an accumulator of [[PathNode]] that reveal the path to a client name.
-   * @param clientName the client path name this method is searching for in a [[DelegateTree]]
-   * @return list of [[PathNode]]. An empty list if no path was found.
+   * @param nodes an accumulator of DelegationNode that reveal the path to a client name.
+   * @param clientName the client path name this method is searching for in a DelegateTree
+   * @return list of DelegationNode. An empty list if no path was found.
    */
   private[this] def formatDelegation(
     dTree: DelegateTree[Name.Bound],
-    nodes: List[PathNode],
+    nodes: List[DelegationNode],
     clientName: Path
-  ): List[PathNode] = {
+  ): List[DelegationNode] = {
 
     //walk the delegate tree to find the path of the clientName path.
     dTree match {
@@ -104,37 +103,37 @@ class RequestActiveTracer(
         // the current leaf's dentry. We do this to make sure that the node list is more readable
         // when it is added to the request active tracer's response.
         val finalPath = nodes.lastOption.collect {
-          case PathNode(nodePath, nodeDentry, _: Transformation[_]) => // check if is transformation
+          case DelegationNode(nodePath, nodeDentry, _: Transformation[_]) => // check if is transformation
 
             // Switch dentries
-            val transformerNode = PathNode(nodePath, dentry.show)
-            val leafNode = PathNode(leafPath.show, nodeDentry)
+            val transformerNode = DelegationNode(nodePath, checkDentryNop(dentry))
+            val leafNode = DelegationNode(leafPath.show, nodeDentry)
 
             nodes.dropRight(1) :+ transformerNode :+ leafNode
           case _ =>
             // If the last node is not a transformation, it's safe to add the leaf node
             // as the last element of nodes
-            val leafNode = PathNode(leafPath.show, dentry.show, l)
+            val leafNode = DelegationNode(leafPath.show, dentry.show, l)
             nodes :+ leafNode
         }
         finalPath.getOrElse(List.empty) // otherwise return  an empty list indicating there is no path.
       case t@Transformation(path, name, _, remainingTree) =>
-        formatDelegation(remainingTree, nodes :+ PathNode(path.show, name, t), clientName)
+        formatDelegation(remainingTree, nodes :+ DelegationNode(path.show, name, t), clientName)
       case d@Delegate(path, dentry, remainingTree) =>
-        formatDelegation(remainingTree, nodes :+ PathNode(path.show, dentry.show, d), clientName)
+        formatDelegation(remainingTree, nodes :+ DelegationNode(path.show, checkDentryNop(dentry), d), clientName)
       case u@Union(path, dentry, remainingWeightedTrees@_*) =>
         remainingWeightedTrees.map { wd =>
-          formatDelegation(wd.tree, nodes :+ PathNode(path.show, dentry.show, u), clientName)
+          formatDelegation(wd.tree, nodes :+ DelegationNode(path.show, checkDentryNop(dentry), u), clientName)
         }.find(!_.isEmpty).toList.flatten
       case a@Alt(path, dentry, remainingTrees@_*) =>
         remainingTrees.map { d =>
-          formatDelegation(d, nodes :+ PathNode(path.show, dentry.show, a), clientName)
+          formatDelegation(d, nodes :+ DelegationNode(path.show, checkDentryNop(dentry), a), clientName)
         }.find(!_.isEmpty).toList.flatten
       case _ => List.empty
     }
   }
 
-  private def getRequestTraceResponse(resp: Response, stopwatch: Stopwatch.Elapsed) = {
+  private[this] def getRequestTraceResponse(resp: Response, stopwatch: Stopwatch.Elapsed) = {
 
     val EmptyDelegateTree = DelegateTree.Empty(Path.empty, Dentry.nop)
 
@@ -203,7 +202,10 @@ class RequestActiveTracer(
   ): Future[Response] = {
 
     val maxForwards = Try(req.headerMap.get(MaxForwards).map(_.toInt))
-    val isAddRouterCtx = req.headerMap.get(AddRouterContextHeader).map(StringUtil.toBoolean).getOrElse(false)
+    val isAddRouterCtx = req.headerMap.get(AddRouterContextHeader) match {
+      case Some(v) => StringUtil.toBoolean(v)
+      case None => false
+    }
 
     (req.method, maxForwards, isAddRouterCtx) match {
       case (Method.Trace, Throw(_: NumberFormatException), _) =>
@@ -211,15 +213,15 @@ class RequestActiveTracer(
         val resp = Response(Status.BadRequest)
         resp.contentString = s"Invalid value for $MaxForwards header"
         Future.value(resp)
-      case (Method.Trace, Return(Some(0)), addRouterCtx) if addRouterCtx =>
+      case (Method.Trace, Return(Some(0)), true) =>
         // Max-Forwards header is 0 and the l5d-add-context header is present
         // returns a response with router context
         val stopwatch = Stopwatch.start()
         getRequestTraceResponse(Response(req), stopwatch)
-      case (Method.Trace, Return(Some(0)), _) =>
+      case (Method.Trace, Return(Some(0)), false) =>
         // returns a response with no router context
         Future.value(Response(req))
-      case (Method.Trace, Return(Some(num)), addRouterCtx) if num > 0 && addRouterCtx =>
+      case (Method.Trace, Return(Some(num)), true) if num > 0 =>
         // Decrement Max-Forwards header
         req.headerMap.set(MaxForwards, (num - 1).toString)
         // Forward request downstream and add router context to response
@@ -227,13 +229,13 @@ class RequestActiveTracer(
         svc(req).flatMap(getRequestTraceResponse(_, stopwatch)).ensure {
           req.headerMap.set(MaxForwards, num.toString); ()
         }
-      case (Method.Trace, Return(Some(num)), _) if num > 0 =>
+      case (Method.Trace, Return(Some(num)), false) if num > 0 =>
         req.headerMap.set(MaxForwards, (num - 1).toString)
         // Forward requests without adding router context to response
         svc(req).ensure {
           req.headerMap.set(MaxForwards, num.toString); ()
         }
-      case (Method.Trace, Return(None), addRouterCtx) if addRouterCtx =>
+      case (Method.Trace, Return(None), true) =>
         val stopwatch = Stopwatch.start()
         svc(req).flatMap(getRequestTraceResponse(_, stopwatch))
       case (_, _, _) => svc(req)

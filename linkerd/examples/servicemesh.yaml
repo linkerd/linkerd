@@ -17,7 +17,11 @@ routers:
     - kind: io.l5d.port
       port: 4141
   dtab: |
-    /svc => /#/io.l5d.fs;
+    /bb => /#/io.l5d.fs;
+    /aa/* => /$/inet/localhost/4140;
+    /b => /bb;
+    /a => /aa;
+    /svc => 2*/a & /b;
   servers:
   - port: 4140
     ip: 0.0.0.0
