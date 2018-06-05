@@ -3,7 +3,9 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.http._
+import com.twitter.finagle.http.Fields.MaxForwards
 import com.twitter.finagle.http.Status
+import com.twitter.finagle.http.util.StringUtil
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util._
 import io.buoyant.namer.DelegateTree._
@@ -14,7 +16,7 @@ import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 
 /**
- * Intercepts Http TRACE requests with an l5d-max-depth header.
+ * Intercepts Http TRACE requests with a Max-Forwards and l5d-add-context header.
  * Returns identification, delegation, and service address information
  * for a given router as well as any other TRACE responses received from downstream
  * services.
@@ -50,7 +52,6 @@ class RequestActiveTracer(
     }
   }
 
-  private[this] val MaxForwardsHeader = "Max-Forwards"
   private[this] val AddRouterContextHeader = "l5d-add-context"
 
   private def formatRouterContext(
@@ -189,8 +190,8 @@ class RequestActiveTracer(
           tree.map(_.toString),
           stopwatch().inMillis.toString
         )
-
-        //We set the content length of the response in order to view the content string entirely
+        //We set the content length of the response in order to view the content string in the response
+        // entirely
         resp.contentLength = resp.content.length
         resp
     }
@@ -201,43 +202,40 @@ class RequestActiveTracer(
     svc: Service[Request, Response]
   ): Future[Response] = {
 
-    val maxTraceDepth = Try(req.headerMap.get(MaxForwardsHeader).map(_.toInt))
-    val addRouterCtxt = req.headerMap.get(AddRouterContextHeader)
+    val maxForwards = Try(req.headerMap.get(MaxForwards).map(_.toInt))
+    val isAddRouterCtx = req.headerMap.get(AddRouterContextHeader).map(StringUtil.toBoolean).getOrElse(false)
 
-    (req.method, maxTraceDepth, addRouterCtxt) match {
+    (req.method, maxForwards, isAddRouterCtx) match {
       case (Method.Trace, Throw(_: NumberFormatException), _) =>
         // Max-Forwards header is unparseable
         val resp = Response(Status.BadRequest)
-        resp.contentString = s"Invalid value for $MaxForwardsHeader header"
+        resp.contentString = s"Invalid value for $MaxForwards header"
         Future.value(resp)
-      case (Method.Trace, Return(Some(0)), isAddRouterCtxt) =>
+      case (Method.Trace, Return(Some(0)), addRouterCtx) if addRouterCtx =>
         // Max-Forwards header is 0 and the l5d-add-context header is present
-        isAddRouterCtxt match {
-          // returns a response with no router context
-          case None => Future.value(Response(req))
-
-          // returns a response with router context
-          case _ =>
-            val stopwatch = Stopwatch.start()
-            getRequestTraceResponse(Response(req), stopwatch)
+        // returns a response with router context
+        val stopwatch = Stopwatch.start()
+        getRequestTraceResponse(Response(req), stopwatch)
+      case (Method.Trace, Return(Some(0)), _) =>
+        // returns a response with no router context
+        Future.value(Response(req))
+      case (Method.Trace, Return(Some(num)), addRouterCtx) if num > 0 && addRouterCtx =>
+        // Decrement Max-Forwards header
+        req.headerMap.set(MaxForwards, (num - 1).toString)
+        // Forward request downstream and add router context to response
+        val stopwatch = Stopwatch.start()
+        svc(req).flatMap(getRequestTraceResponse(_, stopwatch)).ensure {
+          req.headerMap.set(MaxForwards, num.toString); ()
         }
-
-      case (Method.Trace, Return(Some(num)), isAddRouterCtxt) if num > 0 =>
-        // Decrement Max-Fowards header
-        req.headerMap.set(MaxForwardsHeader, (num - 1).toString)
-
-        isAddRouterCtxt match {
-          // Forward requests without adding router context to response
-          case None => svc(req).ensure {
-            req.headerMap.set(MaxForwardsHeader, num.toString); ()
-          }
-          case _ =>
-            // Forward requests and router context to response
-            val stopwatch = Stopwatch.start()
-            svc(req).flatMap((prevResp: Response) => getRequestTraceResponse(prevResp, stopwatch)).ensure {
-              req.headerMap.set(MaxForwardsHeader, num.toString); ()
-            }
+      case (Method.Trace, Return(Some(num)), _) if num > 0 =>
+        req.headerMap.set(MaxForwards, (num - 1).toString)
+        // Forward requests without adding router context to response
+        svc(req).ensure {
+          req.headerMap.set(MaxForwards, num.toString); ()
         }
+      case (Method.Trace, Return(None), addRouterCtx) if addRouterCtx =>
+        val stopwatch = Stopwatch.start()
+        svc(req).flatMap(getRequestTraceResponse(_, stopwatch))
       case (_, _, _) => svc(req)
     }
   }

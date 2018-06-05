@@ -4,7 +4,8 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.context.Contexts
-import com.twitter.finagle.http.{Method, Request, Response}
+import com.twitter.finagle.http.Fields.MaxForwards
+import com.twitter.finagle.http.{HeaderMap, Method, Request, Response, Status}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.namer.{DelegateTree, Delegator}
@@ -36,29 +37,36 @@ class RequestActiveTracerTest extends FunSuite {
     Future.value(rsp)
   }
 
-  private[this] val testStack =  RequestActiveTracer.module +:
+  private[this] val testStack = RequestActiveTracer.module +:
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
 
-  private[this] def mkTracerRequest = {
+  private[this] def mkTracerRequest(headers:(String, String)*): Request = {
     val req = Request()
     req.method = Method.Trace
-    req.headerMap.add("Max-Forwards", "1")
-    req.headerMap.add("l5d-add-context", "true")
+    headers.foreach{header => req.headerMap.add(header._1, header._2)}
     req
   }
 
   test("lets requests without TRACE method to pass through") {
-    val req = Request()
     val serviceFactory = testStack.make(Stack.Params.empty)
-    val resp = await(serviceFactory.toService(req))
+    val resp = await(serviceFactory.toService(mkTracerRequest()))
     assert(resp.contentString == successMessage)
   }
 
-  test("returns response with decremented Max-Forwards header but not router context"){
-    val req = Request()
+  test("returns 'bad request' response when unparsable Max-Forwards header is sent"){
     val serviceFactory = testStack.make(Stack.Params.empty)
-    val resp = await(serviceFactory.toService(req))
+    val service = serviceFactory.toService
+    val req = mkTracerRequest((MaxForwards, "31qe"), ("l5d-add-context", "true"))
+    val resp = await(service(req))
+    assert(resp.status == Status.BadRequest)
+  }
 
+  test("returns response with no body when Max-Forwards = 0 and l5d-add-context is absent"){
+    val serviceFactory = testStack.make(Stack.Params.empty)
+    val service = serviceFactory.toService
+    val req = mkTracerRequest((MaxForwards, "31qe"))
+    val resp = await(service(req))
+    assert(resp.contentLength.isEmpty)
   }
 
   test("returns client and service name"){
@@ -71,7 +79,7 @@ class RequestActiveTracerTest extends FunSuite {
     ){
       val serviceFactory = testStack.make(Stack.Params.empty)
       val client = serviceFactory.toService
-      val resp = await(client(mkTracerRequest))
+      val resp = await(client(mkTracerRequest(("Max-Forwards", "1"), ("l5d-add-context", "true"))))
       assert(resp.contentString.contains(s"service name: ${pathCtx.show}"))
       assert(resp.contentString.contains(s"client name: ${boundPath.show}"))
     }
@@ -86,7 +94,7 @@ class RequestActiveTracerTest extends FunSuite {
 
     Contexts.local.let(DstPathCtx, Dst.Path(Path.empty)) {
       val client = serviceFactory.toService
-      val resp = await(client(mkTracerRequest))
+      val resp = await(client(mkTracerRequest(("Max-Forwards", "1"), ("l5d-add-context", "true"))))
       assert(resp.contentString.contains(s"selected address: 127.0.0.1:8081"))
     }
   }
@@ -99,7 +107,7 @@ class RequestActiveTracerTest extends FunSuite {
     Contexts.local.let(DstBoundCtx, Dst.Bound(addrSet, Path.empty)) {
       val serviceFactory = testStack.make(Stack.Params.empty)
       val client = serviceFactory.toService
-      val resp = await(client(mkTracerRequest))
+      val resp = await(client(mkTracerRequest(("Max-Forwards", "1"), ("l5d-add-context", "true"))))
       assert(resp.contentString.contains("addresses: [1.2.3.4:8080]"))
     }
   }

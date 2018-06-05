@@ -808,7 +808,7 @@ class HttpEndToEndTest
     }
   }
 
-  test("requests with l5d-max-depth header and method TRACE are sent downstream") {
+  test("requests with Max-Forwards header, l5d-add-context and method TRACE are sent downstream") {
     @volatile var headers: HeaderMap = null
     @volatile var method: Method = null
     val downstream = Downstream.mk("dog") { req =>
@@ -833,7 +833,7 @@ class HttpEndToEndTest
     req.headerMap.add("l5d-add-context", "true")
     req.method = Method.Trace
     val resp = await(client(req))
-    assert(resp.contentString != "response from downstream")
+    assert(resp.contentString.contains("response from downstream"))
     assert(headers.contains("Max-Forwards"))
     assert(headers.contains("l5d-add-context"))
     assert(method == Method.Trace)
