@@ -1,11 +1,11 @@
-package io.buoyant.linkerd
+package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.http.Fields.MaxForwards
-import com.twitter.finagle.http.{HeaderMap, Method, Request, Response, Status}
+import com.twitter.finagle.http.{Method, Request, Response, Status}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.namer.{DelegateTree, Delegator}

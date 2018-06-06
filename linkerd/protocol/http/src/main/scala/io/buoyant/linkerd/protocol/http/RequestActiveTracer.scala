@@ -1,17 +1,15 @@
-package io.buoyant.linkerd
+package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle._
 import com.twitter.finagle.client.Transporter.EndpointAddr
-import com.twitter.finagle.http._
 import com.twitter.finagle.http.Fields.MaxForwards
-import com.twitter.finagle.http.Status
+import com.twitter.finagle.http.{Status, _}
 import com.twitter.finagle.http.util.StringUtil
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util._
 import io.buoyant.namer.DelegateTree._
 import io.buoyant.namer.{DelegateTree, Delegator}
-import io.buoyant.router.RouterLabel
-import io.buoyant.router.RoutingFactory
+import io.buoyant.router.{RouterLabel, RoutingFactory}
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 
@@ -56,9 +54,9 @@ class RequestActiveTracer(
     addresses: Option[Set[String]],
     dtabResolution: List[String],
     elapsedTimestamp: String
-  ):String = {
+  ): String = {
     Seq(
-      prependText.trim,  // trim the prepend text so we have consistent line spacing
+      prependText.trim, // trim the prepend text so we have consistent line spacing
       System.lineSeparator,
       System.lineSeparator,
       s"""|--- Router: $routerLabel ---
