@@ -51,6 +51,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
       .replace(H2TraceInitializer.role, H2TraceInitializer.clientModule)
       .insertAfter(StackClient.Role.prepConn, LinkerdHeaders.Ctx.clientModule)
       .insertAfter(DtabStatsFilter.role, H2RequestAuthorizerConfig.module)
+      .insertAfter(H2FailureAccrualFactory.role, H2RequestActiveTracer.module)
 
     //  .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
 
