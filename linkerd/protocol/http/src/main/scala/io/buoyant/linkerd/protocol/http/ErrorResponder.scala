@@ -1,15 +1,16 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.buoyant.linkerd._
-import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.http.{Request, Response, Status, param}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.finagle._
+import com.twitter.finagle.naming.buoyant.RichNoBrokersAvailableException
 import com.twitter.logging.{Level, Logger}
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.ResponseException
 import scala.util.control.{NoStackTrace, NonFatal}
 
-class ErrorResponder
+class ErrorResponder(maxHeaderSize: Int)
   extends SimpleFilter[Request, Response] {
   private[this] val log = Logger.get("ErrorResponseFilter")
 
@@ -21,9 +22,11 @@ class ErrorResponder
       e match {
         case RoutingFactory.UnknownDst(_, _) =>
           log.debug(e, "unknown dst")
-          Headers.Err.respond(e.getMessage, Status.BadRequest)
+          Headers.Err.respond(e.getMessage, Status.BadRequest, maxHeaderSize)
         case ErrorResponder.HttpResponseException(rsp) =>
           rsp
+        case e: RichNoBrokersAvailableException =>
+          Headers.Err.respond(e.exceptionMessage(), Status.BadRequest, maxHeaderSize)
         case _ =>
           val message = e.getMessage match {
             case null => e.getClass.getName
@@ -36,7 +39,7 @@ class ErrorResponder
               log.error("service failure: %s", e)
               Status.BadGateway
           }
-          val rsp = Headers.Err.respond(message, status)
+          val rsp = Headers.Err.respond(message, status, maxHeaderSize)
           if (RetryableWriteException.unapply(e).isDefined) {
             Headers.Retryable.set(rsp.headerMap, retryable = true)
           }
@@ -48,12 +51,12 @@ class ErrorResponder
 object ErrorResponder {
   val role = Stack.Role("ErrorResponder")
   val module: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module0[ServiceFactory[Request, Response]] {
+    new Stack.Module1[param.MaxHeaderSize, ServiceFactory[Request, Response]] {
       val role = ErrorResponder.role
       val description = "Crafts HTTP responses for routing errors"
-      val filter = new ErrorResponder
-      def make(factory: ServiceFactory[Request, Response]) =
-        filter.andThen(factory)
+      def filter(maxHeaderSize: Int) = new ErrorResponder(maxHeaderSize)
+      def make(maxHeaderSize: param.MaxHeaderSize, factory: ServiceFactory[Request, Response]) =
+        filter(maxHeaderSize.size.bytes.toInt).andThen(factory)
     }
 
   case class HttpResponseException(rsp: Response) extends ResponseException {

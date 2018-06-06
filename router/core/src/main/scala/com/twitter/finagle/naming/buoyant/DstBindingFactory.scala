@@ -163,14 +163,9 @@ object DstBindingFactory {
           }
 
           private val handleNoBrokers: PartialFunction[Throwable, Future[Service[Req, Rsp]]] = {
-            case e: NoBrokersAvailableException => nbae
+            case e: NoBrokersAvailableException => RichNoBrokersAvailableException(dst, namer)
           }
 
-          private lazy val nbae = Future.exception(new NoBrokersAvailableException(
-            dst.path.show,
-            dst.baseDtab,
-            dst.localDtab
-          ))
         }
 
         pathMk(dst, dyn)

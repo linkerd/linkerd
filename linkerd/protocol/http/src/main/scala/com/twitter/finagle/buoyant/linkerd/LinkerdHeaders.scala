@@ -3,7 +3,7 @@ package com.twitter.finagle.buoyant.linkerd
 import com.twitter.finagle.{Dtab => FDtab, Status => _, _}
 import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
 import com.twitter.finagle.context.{Contexts, Deadline => FDeadline}
-import com.twitter.finagle.http._
+import com.twitter.finagle.http.{param => hparam, _}
 import com.twitter.finagle.tracing._
 import com.twitter.util.{Future, Return, Throw, Time, Try}
 import java.net.URLEncoder
@@ -65,15 +65,15 @@ object Headers {
      * [[HttpTraceInitializer.serverModule]].
      */
     val serverModule: Stackable[ServiceFactory[Request, Response]] =
-      new Stack.Module0[ServiceFactory[Request, Response]] {
+      new Stack.Module1[hparam.MaxHeaderSize, ServiceFactory[Request, Response]] {
         val role = Stack.Role("ServerContext")
         val description = "Extracts linkerd context from http headers"
 
         val deadline = new Deadline.ServerFilter
-        val dtab = new Dtab.ServerFilter
+        def dtab(maxHeaderSize: Int) = new Dtab.ServerFilter(maxHeaderSize)
 
-        def make(next: ServiceFactory[Request, Response]) =
-          deadline.andThen(dtab).andThen(next)
+        def make(maxHeaderSize: hparam.MaxHeaderSize, next: ServiceFactory[Request, Response]) =
+          deadline.andThen(dtab(maxHeaderSize.size.bytes.toInt)).andThen(next)
       }
 
     val clearServerModule: Stackable[ServiceFactory[Request, Response]] =
@@ -255,12 +255,12 @@ object Headers {
        *
        * @todo use DtabFilter.Injector once it is released.
        */
-      class ServerFilter extends SimpleFilter[Request, Response] {
+      class ServerFilter(maxHeaderSize: Int) extends SimpleFilter[Request, Response] {
 
         def apply(req: Request, service: Service[Request, Response]) =
           get(req.headerMap) match {
             case Throw(e) =>
-              Future.value(Err.respond(e.getMessage, Status.BadRequest))
+              Future.value(Err.respond(e.getMessage, Status.BadRequest, maxHeaderSize))
             case Return(dtab) =>
               clear(req.headerMap)
               FDtab.local ++= dtab
@@ -473,9 +473,14 @@ object Headers {
   object Err {
     val Key = Prefix + "err"
 
-    def respond(msg: String, status: Status = Status.InternalServerError): Response = {
+    def respond(msg: String, status: Status = Status.InternalServerError, maxHeaderSize: Int): Response = {
       val rsp = Response(status)
-      rsp.headerMap(Key) = URLEncoder.encode(msg, ISO_8859_1.toString)
+      val header = URLEncoder.encode(msg, ISO_8859_1.toString)
+      rsp.headerMap(Key) = if (header.length > maxHeaderSize) {
+        header.substring(0, maxHeaderSize)
+      } else {
+        header
+      }
       rsp.contentType = MediaType.Txt
       rsp.contentString = msg
       rsp
