@@ -139,21 +139,15 @@ class DstBindingFactoryTest extends FunSuite with Awaits with Exceptions {
     val baseDtab = Dtab.read("/usa => /people")
     val localDtab = Dtab.read("/usa => /money")
 
-    val e0 = intercept[NoBrokersAvailableException] {
+    assertThrows[RichNoBrokersAvailableException] {
       val svc = await(cache(Dst.Path(Path.read("/usa/ca/la"), baseDtab, localDtab)))
       val _ = await(svc("the 101"))
     }
-    assert(e0.name == "/usa/ca/la")
-    assert(e0.baseDtab == baseDtab)
-    assert(e0.localDtab == localDtab)
 
-    val e1 = intercept[NoBrokersAvailableException] {
+    assertThrows[RichNoBrokersAvailableException] {
       val svc = await(cache(Dst.Path(Path.read("/usa/ca/sf"), baseDtab, localDtab)))
       val _ = await(svc("101"))
     }
-    assert(e1.name == "/usa/ca/sf")
-    assert(e1.baseDtab == baseDtab)
-    assert(e1.localDtab == localDtab)
   }
 
   test("Binding timeout is respected") {
