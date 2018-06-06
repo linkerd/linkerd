@@ -141,7 +141,7 @@ class HttpEndToEndTest
       }
 
       get("ralph-machio") { rsp =>
-        assert(rsp.status == Status.BadGateway)
+        assert(rsp.status == Status.BadRequest)
         assert(rsp.headerMap.contains(Headers.Err.Key))
         ()
       }
