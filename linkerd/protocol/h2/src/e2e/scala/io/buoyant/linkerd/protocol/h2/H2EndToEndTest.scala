@@ -4,7 +4,7 @@ import com.twitter.concurrent.AsyncQueue
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.param.Stats
-import com.twitter.finagle.Path
+import com.twitter.finagle.{Path, Service}
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.util.{Duration, Future}
@@ -19,6 +19,13 @@ import scala.io.Source
 import scala.util.Random
 
 class H2EndToEndTest extends FunSuite {
+
+  private[this] def mkReq(host: String, path: String = "/", method: Method, client: Service[Request, Response])
+    (f: Response => Unit) = {
+    val req = Request("http", Method.Get, host, path, Stream.empty())
+    val rsp = await(client(req))
+    f(rsp)
+  }
 
   test("single request") {
     val stats = new InMemoryStatsReceiver
@@ -399,6 +406,7 @@ class H2EndToEndTest extends FunSuite {
     val req = Request(Headers(
       Headers.Authority -> "dog",
       Headers.Path -> "/",
+      Headers.Method -> "get",
       LinkerdHeaders.Ctx.Dtab.UserKey -> "/foo=>/bar"
     ), Stream.empty())
     val rsp = await(client(req))
@@ -410,5 +418,51 @@ class H2EndToEndTest extends FunSuite {
     await(dog.server.close())
     await(server.close())
     await(router.close())
+  }
+
+  test("active tracing with h2 request"){
+    val dog = Downstream.const("dog", "woof")
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/${dog.port} ;
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(config)
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = Upstream.mk(server)
+
+    def trace(host: String, path: String = "/")(f: Response => Unit) = {
+      val req = Request("http", Method.Trace, host, path, Stream.empty())
+      req.headers.set("l5d-add-context", "true")
+      req.headers.set(":method", "trace")
+
+      val rsp = await(client(req))
+      f(rsp)
+    }
+
+    try {
+      val content = s"""|service name: /svc/dog
+                        |client name: /$$/inet/127.1/${dog.port}
+                        |addresses: [127.0.0.1:${dog.port}]
+                        |selected address: 127.0.0.1:${dog.port}
+                        |dtab resolution:
+                        |  /svc/dog
+                        |  /$$/inet/127.1/${dog.port} (/svc/dog=>/$$/inet/127.1/${dog.port})
+                        |""".stripMargin
+      trace("dog") { rsp =>
+        assert(rsp.status == Status.Ok)
+        assert(await(rsp.stream.readDataString).contains(content))
+        ()
+      }
+    } finally {
+      await(client.close())
+      await(server.close())
+    }
   }
 }
