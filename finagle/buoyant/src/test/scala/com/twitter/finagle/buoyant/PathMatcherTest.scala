@@ -35,6 +35,11 @@ class PathMatcherTest extends FunSuite {
     assert(matcher.extract(Path.read("/foo/bar/bas")) == Some(Map("A" -> "bar")))
   }
 
+  test("capture segment with underscore name") {
+    val matcher = PathMatcher("/foo/{A_B_C}")
+    assert(matcher.extract(Path.read("/foo/bar/bas")) == Some(Map("A_B_C" -> "bar")))
+  }
+
   test("capture segments with endpoint") {
     val matcher = PathMatcher("/foo/bar/{A}:http")
     assert(matcher.extract(Path.read("/foo/bar/bas:http")) == Some(Map("A" -> "bas")))

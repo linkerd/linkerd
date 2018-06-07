@@ -67,7 +67,7 @@ object PathMatcher {
     override def extract(path: Path): Option[Map[String, String]] =
       _extract(path.showElems, rawSegments, Map.empty)
 
-    private[this] val segmentRegex = """\{([a-zA-Z0-9\.:-]+)\}""".r
+    private[this] val segmentRegex = """\{([a-zA-Z0-9\.:-_]+)\}""".r
 
     private[this] val rawSegments: Seq[MatchSegment] = {
       expr.split("/").dropWhile(_.isEmpty).map { exprSegment =>
