@@ -26,7 +26,7 @@ class ErrorResponder(maxHeaderSize: Int)
         case ErrorResponder.HttpResponseException(rsp) =>
           rsp
         case e: RichNoBrokersAvailableException =>
-          Headers.Err.respond(e.exceptionMessage(), Status.BadRequest, maxHeaderSize)
+          Headers.Err.respond(e.exceptionMessage(), Status.BadGateway, maxHeaderSize)
         case _ =>
           val message = e.getMessage match {
             case null => e.getClass.getName
