@@ -3,7 +3,6 @@ package io.buoyant.linkerd
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.Transporter.EndpointAddr
-import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util.Future
 import io.buoyant.linkerd.ActiveTracer.formatDelegation
@@ -26,7 +25,8 @@ private[linkerd] case class RouterContext(
           |addresses: [${selectedAddresses.getOrElse(Set.empty).mkString(", ")}]
           |selected address: $selectedAddress
           |dtab resolution:
-          |${dtabResolution.map("  " + _).mkString(System.lineSeparator)}""".stripMargin
+          |${dtabResolution.map("  " + _).mkString(System.lineSeparator)}
+          |""".stripMargin
   }
 }
 
@@ -40,7 +40,7 @@ private[linkerd] object RouterContextBuilder {
     endpoint: EndpointAddr,
     namers: DstBindingFactory.Namer,
     dtabs: BaseDtab
-  ) = {
+  ): Future[RouterContext] = {
     val serviceName = pathCtx match {
       case Some(dstPath) => dstPath.path
       case None => Path.empty
