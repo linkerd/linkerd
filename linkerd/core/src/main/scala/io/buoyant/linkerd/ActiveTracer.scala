@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
-import com.twitter.util.Future
+import com.twitter.util.{Future, Stopwatch}
 import io.buoyant.linkerd.ActiveTracer.formatDelegation
 import io.buoyant.namer.{DelegateTree, Delegator}
 import io.buoyant.namer.DelegateTree._
@@ -12,6 +12,7 @@ import io.buoyant.router.RoutingFactory.BaseDtab
 
 private[linkerd] case class RouterContext(
   routerLabel: String,
+  elapsed: Stopwatch.Elapsed,
   serviceName: String,
   clientName: String,
   selectedAddresses: Option[Set[String]],
@@ -20,6 +21,7 @@ private[linkerd] case class RouterContext(
 ) {
   def formatRouterContext: String = {
     s"""|--- Router: $routerLabel ---
+          |request duration: ${elapsed().inMillis.toString} ms
           |service name: $serviceName
           |client name: $clientName
           |addresses: [${selectedAddresses.getOrElse(Set.empty).mkString(", ")}]
@@ -35,6 +37,7 @@ private[linkerd] object RouterContextBuilder {
 
   def apply(
     routerLabel: String,
+    elapsed: Stopwatch.Elapsed,
     pathCtx: Option[Dst.Path],
     boundCtx: Option[Dst.Bound],
     endpoint: EndpointAddr,
@@ -86,6 +89,7 @@ private[linkerd] object RouterContextBuilder {
 
         new RouterContext(
           routerLabel,
+          elapsed,
           serviceName.show,
           clientPath.show,
           addrSet,

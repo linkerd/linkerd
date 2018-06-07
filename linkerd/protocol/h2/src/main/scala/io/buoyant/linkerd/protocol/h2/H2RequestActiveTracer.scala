@@ -27,6 +27,7 @@ class H2RequestActiveTracer(
   ) = {
     val routerCtxF = RouterContextBuilder(
       routerLabel,
+      stopwatch,
       DstPathCtx.current,
       DstBoundCtx.current,
       endpoint,
@@ -35,10 +36,8 @@ class H2RequestActiveTracer(
     )
 
     routerCtxF.map { ctx =>
-      val elapsed = stopwatch().inMillis.toString
-      val content = s"""
+      val content = s"""|
                         |${ctx.formatRouterContext.trim}
-                        |request duration: $elapsed ms
                         |""".stripMargin
       if (resp.stream.isEmpty) {
         Response(resp.headers, Stream.const(Frame.Data(content, eos = true)))
@@ -73,10 +72,10 @@ class H2RequestActiveTracer(
 
     (request.method, maxForwards, isAddRouterCtx) match {
       case (Method.Trace, Throw(_: NumberFormatException), _) =>
-        Future.value(Response(Status.Accepted, Stream.empty))
+        Future.value(Response(request.headers, Stream.empty))
       case (Method.Trace, Return(Some(0)), true) =>
         val stopwatch = Stopwatch.start()
-        getRequestTraceResponse(Response(Status.Ok, Stream.empty), stopwatch)
+        getRequestTraceResponse(Response(request.headers, Stream.empty), stopwatch)
       case (Method.Trace, Return(Some(0)), false) =>
         Future.value(Response(Status.Ok, Stream.empty))
       case (Method.Trace, Return(Some(num)), true) if num > 0 =>
@@ -93,7 +92,8 @@ class H2RequestActiveTracer(
       case (Method.Trace, Return(None), true) =>
         val stopwatch = Stopwatch.start()
         service(request).flatMap(getRequestTraceResponse(_, stopwatch))
-      case (_, _, _) => service(request)
+      case (_, _, _) =>
+        service(request)
     }
   }
 }
