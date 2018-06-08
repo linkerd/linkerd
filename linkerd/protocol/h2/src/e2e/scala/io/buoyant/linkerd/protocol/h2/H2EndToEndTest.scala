@@ -20,13 +20,6 @@ import scala.util.Random
 
 class H2EndToEndTest extends FunSuite {
 
-  private[this] def mkReq(host: String, path: String = "/", method: Method, client: Service[Request, Response])
-    (f: Response => Unit) = {
-    val req = Request("http", Method.Get, host, path, Stream.empty())
-    val rsp = await(client(req))
-    f(rsp)
-  }
-
   test("single request") {
     val stats = new InMemoryStatsReceiver
 
@@ -438,10 +431,8 @@ class H2EndToEndTest extends FunSuite {
     val client = Upstream.mk(server)
 
     def trace(host: String, path: String = "/")(f: Response => Unit) = {
-      val req = Request("http", Method.Trace, host, path, Stream.empty())
+      val req = Request("http", Method.Trace, host, path, Stream.empty)
       req.headers.set("l5d-add-context", "true")
-      req.headers.set(":method", "trace")
-
       val rsp = await(client(req))
       f(rsp)
     }
@@ -457,12 +448,16 @@ class H2EndToEndTest extends FunSuite {
                         |""".stripMargin
       trace("dog") { rsp =>
         assert(rsp.status == Status.Ok)
+        // assertion is a contains instead of equal since the full response stream contains
+        // dynamically generated text i.e. request duration.
         assert(await(rsp.stream.readDataString).contains(content))
         ()
       }
     } finally {
       await(client.close())
       await(server.close())
+      await(dog.server.close())
+      await(router.close())
     }
   }
 }
