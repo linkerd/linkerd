@@ -11,7 +11,7 @@ import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 import io.buoyant.test.FunSuite
 import io.buoyant.test.h2.StreamTestUtils
 
-class H2RequestActiveTracerTest extends FunSuite {
+class H2DiagnosticTracerTest extends FunSuite {
   private [this] val MaxForwards = "max-forwards"
   private[this] val testService = Service.mk[Request, Response] { req =>
     val rsp = Response(Status.Ok, Stream.const("request received"))
@@ -23,7 +23,7 @@ class H2RequestActiveTracerTest extends FunSuite {
     req
   }
 
-  private[this] val testStack = H2RequestActiveTracer.module +:
+  private[this] val testStack = H2DiagnosticTracer.module +:
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
 
   test("pass through TRACE requests without l5d-add-context header") {
@@ -45,7 +45,8 @@ class H2RequestActiveTracerTest extends FunSuite {
     val service = serviceFactory.toService
     val req = mkTracerH2Request((MaxForwards, "31qe"))
     val resp = await(service(req))
-    assert(resp.stream.isEmpty)
+    val dataStream = await(StreamTestUtils.readDataString(resp.stream))
+    assert(dataStream == "Invalid value for max-forwards header")
   }
 
   test("returns client and service name"){
