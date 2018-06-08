@@ -5,37 +5,25 @@ import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util.{Future, Stopwatch}
-import io.buoyant.linkerd.ActiveTracer.formatDelegation
 import io.buoyant.namer.{DelegateTree, Delegator}
 import io.buoyant.namer.DelegateTree._
 import io.buoyant.router.RoutingFactory.BaseDtab
 
-private[linkerd] case class RouterContext(
-  routerLabel: String,
-  elapsed: Stopwatch.Elapsed,
-  serviceName: String,
-  clientName: String,
-  selectedAddresses: Option[Set[String]],
-  selectedAddress: String,
-  dtabResolution: List[String]
-) {
-  def formatRouterContext: String = {
-    s"""|--- Router: $routerLabel ---
-          |request duration: ${elapsed().inMillis.toString} ms
-          |service name: $serviceName
-          |client name: $clientName
-          |addresses: [${selectedAddresses.getOrElse(Set.empty).mkString(", ")}]
-          |selected address: $selectedAddress
-          |dtab resolution:
-          |${dtabResolution.map("  " + _).mkString(System.lineSeparator)}
-          |""".stripMargin
+object RouterContextFormatter {
+
+  // Ensure we use an empty string over the Dentry.nop default string
+  private[this] val checkDentryNop = (dentry: Dentry) => if (dentry == Dentry.nop) "" else dentry.show
+  private[this] val EmptyDelegateTree = DelegateTree.Empty(Path.empty, Dentry.nop)
+
+  private[this] case class DelegationNode(
+    path: String,
+    dentry: String,
+    dTreeNode: DelegateTree[_] = DelegateTree.Empty(Path.empty, Dentry.nop)
+  ) {
+    override def toString: String = if (dentry.length == 0) s"$path" else s"$path ($dentry)"
   }
-}
 
-private[linkerd] object RouterContextBuilder {
-  val EmptyDelegateTree = DelegateTree.Empty(Path.empty, Dentry.nop)
-
-  def apply(
+  def formatCtx(
     routerLabel: String,
     elapsed: Stopwatch.Elapsed,
     pathCtx: Option[Dst.Path],
@@ -43,7 +31,7 @@ private[linkerd] object RouterContextBuilder {
     endpoint: EndpointAddr,
     namers: DstBindingFactory.Namer,
     dtabs: BaseDtab
-  ): Future[RouterContext] = {
+  ): Future[String] = {
     val serviceName = pathCtx match {
       case Some(dstPath) => dstPath.path
       case None => Path.empty
@@ -84,9 +72,9 @@ private[linkerd] object RouterContextBuilder {
     }
 
     dtreeF.joinWith(addresses) {
-      case (dTree: Option[DelegateTree[Name.Bound]], addrSet: Option[Set[String]]) =>
+      case (dTree, addrSet) =>
         val tree = formatDelegation(dTree.getOrElse(EmptyDelegateTree), List.empty, clientPath)
-        RouterContext(
+        formatRouterContext(
           routerLabel,
           elapsed,
           serviceName.show,
@@ -96,20 +84,6 @@ private[linkerd] object RouterContextBuilder {
           tree.map(_.toString)
         )
     }
-  }
-}
-
-object ActiveTracer {
-
-  // Ensure we use an empty string over the Dentry.nop default string
-  private[this] val checkDentryNop = (dentry: Dentry) => if (dentry == Dentry.nop) "" else dentry.show
-
-  private[linkerd] case class DelegationNode(
-    path: String,
-    dentry: String,
-    dTreeNode: DelegateTree[_] = DelegateTree.Empty(Path.empty, Dentry.nop)
-  ) {
-    override def toString: String = if (dentry.length == 0) s"$path" else s"$path ($dentry)"
   }
 
   /**
@@ -121,7 +95,7 @@ object ActiveTracer {
    * @param clientName the client path name this method is searching for in a DelegateTree
    * @return list of DelegationNode. An empty list if no path was found.
    */
-  private[linkerd] def formatDelegation(
+  private[this] def formatDelegation(
     dTree: DelegateTree[Name.Bound],
     nodes: List[DelegationNode],
     clientName: Path
@@ -136,7 +110,7 @@ object ActiveTracer {
         // We need to check if the last node in 'nodes' is of type DelegationTree.Transformation.
         // If so, we need to switch the transformation's dentry with
         // the current leaf's dentry. We do this to make sure that the node list is more readable
-        // when it is added to the request active tracer's response.
+        // when it is added to the diagnostic tracer's response.
         val finalPath = nodes.lastOption.collect {
           case DelegationNode(nodePath, nodeDentry, _: Transformation[_]) => // check if is transformation
 
@@ -166,5 +140,25 @@ object ActiveTracer {
         }.find(!_.isEmpty).toList.flatten
       case _ => List.empty
     }
+  }
+
+  def formatRouterContext(
+    routerLabel: String,
+    elapsed: Stopwatch.Elapsed,
+    serviceName: String,
+    clientName: String,
+    selectedAddresses: Option[Set[String]],
+    selectedAddress: String,
+    dtabResolution: List[String]
+  ): String = {
+    s"""|--- Router: $routerLabel ---
+        |request duration: ${elapsed().inMillis.toString} ms
+        |service name: $serviceName
+        |client name: $clientName
+        |addresses: [${selectedAddresses.getOrElse(Set.empty).mkString(", ")}]
+        |selected address: $selectedAddress
+        |dtab resolution:
+        |${dtabResolution.map("  " + _).mkString(System.lineSeparator)}
+        |""".stripMargin
   }
 }

@@ -28,7 +28,7 @@ class TracerNamer(delegation: DelegateTree[Name.Bound]) extends NameInterpreter 
   ): Activity[NameTree[Name.Bound]] = Activity.pending
 }
 
-class RequestActiveTracerTest extends FunSuite {
+class DiagnosticTracerTest extends FunSuite {
 
   private[this] val successMessage = "request succeeded"
   private[this] val testService = Service.mk[Request, Response] { req =>
@@ -37,7 +37,7 @@ class RequestActiveTracerTest extends FunSuite {
     Future.value(rsp)
   }
 
-  private[this] val testStack = RequestActiveTracer.module +:
+  private[this] val testStack = DiagnosticTracer.module +:
     Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
 
   private[this] def mkTracerRequest(headers:(String, String)*): Request = {

@@ -4,7 +4,7 @@ import com.twitter.concurrent.AsyncQueue
 import com.twitter.conversions.time._
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.param.Stats
-import com.twitter.finagle.{Path, Service}
+import com.twitter.finagle.Path
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.util.{Duration, Future}
@@ -413,7 +413,7 @@ class H2EndToEndTest extends FunSuite {
     await(router.close())
   }
 
-  test("active tracing with h2 request"){
+  test("diagnostic tracing with h2 request"){
     val dog = Downstream.const("dog", "woof")
     val config =
       s"""|routers:
@@ -448,7 +448,7 @@ class H2EndToEndTest extends FunSuite {
                         |""".stripMargin
       trace("dog") { rsp =>
         assert(rsp.status == Status.Ok)
-        // assertion is a contains instead of equal since the full response stream contains
+        // assertion is a 'contains' instead of 'equal' since the full response stream contains
         // dynamically generated text i.e. request duration.
         assert(await(rsp.stream.readDataString).contains(content))
         ()

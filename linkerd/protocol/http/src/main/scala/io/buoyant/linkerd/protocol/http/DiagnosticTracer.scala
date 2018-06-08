@@ -7,7 +7,7 @@ import com.twitter.finagle.http.{Status, _}
 import com.twitter.finagle.http.util.StringUtil
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util._
-import io.buoyant.linkerd.RouterContextBuilder
+import io.buoyant.linkerd.RouterContextFormatter
 import io.buoyant.router.{RouterLabel, RoutingFactory}
 import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
@@ -28,7 +28,7 @@ import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
  * @param dtab base dtab used by the router
  * @param routerLabel name of router
  */
-class RequestActiveTracer(
+class DiagnosticTracer(
   endpoint: EndpointAddr,
   namers: DstBindingFactory.Namer,
   dtab: BaseDtab,
@@ -37,20 +37,18 @@ class RequestActiveTracer(
   private[this] val AddRouterContextHeader = "l5d-add-context"
   private[this] def getRequestTraceResponse(resp: Response, stopwatch: Stopwatch.Elapsed) = {
 
-    val routerCtxF = RouterContextBuilder(
+    val routerCtxF = RouterContextFormatter.formatCtx(
       routerLabel,
       stopwatch,
       DstPathCtx.current,
       DstBoundCtx.current,
       endpoint,
       namers,
-      dtab)
+      dtab
+    )
 
     routerCtxF.map { ctx =>
-    val content = s"""|${resp.contentString.trim}
-                      |
-                      |${ctx.formatRouterContext}""".stripMargin
-
+      val content = s"${resp.contentString.trim}\n\n$ctx"
       resp.contentString = content
       //We set the content length of the response in order to view the content string in the response
       // entirely
@@ -106,12 +104,12 @@ class RequestActiveTracer(
   }
 }
 
-object RequestActiveTracer {
+object DiagnosticTracer {
 
   val module: Stackable[ServiceFactory[Request, Response]] =
     new Stack.Module4[EndpointAddr, RoutingFactory.BaseDtab, DstBindingFactory.Namer, RouterLabel.Param, ServiceFactory[Request, Response]] {
 
-      override def role: Stack.Role = Stack.Role("RequestEvaluator")
+      override def role: Stack.Role = Stack.Role("DiagnosticTracer")
 
       override def description: String = "Intercepts to respond with useful client destination info"
 
@@ -122,7 +120,7 @@ object RequestActiveTracer {
         label: RouterLabel.Param,
         next: ServiceFactory[Request, Response]
       ): ServiceFactory[Request, Response] =
-        new RequestActiveTracer(endpoint, interpreter, dtab, label.label).andThen(next)
+        new DiagnosticTracer(endpoint, interpreter, dtab, label.label).andThen(next)
     }
 }
 
