@@ -12,6 +12,22 @@ import io.buoyant.router.RoutingFactory.BaseDtab
 import io.buoyant.router.context.{DstBoundCtx, DstPathCtx}
 import io.buoyant.router.{RouterLabel, RoutingFactory}
 
+/**
+ * Intercepts H2 TRACE requests with a max-forwards and l5d-add-context header.
+ * Returns identification, delegation, and service address information
+ * for a given router as well as any other TRACE responses received from downstream
+ * services. Router information is added to the end of an H2 stream
+ *
+ * A router that receives a tracer request with a max-forwards
+ * greater than 0 decrements the max-forwards header by 1 and
+ * forwards the tracer request to a downstream service that may perform
+ * additional processing of the request.
+ *
+ * @param endpoint the endpoint address of a downstream H2 service identified by a router
+ * @param namers namers used to evaluate a service name
+ * @param dtab base dtab used by the router
+ * @param routerLabel name of router
+ */
 class H2RequestActiveTracer(
   endpoint: EndpointAddr,
   namers: DstBindingFactory.Namer,
@@ -21,10 +37,8 @@ class H2RequestActiveTracer(
 
   private[this] val MaxForwards = "max-forwards"
   private[this] val AddRouterContextHeader = "l5d-add-context"
-  private[this] def getRequestTraceResponse(
-    resp: Response,
-    stopwatch: Stopwatch.Elapsed
-  ) = {
+
+  private[this] def getRequestTraceResponse(resp: Response, stopwatch: Stopwatch.Elapsed):Future[Response] = {
     val routerCtxF = RouterContextBuilder(
       routerLabel,
       stopwatch,
@@ -32,27 +46,32 @@ class H2RequestActiveTracer(
       DstBoundCtx.current,
       endpoint,
       namers,
-      dtab
-    )
+      dtab)
 
     routerCtxF.map { ctx =>
+      // format current router context
       val content = s"""|
                         |${ctx.formatRouterContext.trim}
                         |""".stripMargin
       if (resp.stream.isEmpty) {
+        // add router context data frame to empty stream
         Response(resp.headers, Stream.const(Frame.Data(content, eos = true)))
       } else {
         val newStream = resp.stream.flatMap {
+          // read every frame of a stream
           case trailerFrame: Trailers =>
+            // on trailers frame, prepend a data frame containing router context to trailer
             val routerCtxFrame = Frame.Data(content, eos = false)
             Seq(routerCtxFrame, trailerFrame)
           case dataFrame: Data if dataFrame.isEnd =>
+            // on data frame with EOS flag to true, prepend new data frame with router context to
+            // EOS data frame
             val newDataFrame = Frame.Data.copy(dataFrame, eos = false)
             val routerCtxFrame = Data(content, eos = true)
             Seq(newDataFrame, routerCtxFrame, Trailers())
           case frame =>
+            // do nothing if we find a frame that doesn't indicate the end of a stream
             Seq(frame)
-
         }
         Response(resp.headers, newStream)
       }
@@ -72,27 +91,36 @@ class H2RequestActiveTracer(
 
     (request.method, maxForwards, isAddRouterCtx) match {
       case (Method.Trace, Throw(_: NumberFormatException), _) =>
+        // MaxForwards is unparsable send a bad request response
         Future.value(Response(Status.BadRequest, Stream.empty))
       case (Method.Trace, Return(Some(0)), true) =>
+        // MaxForwards header is 0 and the l5d-add-context header is present
+        // returns a response with router context
         val stopwatch = Stopwatch.start()
         getRequestTraceResponse(Response(request.headers, Stream.empty), stopwatch)
       case (Method.Trace, Return(Some(0)), false) =>
+        // returns a response with no router context
         Future.value(Response(Status.Ok, Stream.empty))
       case (Method.Trace, Return(Some(num)), true) if num > 0 =>
+        // Decrement Max-Forwards header. forward H2 request downstream
         val stopwatch = Stopwatch.start()
         request.headers.set(MaxForwards, (num - 1).toString)
         service(request).flatMap(getRequestTraceResponse(_, stopwatch)).ensure {
           request.headers.set(MaxForwards, (num - 1).toString)
         }
       case (Method.Trace, Return(Some(num)), false) if num > 0 =>
+        // Decrement MaxForwards header.
+        // Forward H2 request downstream without adding router context to response
         request.headers.set(MaxForwards, (num - 1).toString)
         service(request).ensure {
           request.headers.set(MaxForwards, num.toString); ()
         }
       case (Method.Trace, Return(None), true) =>
+        // No limit to MaxForwards just send the request downstream
         val stopwatch = Stopwatch.start()
         service(request).flatMap(getRequestTraceResponse(_, stopwatch))
       case (_, _, _) =>
+        // Do nothing. Simply route request.
         service(request)
     }
   }

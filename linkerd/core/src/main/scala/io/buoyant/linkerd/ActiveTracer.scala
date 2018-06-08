@@ -86,8 +86,7 @@ private[linkerd] object RouterContextBuilder {
     dtreeF.joinWith(addresses) {
       case (dTree: Option[DelegateTree[Name.Bound]], addrSet: Option[Set[String]]) =>
         val tree = formatDelegation(dTree.getOrElse(EmptyDelegateTree), List.empty, clientPath)
-
-        new RouterContext(
+        RouterContext(
           routerLabel,
           elapsed,
           serviceName.show,
