@@ -56,63 +56,6 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson)
     .withTests()
 
-  object Router {
-    val core = projectDir("router/core")
-      .dependsOn(Finagle.buoyantCore)
-      .withTwitterLib(Deps.finagle("core"))
-      .withTests()
-      .withE2e()
-      .settings(coverageExcludedPackages := ".*XXX_.*")
-
-    val baseHttp = projectDir("router/base-http")
-      .dependsOn(core)
-
-    val h2 = projectDir("router/h2")
-      .dependsOn(baseHttp, Finagle.h2 % "compile->compile;test->test")
-      .withTests()
-      .withE2e()
-
-    val http = projectDir("router/http")
-      .dependsOn(baseHttp)
-      .withTwitterLibs(Deps.finagle("http"))
-      .withLib(Deps.boringssl)
-      .withTests()
-      .withE2e()
-
-    val mux = projectDir("router/mux")
-      .dependsOn(core)
-      .withTwitterLib(Deps.finagle("mux"))
-      .withE2e()
-
-    val thriftIdl = projectDir("router/thrift-idl")
-      .withTwitterLib(Deps.finagle("thrift"))
-      .settings(Seq(
-        coverageExcludedPackages := ".*thriftscala.*",
-        scalacOptions -= "-Xfatal-warnings")
-      )
-
-    val thrift = projectDir("router/thrift")
-      .withTwitterLib(Deps.finagle("thrift"))
-      .withTests()
-      .withE2e()
-      .dependsOn(
-        core,
-        thriftIdl % "test,e2e"
-      )
-
-    val thriftMux = projectDir("router/thriftmux")
-      .withTwitterLib(Deps.finagle("thriftmux"))
-      .withTests()
-      .withE2e()
-      .dependsOn(
-        core,
-        thrift,
-        thriftIdl % "test,e2e"
-      )
-
-    val all = aggregateDir("router", core, baseHttp, h2, http, mux, thrift, thriftMux)
-  }
-
   object Mesh {
     val core = projectDir("mesh/core")
       .dependsOn(Grpc.runtime)
@@ -181,6 +124,63 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader, rancher)
 
+  }
+
+  object Router {
+    val core = projectDir("router/core")
+      .dependsOn(Finagle.buoyantCore, Namer.core)
+      .withTwitterLib(Deps.finagle("core"))
+      .withTests()
+      .withE2e()
+      .settings(coverageExcludedPackages := ".*XXX_.*")
+
+    val baseHttp = projectDir("router/base-http")
+      .dependsOn(core)
+
+    val h2 = projectDir("router/h2")
+      .dependsOn(baseHttp, Finagle.h2 % "compile->compile;test->test")
+      .withTests()
+      .withE2e()
+
+    val http = projectDir("router/http")
+      .dependsOn(baseHttp)
+      .withTwitterLibs(Deps.finagle("http"))
+      .withLib(Deps.boringssl)
+      .withTests()
+      .withE2e()
+
+    val mux = projectDir("router/mux")
+      .dependsOn(core)
+      .withTwitterLib(Deps.finagle("mux"))
+      .withE2e()
+
+    val thriftIdl = projectDir("router/thrift-idl")
+      .withTwitterLib(Deps.finagle("thrift"))
+      .settings(Seq(
+        coverageExcludedPackages := ".*thriftscala.*",
+        scalacOptions -= "-Xfatal-warnings")
+      )
+
+    val thrift = projectDir("router/thrift")
+      .withTwitterLib(Deps.finagle("thrift"))
+      .withTests()
+      .withE2e()
+      .dependsOn(
+        core,
+        thriftIdl % "test,e2e"
+      )
+
+    val thriftMux = projectDir("router/thriftmux")
+      .withTwitterLib(Deps.finagle("thriftmux"))
+      .withTests()
+      .withE2e()
+      .dependsOn(
+        core,
+        thrift,
+        thriftIdl % "test,e2e"
+      )
+
+    val all = aggregateDir("router", core, baseHttp, h2, http, mux, thrift, thriftMux)
   }
 
   val adminNames = projectDir("admin/names")
