@@ -72,7 +72,7 @@ class H2RequestActiveTracer(
 
     (request.method, maxForwards, isAddRouterCtx) match {
       case (Method.Trace, Throw(_: NumberFormatException), _) =>
-        Future.value(Response(request.headers, Stream.empty))
+        Future.value(Response(Status.BadRequest, Stream.empty))
       case (Method.Trace, Return(Some(0)), true) =>
         val stopwatch = Stopwatch.start()
         getRequestTraceResponse(Response(request.headers, Stream.empty), stopwatch)
