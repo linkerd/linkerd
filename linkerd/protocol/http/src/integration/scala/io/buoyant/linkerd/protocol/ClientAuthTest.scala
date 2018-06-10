@@ -44,8 +44,7 @@ class ClientAuthTest extends FunSuite {
          |  client:
          |   tls:
          |     commonName: server
-         |     trustCerts:
-         |     - ${certs.caCert.getPath}
+         |     trustCertsBundle: ${certs.caCert.getPath}
          |     clientAuth:
          |       certPath: ${clientCerts.cert.getPath}
          |       keyPath: ${clientCerts.key.getPath}
@@ -109,8 +108,7 @@ class ClientAuthTest extends FunSuite {
                             |  client:
                             |   tls:
                             |     commonName: server
-                            |     trustCerts:
-                            |     - ${certs.caCert.getPath}
+                            |     trustCertsBundle: ${certs.caCert.getPath}
        """.stripMargin
       val clientLinker = Linker.load(clientConfig)
       val clientRouter = clientLinker.routers.head.initialize()

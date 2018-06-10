@@ -28,8 +28,7 @@ routers:
     tls:
       disableValidation: false
       commonName: namerd
-      trustCerts:
-      - namerd/examples/certs/namerd-cacert.pem
+      trustCertsBundle: namerd/examples/certs/namerd-cacert.pem
   servers:
   - port: 4141
     ip: 0.0.0.0
@@ -43,8 +42,7 @@ routers:
     tls:
       disableValidation: false
       commonName: linkerd-tls-e2e
-      trustCerts:
-      - finagle/h2/src/e2e/resources/cacert.pem
+      trustCertsBundle: finagle/h2/src/e2e/resources/cacert.pem
       clientAuth:
         certPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-cert.pem
         keyPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-key.pem
@@ -60,8 +58,7 @@ routers:
     tls:
       disableValidation: false
       commonName: linkerd-tls-e2e
-      trustCerts:
-      - finagle/h2/src/e2e/resources/cacert.pem
+      trustCertsBundle: finagle/h2/src/e2e/resources/cacert.pem
       clientAuth:
         certPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-cert.pem
         keyPath: finagle/h2/src/e2e/resources/linkerd-tls-e2e-key.pem

@@ -47,8 +47,7 @@ class TlsCertReloadingTest extends FunSuite with Awaits {
         |  client:
         |   tls:
         |     commonName: bar
-        |     trustCerts:
-        |     - ${certs.caCert.getPath}
+        |     trustCertsBundle: ${certs.caCert.getPath}
        """.stripMargin
       val outgoingLinker = Linker.load(outgoingConfig)
       val outgoingRouter = outgoingLinker.routers.head.initialize()
