@@ -20,7 +20,7 @@ object RouterContextFormatter {
     dentry: String,
     dTreeNode: DelegateTree[_] = DelegateTree.Empty(Path.empty, Dentry.nop)
   ) {
-    override def toString: String = if (dentry.length == 0) s"$path" else s"$path ($dentry)"
+    override def toString: String = if (dentry.length == 0) path else s"$path ($dentry)"
   }
 
   def formatCtx(
