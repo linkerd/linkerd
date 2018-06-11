@@ -1,3 +1,22 @@
+## 1.4.2 2018-06-11
+Linkerd 1.4.2 continues its focus on diagnostics and stability. This release introduces Diagnostic 
+Tracing, a feature that helps describe how Linkerd routes requests by displaying detailed routing 
+information from each hop through your application. Stay tuned for a deep dive blog post about this 
+feature coming soon. 
+
+We’re also excited to share improvements to Linkerd’s error handling. Previously, when Linkerd 
+failed to route a request, it could fail with a notoriously confusing `No Hosts Available` error. 
+Now, these errors include more useful, informative diagnostic information to help explain the cause 
+of the failure.
+
+Full release notes:
+
+* Diagnostics
+   * Improve error reporting when receiving `No Hosts Available` exception.  Linkerd returns a less cryptic user-friendly message that includes information such as alternative service name resolutions and dtabs used for name resolution.
+   * Add a new diagnostic tracing feature. It allows Linkerd to add routing information to the response of a `TRACE` request forwarded to a service.
+* Fixes an issue where underscores in match patterns of `io.l5d.rewrite` no longer work.
+
+
 ## 1.4.1 2018-05-25
 
 Linkerd 1.4.1 is focused on adding diagnostics and improved behavior in
