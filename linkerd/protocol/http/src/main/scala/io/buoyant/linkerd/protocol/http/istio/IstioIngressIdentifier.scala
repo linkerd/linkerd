@@ -56,7 +56,8 @@ case class IstioIngressIdentifierConfig(
 
   override def newIdentifier(
     prefix: Path,
-    baseDtab: () => Dtab = () => Dtab.base
+    baseDtab: () => Dtab = () => Dtab.base,
+    routerParams: Stack.Params = Stack.Params.empty
   ): Identifier[Request] = {
 
     val k8sApiserverClient: Http.Client = mkK8sApiClient()
