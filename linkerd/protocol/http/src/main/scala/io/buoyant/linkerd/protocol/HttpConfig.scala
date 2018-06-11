@@ -255,5 +255,4 @@ case class HttpConfig(
 
   @JsonIgnore
   override def routerParams = routerParamsPartial.maybeWith(combinedIdentifier(routerParamsPartial))
-
 }
