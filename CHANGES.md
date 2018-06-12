@@ -1,11 +1,12 @@
 ## 1.4.3 2018-06-12
 
-This is a follow up release that  includes diagnostic tracing for H2 requests. The feature was 
-scheduled for version 1.4.2 but did not make it in time for the release.
+This is a follow up release that includes diagnostic tracing for H2 requests.
 
 Full release notes:
 
-* Enables third-party identifiers to emit router stats.  
+* Add diagnostic tracing for H2 requests, allowing Linkerd to add h2 request routing information at
+the end of h2 streams to downstream services.
+* Pass stack params to announcer plugins, allowing them to report metrics correctly. 
 
 ## 1.4.2 2018-06-11
 
