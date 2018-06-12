@@ -1,3 +1,12 @@
+## 1.4.3 2018-06-12
+
+This is a follow up release that  includes diagnostic tracing for H2 requests. The feature was 
+scheduled for version 1.4.2 but did not make it in time for the release.
+
+Full release notes:
+
+* Enables third-party identifiers to emit router stats.  
+
 ## 1.4.2 2018-06-11
 
 Linkerd 1.4.2 continues its focus on diagnostics and stability. This release introduces Diagnostic 
