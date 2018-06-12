@@ -31,17 +31,49 @@ case class TlsClientConfig(
       Stack.Params.empty + Transport.ClientSsl(Some(tlsConfig)) +
         SslClientEngineFactory.Param(Netty4ClientEngineFactory())
 
-    case TlsClientConfig(_, _, Some(cn), certs, bundle, clientAuth, enabledProtocols) =>
-      val credentials = bundle.map(b => TrustCredentials.CertCollection(new File(b)))
-        // map over the optional certs parameter - we want to pass
-        // `TrustCredentials.CertCollection` if we were given a list of certs,
-        // but `TrustCredentials.Unspecified` (rather than an empty cert
-        // collection file) if we were not.
-        .orElse(certs.map(convertCertsToBundle))
-        .getOrElse {
-          // otherwise, we want to pass `TrustCredentials.Unspecified`
-          TrustCredentials.Unspecified
+    case TlsClientConfig(_, _, Some(cn), Some(certs), Some(certsBundle), _, _) =>
+      val msg = "Both trustCerts and trustCertsBundle have been set. Please use only trustCertsBundle."
+      throw new IllegalArgumentException(msg) with NoStackTrace
+
+    case TlsClientConfig(_, _, Some(cn), certs, None, clientAuth, enabledProtocols) =>
+      // map over the optional certs parameter - we want to pass
+      // `TrustCredentials.CertCollection` if we were given a list of certs,
+      // but `TrustCredentials.Unspecified` (rather than an empty cert
+      // collection file) if we were not.
+      val credentials = certs.map { certs =>
+        // a temporary file to hold the collection of certificates
+        val certCollection = File.createTempFile("certCollection", null)
+        // open the cert paths as Streams...
+        val f = new FileOutputStream(certCollection)
+        for {
+          cert <- certs
+          certStream = new FileInputStream(cert)
+        } { // ...and copy the certs into the cert collection
+          // TODO: can this be made more concise with scala.io?
+          StreamIO.copy(certStream, f)
         }
+        f.flush()
+        f.close()
+        certCollection.deleteOnExit()
+        // the credentials we'll pass to `SslClientConfiguration` will
+        // be a collection of certificates
+        TrustCredentials.CertCollection(certCollection)
+      } getOrElse {
+        // otherwise, we want to pass `TrustCredentials.Unspecified`
+        TrustCredentials.Unspecified
+      }
+
+      val tlsConfig = SslClientConfiguration(
+        hostname = Some(cn),
+        trustCredentials = credentials,
+        keyCredentials = keyCredentials(clientAuth),
+        protocols = enabledProtocols.map(Protocols.Enabled).getOrElse(Protocols.Unspecified)
+      )
+      Stack.Params.empty + Transport.ClientSsl(Some(tlsConfig)) +
+        SslClientEngineFactory.Param(Netty4ClientEngineFactory())
+
+    case TlsClientConfig(_, _, Some(cn), None, Some(certsBundle), clientAuth, enabledProtocols) =>
+      val credentials = TrustCredentials.CertCollection(new File(certsBundle))
 
       val tlsConfig = SslClientConfiguration(
         hostname = Some(cn),
@@ -55,26 +87,6 @@ case class TlsClientConfig(
     case TlsClientConfig(_, Some(false) | None, None, _, _, _, _) =>
       val msg = "tls is configured with validation but `commonName` is not set"
       throw new IllegalArgumentException(msg) with NoStackTrace
-  }
-
-  private def convertCertsToBundle(certs: Seq[String]): TrustCredentials.CertCollection = {
-    // a temporary file to hold the collection of certificates
-    val certCollection = File.createTempFile("certCollection", null)
-    // open the cert paths as Streams...
-    val f = new FileOutputStream(certCollection)
-    for {
-      cert <- certs
-      certStream = new FileInputStream(cert)
-    } { // ...and copy the certs into the cert collection
-      // TODO: can this be made more concise with scala.io?
-      StreamIO.copy(certStream, f)
-    }
-    f.flush()
-    f.close()
-    certCollection.deleteOnExit()
-    // the credentials we'll pass to `SslClientConfiguration` will
-    // be a collection of certificates
-    TrustCredentials.CertCollection(certCollection)
   }
 
   private[this] def keyCredentials(clientAuth: Option[ClientAuth]): KeyCredentials =
