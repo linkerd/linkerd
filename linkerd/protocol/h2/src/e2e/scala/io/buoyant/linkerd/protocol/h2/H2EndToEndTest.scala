@@ -399,6 +399,7 @@ class H2EndToEndTest extends FunSuite {
     val req = Request(Headers(
       Headers.Authority -> "dog",
       Headers.Path -> "/",
+      Headers.Method -> "get",
       LinkerdHeaders.Ctx.Dtab.UserKey -> "/foo=>/bar"
     ), Stream.empty())
     val rsp = await(client(req))
@@ -410,5 +411,53 @@ class H2EndToEndTest extends FunSuite {
     await(dog.server.close())
     await(server.close())
     await(router.close())
+  }
+
+  test("diagnostic tracing with h2 request"){
+    val dog = Downstream.const("dog", "woof")
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  dtab: |
+          |    /svc/dog => /$$/inet/127.1/${dog.port} ;
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(config)
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+
+    val client = Upstream.mk(server)
+
+    def trace(host: String, path: String = "/")(f: Response => Unit) = {
+      val req = Request("http", Method.Trace, host, path, Stream.empty)
+      req.headers.set("l5d-add-context", "true")
+      val rsp = await(client(req))
+      f(rsp)
+    }
+
+    try {
+      val content = s"""|service name: /svc/dog
+                        |client name: /$$/inet/127.1/${dog.port}
+                        |addresses: [127.0.0.1:${dog.port}]
+                        |selected address: 127.0.0.1:${dog.port}
+                        |dtab resolution:
+                        |  /svc/dog
+                        |  /$$/inet/127.1/${dog.port} (/svc/dog=>/$$/inet/127.1/${dog.port})
+                        |""".stripMargin
+      trace("dog") { rsp =>
+        assert(rsp.status == Status.Ok)
+        // assertion is a 'contains' instead of 'equal' since the full response stream contains
+        // dynamically generated text i.e. request duration.
+        assert(await(rsp.stream.readDataString).contains(content))
+        ()
+      }
+    } finally {
+      await(client.close())
+      await(server.close())
+      await(dog.server.close())
+      await(router.close())
+    }
   }
 }
