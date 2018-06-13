@@ -1,14 +1,14 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.linkerd._
 import com.twitter.finagle.http.{Request, Response, Status, param}
+import com.twitter.finagle.naming.buoyant.{RichConnectionFailedExceptionWithPath, RichNoBrokersAvailableException}
 import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
-import com.twitter.finagle._
-import com.twitter.finagle.naming.buoyant.RichNoBrokersAvailableException
 import com.twitter.logging.{Level, Logger}
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.ResponseException
-import scala.util.control.{NoStackTrace, NonFatal}
+import scala.util.control.NonFatal
 
 class ErrorResponder(maxHeaderSize: Int)
   extends SimpleFilter[Request, Response] {
@@ -26,6 +26,8 @@ class ErrorResponder(maxHeaderSize: Int)
         case ErrorResponder.HttpResponseException(rsp) =>
           rsp
         case e: RichNoBrokersAvailableException =>
+          Headers.Err.respond(e.exceptionMessage(), Status.BadGateway, maxHeaderSize)
+        case e: RichConnectionFailedExceptionWithPath =>
           Headers.Err.respond(e.exceptionMessage(), Status.BadGateway, maxHeaderSize)
         case _ =>
           val message = e.getMessage match {

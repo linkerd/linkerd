@@ -146,4 +146,64 @@ object DelegateTree {
         }
         DelegateTree.Union(path, Dentry.nop, delegates: _*)
     }
+
+  /**
+   * Find a leaf in the DelegateTree that satisfies the predicate and returns a list of delegate
+   * tree nodes which form a path from the root of the tree to the satisfying leaf.  For each node
+   * in this path, the node's Path and Dentry are returned.
+   *
+   * @return A list of (Path, Dentry) tuples forming a path from the root of the tree to a leaf
+   *         which matches the predicate.  None if no such leaf exists.
+   */
+  def find[T](
+    tree: DelegateTree[T],
+    predicate: T => Boolean
+  ): Option[List[(Path, String)]] = {
+
+    // We define our own version of Dentry.show to ensure that Dentry.nop is formatted correctly.
+    def show(dentry: Dentry) = if (dentry == Dentry.nop) "" else dentry.show
+
+    tree match {
+      // When we reach a DelegateTree.Leaf we may have found a path.
+      case Leaf(leafPath, dentry, t) if predicate(t) =>
+        Some(List(leafPath -> show(dentry)))
+
+      // Leaf does not satisfy the predicate.
+      case Leaf(_, _, _) =>
+        None
+
+      case Transformation(path, name, _, remainingTree) =>
+        find(remainingTree, predicate).map {
+          // We need to check if this transformation is followed by a leaf.
+          // If so, we need to switch the transformation's dentry with the leaf's dentry. We do
+          // this to make sure that the node list is more readable.
+          case List((leafPath, leafDentry)) =>
+            List(path -> leafDentry, leafPath -> name)
+          case rest =>
+            (path -> name) +: rest
+        }
+
+      case Delegate(path, dentry, remainingTree) =>
+        find(remainingTree, predicate).map { rest =>
+          (path -> show(dentry)) +: rest
+        }
+
+      case Union(path, dentry, remainingWeightedTrees@_*) =>
+        remainingWeightedTrees.map { wd =>
+          find(wd.tree, predicate)
+        }.collectFirst {
+          case Some(rest) => (path -> show(dentry)) +: rest
+        }
+
+      case Alt(path, dentry, remainingTrees@_*) =>
+        remainingTrees.map { d =>
+          find(d, predicate)
+        }.collectFirst {
+          case Some(rest) => (path -> show(dentry)) +: rest
+        }
+
+      case Exception(_, _, _) | Empty(_, _) | Fail(_, _) | Neg(_, _) =>
+        None
+    }
+  }
 }

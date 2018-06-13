@@ -4,7 +4,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
 import com.twitter.finagle.liveness.{FailureAccrualFactory => FFailureAccrualFactory}
-import com.twitter.finagle.naming.buoyant.DstBindingFactory
+import com.twitter.finagle.naming.buoyant.{DstBindingFactory, RichConnectionFailedModule, RichConnectionFailedPathModule}
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
@@ -316,6 +316,7 @@ object StackRouter {
         .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
         .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
         .replace(FFailureAccrualFactory.role, FailureAccrualFactory.module[Req, Rsp])
+        .insertAfter(FFailureAccrualFactory.role, new RichConnectionFailedModule[Req, Rsp])
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {
@@ -347,6 +348,7 @@ object StackRouter {
      *   etc).
      */
     val stk = new StackBuilder[ServiceFactory[Req, Rsp]](stack.nilStack)
+    stk.push(new RichConnectionFailedPathModule[Req, Rsp])
     stk.push(failureRecording)
     stk.push(StackClient.Role.prepFactory, identity[ServiceFactory[Req, Rsp]](_))
     stk.push(factoryToService)

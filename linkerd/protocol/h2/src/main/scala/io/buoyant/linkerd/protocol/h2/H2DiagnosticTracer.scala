@@ -46,7 +46,8 @@ class H2DiagnosticTracer(
       DstBoundCtx.current,
       endpoint,
       namers,
-      dtab)
+      dtab
+    )
 
     routerCtxF.map { ctx =>
       // format current router context

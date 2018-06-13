@@ -1,13 +1,13 @@
 package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.finagle._
-import com.twitter.finagle.buoyant.h2.{Request, Reset, Response}
+import com.twitter.finagle.buoyant.h2.{Request, Reset, Response, Status, Stream}
+import com.twitter.finagle.naming.buoyant.{RichConnectionFailedExceptionWithPath, RichNoBrokersAvailableException}
+import com.twitter.finagle.{Status => _, _}
 import com.twitter.logging.{Level, Logger}
 import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.ResponseException
-import scala.util.control.NoStackTrace
 
 /**
  * Coerces routing failures to the appropriate HTTP/2 error code
@@ -16,7 +16,7 @@ import scala.util.control.NoStackTrace
  * Additional failures are handled upstream (i.e. Netty4ServerDispatcher).
  */
 class ErrorReseter extends SimpleFilter[Request, Response] {
-  import ErrorReseter.{log, RefusedF}
+  import ErrorReseter.{RefusedF, log}
 
   def apply(req: Request, service: Service[Request, Response]) =
     service(req).rescue(handler)
@@ -25,9 +25,14 @@ class ErrorReseter extends SimpleFilter[Request, Response] {
     case e@RoutingFactory.UnknownDst(req, reason) =>
       log.info("unroutable request: %s: %s", req, reason)
       RefusedF
-    case e: NoBrokersAvailableException =>
-      log.info(e, "no available endpoints")
-      RefusedF
+    case e: RichNoBrokersAvailableException =>
+      Future.value(
+        Response(Status.BadGateway, Stream.const(e.exceptionMessage()))
+      )
+    case e: RichConnectionFailedExceptionWithPath =>
+      Future.value(
+        Response(Status.BadGateway, Stream.const(e.exceptionMessage()))
+      )
     case H2ResponseException(rsp) =>
       Future.value(rsp)
   }

@@ -82,4 +82,53 @@ class DelegateTreeTest extends FunSuite {
     assert(orig.simplified == simplified)
   }
 
+  test("find finds leaf") {
+    val tree =
+      Delegate(Path.read("/a"), Dentry.nop,
+        Alt(Path.read("/b"), Dentry.read("/a => /b"),
+          Leaf(Path.read("/c"), Dentry.read("/b => /c | /d"), Path.read("/c")),
+          Leaf(Path.read("/d"), Dentry.read("/b => /c | /d"), Path.read("/d"))
+        )
+      )
+    assert(
+      DelegateTree.find[Path](tree, _ == Path.read("/d")).get ==
+      List(
+        Path.read("/a") -> "",
+        Path.read("/b") -> "/a=>/b",
+        Path.read("/d") -> "/b=>/c | /d"
+      )
+    )
+  }
+
+  test("find not found") {
+    val tree =
+      Delegate(Path.read("/a"), Dentry.nop,
+        Alt(Path.read("/b"), Dentry.read("/a => /b"),
+          Leaf(Path.read("/c"), Dentry.read("/b => /c | /d"), Path.read("/c")),
+          Leaf(Path.read("/d"), Dentry.read("/b => /c | /d"), Path.read("/d"))
+        )
+      )
+    assert(DelegateTree.find[Path](tree, _ == Path.read("/e")).isEmpty)
+  }
+
+  test("find with transformer") {
+    val tree =
+      Delegate(Path.read("/a"), Dentry.nop,
+        Alt(Path.read("/b"), Dentry.read("/a => /b"),
+          Leaf(Path.read("/c"), Dentry.read("/b => /c | /d"), Path.read("/c")),
+          Transformation(Path.read("/d"), "Optimus Prime", Path.read("/d"),
+            Leaf(Path.read("/%/optimus/d"), Dentry.read("/b => /c | /d"), Path.read("/%/optimus/d"))
+          )
+        )
+      )
+    assert(
+      DelegateTree.find[Path](tree, _ == Path.read("/%/optimus/d")).get ==
+        List(
+          Path.read("/a") -> "",
+          Path.read("/b") -> "/a=>/b",
+          Path.read("/d") -> "/b=>/c | /d",
+          Path.read("/%/optimus/d") -> "Optimus Prime"
+        )
+    )
+  }
 }
