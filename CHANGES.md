@@ -1,3 +1,13 @@
+## 1.4.3 2018-06-12
+
+This is a follow up release that includes diagnostic tracing for H2 requests.
+
+Full release notes:
+
+* Add diagnostic tracing for H2 requests, allowing Linkerd to add h2 request routing information at
+the end of h2 streams to downstream services.
+* Pass stack params to announcer plugins, allowing them to report metrics correctly. 
+
 ## 1.4.2 2018-06-11
 
 Linkerd 1.4.2 continues its focus on diagnostics and stability. This release introduces Diagnostic 
