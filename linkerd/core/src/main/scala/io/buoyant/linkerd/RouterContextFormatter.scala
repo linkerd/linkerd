@@ -13,14 +13,6 @@ object RouterContextFormatter {
 
   private[this] val EmptyDelegateTree = DelegateTree.Empty(Path.empty, Dentry.nop)
 
-  private[this] case class DelegationNode(
-    path: String,
-    dentry: String,
-    dTreeNode: DelegateTree[_] = DelegateTree.Empty(Path.empty, Dentry.nop)
-  ) {
-    override def toString: String = if (dentry.length == 0) path else s"$path ($dentry)"
-  }
-
   def formatCtx(
     routerLabel: String,
     elapsed: Stopwatch.Elapsed,
@@ -77,9 +69,9 @@ object RouterContextFormatter {
         ) match {
             case Some(delegation) => delegation.map {
               case (path, "") =>
-                s"  ${path.show}"
+                s"    ${path.show}"
               case (path, dentry) =>
-                s"  ${path.show} ($dentry)"
+                s"    ${path.show} ($dentry)"
             }
             case None => Nil
           }
