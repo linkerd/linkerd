@@ -69,9 +69,9 @@ object RouterContextFormatter {
         ) match {
             case Some(delegation) => delegation.map {
               case (path, "") =>
-                s"    ${path.show}"
+                s"  ${path.show}"
               case (path, dentry) =>
-                s"    ${path.show} ($dentry)"
+                s"  ${path.show} ($dentry)"
             }
             case None => Nil
           }
@@ -103,7 +103,7 @@ object RouterContextFormatter {
         |addresses: [${selectedAddresses.getOrElse(Set.empty).mkString(", ")}]
         |selected address: $selectedAddress
         |dtab resolution:
-        |${dtabResolution.map("  " + _).mkString(System.lineSeparator)}
+        |${dtabResolution.mkString(System.lineSeparator)}
         |""".stripMargin
   }
 }
