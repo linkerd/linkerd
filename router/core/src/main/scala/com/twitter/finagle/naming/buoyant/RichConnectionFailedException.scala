@@ -51,9 +51,7 @@ class RichConnectionFailedExceptionWithPath(
     case Address.Inet(isa, _) => isa.toString.stripPrefix("/")
   }.mkString("[", ", ", "]")
 
-  private[this] val resolutionList = resolution.map { node =>
-    s"  $node"
-  }.mkString("\n")
+  private[this] val resolutionList = resolution.mkString("\n")
 
   override def exceptionMessage(): String =
     s"""Unable to establish connection to $remote.
