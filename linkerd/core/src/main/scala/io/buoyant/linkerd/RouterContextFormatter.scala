@@ -69,9 +69,9 @@ object RouterContextFormatter {
         ) match {
             case Some(delegation) => delegation.map {
               case (path, "") =>
-                s"  ${path.show}"
+                s"    ${path.show}"
               case (path, dentry) =>
-                s"  ${path.show} ($dentry)"
+                s"    ${path.show} ($dentry)"
             }
             case None => Nil
           }
