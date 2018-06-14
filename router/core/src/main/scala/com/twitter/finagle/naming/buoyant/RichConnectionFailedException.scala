@@ -21,7 +21,8 @@ case class RichConnectionFailedException(
   namer: NameInterpreter
 ) extends Exception(null, null)
   with NoStackTrace
-  with SourcedException {
+  with SourcedException
+  with FailureFlags[RichConnectionFailedException] {
 
   def withPath(service: Dst.Path): Future[Nothing] = {
     RichConnectionFailedExceptionWithPath(
@@ -31,6 +32,11 @@ case class RichConnectionFailedException(
       namer
     )
   }
+
+  override private[finagle] def flags = FailureFlags.Retryable
+
+  override protected def copyWithFlags(flags: Long): RichConnectionFailedException =
+    throw new IllegalStateException("Cannot modify flags of RichConnectionFailedException")
 }
 
 /**
@@ -45,7 +51,8 @@ class RichConnectionFailedExceptionWithPath(
   resolution: Seq[String]
 ) extends Exception(null, null)
   with NoStackTrace
-  with SourcedException {
+  with SourcedException
+  with FailureFlags[RichConnectionFailedExceptionWithPath] {
 
   private[this] val addressList = addresses.collect {
     case Address.Inet(isa, _) => isa.toString.stripPrefix("/")
@@ -63,6 +70,11 @@ selected address: ${remote.toString.stripPrefix("/")}
 dtab resolution:
 $resolutionList
 """
+
+  override private[finagle] def flags = FailureFlags.Retryable
+
+  override protected def copyWithFlags(flags: Long): RichConnectionFailedExceptionWithPath =
+    throw new IllegalStateException("Cannot modify flags of RichConnectionFailedExceptionWithPath")
 }
 
 object RichConnectionFailedExceptionWithPath {
