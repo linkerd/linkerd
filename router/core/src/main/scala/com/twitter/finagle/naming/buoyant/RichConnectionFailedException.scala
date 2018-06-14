@@ -13,7 +13,7 @@ import scala.util.control.NoStackTrace
  * exception also includes additional information about the routing context for the purposes of
  * displaying a more useful error message.  Since this exception is typically thrown in a router's
  * client stack, the service name is not available and the `withPath` method can be used to
- * argument this exception with the service name.
+ * augment this exception with the service name.
  */
 case class RichConnectionFailedException(
   client: Option[Name.Bound],
