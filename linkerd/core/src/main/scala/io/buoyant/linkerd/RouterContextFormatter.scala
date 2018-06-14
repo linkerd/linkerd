@@ -6,7 +6,6 @@ import com.twitter.finagle.client.Transporter.EndpointAddr
 import com.twitter.finagle.naming.buoyant.DstBindingFactory
 import com.twitter.util.{Future, Stopwatch}
 import io.buoyant.namer.{DelegateTree, Delegator}
-import io.buoyant.namer.DelegateTree._
 import io.buoyant.router.RoutingFactory.BaseDtab
 
 object RouterContextFormatter {
