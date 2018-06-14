@@ -244,8 +244,7 @@ namers:
   tls:
     disableValidation: false
     commonName: consul.io
-    trustCerts:
-    - /certificates/cacert.pem
+    trustCertsBundle: /certificates/cacert.pem
     clientAuth:
       certPath: /certificates/cert.pem
       keyPath: /certificates/key.pem
@@ -257,7 +256,8 @@ Key               | Default Value                              | Description
 ----------------- | ------------------------------------------ | -----------
 disableValidation | false                                      | Enable this to skip hostname validation (unsafe). Setting `disableValidation: true` is incompatible with `clientAuth`.
 commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
-trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation.
+trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation (deprecated, please use trustCertsBundle).
+trustCertsBundle  | empty                                      | A file path of CA certs bundle to use for common name validation.
 clientAuth        | none                                       | A client auth object used to sign requests.
 
 If present, a clientAuth object must contain two properties:

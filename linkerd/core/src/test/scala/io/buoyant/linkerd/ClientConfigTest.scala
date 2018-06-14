@@ -35,7 +35,33 @@ class ClientConfigTest extends FunSuite {
         |  keyPath: key.pem
       """.stripMargin
     Parser.objectMapper(yaml, Nil).readValue[TlsClientConfig](yaml)
+  }
 
+  test("should use configured trust bundle") {
+    val yaml =
+      """
+        |commonName: foo
+        |clientAuth:
+        |  certPath: cert.pem
+        |  keyPath: key.pem
+        |trustCertsBundle: trust-certs.pem
+      """.stripMargin
+    val config = Parser.objectMapper(yaml, Nil).readValue[TlsClientConfig](yaml)
+    config.trustCertsBundle.get should equal("trust-certs.pem")
+  }
+
+  test("should use configured trust certs") {
+    val yaml =
+      """
+        |commonName: foo
+        |clientAuth:
+        |  certPath: cert.pem
+        |  keyPath: key.pem
+        |trustCerts:
+        |  - trust-certs.pem
+      """.stripMargin
+    val config = Parser.objectMapper(yaml, Nil).readValue[TlsClientConfig](yaml)
+    config.trustCerts.get should contain only "trust-certs.pem"
   }
 
   test("should parse tls protocols") {

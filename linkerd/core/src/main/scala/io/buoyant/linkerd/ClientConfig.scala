@@ -6,6 +6,7 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.{ClientAuth, ParamsMaybeWith, PathMatcher, TlsClientConfig => FTlsClientConfig}
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service._
+import com.twitter.logging.Logger
 import io.buoyant.router.RetryBudgetConfig
 import io.buoyant.router.RetryBudgetModule.param
 
@@ -41,6 +42,7 @@ case class TlsClientConfig(
   enabled: Option[Boolean],
   disableValidation: Option[Boolean],
   commonName: Option[String],
+  trustCertsBundle: Option[String] = None,
   trustCerts: Option[Seq[String]] = None,
   clientAuth: Option[ClientAuth] = None,
   protocols: Option[Seq[String]] = None
@@ -49,12 +51,18 @@ case class TlsClientConfig(
     !disableValidation.getOrElse(false) || clientAuth.isEmpty,
     "disableValidation: true is incompatible with clientAuth"
   )
+
+  if (trustCerts.isDefined) {
+    Logger.get("TlsClientConfig").warning("trustCerts configuration option is deprecated, please consider using trustCertsBundle")
+  }
+
   def params(vars: Map[String, String]): Stack.Params =
     FTlsClientConfig(
       enabled,
       disableValidation,
       commonName.map(PathMatcher.substitute(vars, _)),
       trustCerts,
+      trustCertsBundle,
       clientAuth,
       protocols
     ).params

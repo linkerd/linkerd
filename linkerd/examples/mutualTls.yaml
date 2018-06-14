@@ -10,8 +10,7 @@ routers:
   client:
     tls:
       commonName: foo
-      trustCerts:
-      - /foo/cacert.pem
+      trustCertsBundle: /foo/cacert.pem
       clientAuth:
         certPath: /foo/clientCert.pem
         keyPath: /foo/clientKey.pem
@@ -23,6 +22,6 @@ routers:
       certPath: /foo/cert.pem
       keyPath: /foo/key.pem
       # clients must provide a valid certificate
-      requireClientAuth: true 
+      requireClientAuth: true
       # the authority used to validate client certificates
       caCertPath: /foo/cacert.pem
