@@ -8,7 +8,7 @@ import com.twitter.util.Future
 
 /**
  * When Linkerd receives an HTTP/1.0 response that is terminated by closing the connection, the
- * request will not have a Content-Length header.  This causes Linkerd to interpret the response
+ * response will not have a Content-Length header.  This causes Linkerd to interpret the response
  * as chunk encoded.  To avoid sending chunk encoded responses to HTTP/1.0 clients, we fully buffer
  * such responses and set the Content-Length header.
  */
