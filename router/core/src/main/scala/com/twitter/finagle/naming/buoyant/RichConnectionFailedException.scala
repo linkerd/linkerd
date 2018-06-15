@@ -60,7 +60,7 @@ class RichConnectionFailedExceptionWithPath(
 
   private[this] val resolutionList = resolution.mkString("\n")
 
-  override def exceptionMessage(): String =
+  override lazy val exceptionMessage: String =
     s"""Unable to establish connection to $remote.
 
 service name: ${service.path.show}
