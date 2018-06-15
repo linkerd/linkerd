@@ -31,7 +31,7 @@ class ErrorReseter extends SimpleFilter[Request, Response] {
       )
     case e: RichConnectionFailedExceptionWithPath =>
       Future.value(
-        Response(Status.BadGateway, Stream.const(e.exceptionMessage()))
+        Response(Status.BadGateway, Stream.const(e.exceptionMessage))
       )
     case H2ResponseException(rsp) =>
       Future.value(rsp)

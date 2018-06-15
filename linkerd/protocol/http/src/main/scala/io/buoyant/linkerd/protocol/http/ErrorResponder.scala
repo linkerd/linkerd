@@ -28,7 +28,7 @@ class ErrorResponder(maxHeaderSize: Int)
         case e: RichNoBrokersAvailableException =>
           Headers.Err.respond(e.exceptionMessage(), Status.BadGateway, maxHeaderSize)
         case e: RichConnectionFailedExceptionWithPath =>
-          Headers.Err.respond(e.exceptionMessage(), Status.BadGateway, maxHeaderSize)
+          Headers.Err.respond(e.exceptionMessage, Status.BadGateway, maxHeaderSize)
         case _ =>
           val message = e.getMessage match {
             case null => e.getClass.getName
