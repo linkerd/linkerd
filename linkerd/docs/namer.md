@@ -59,7 +59,7 @@ $ cat config/web
 ```
 
 <aside class="warning">
-Due to the implmentation of file watches in Java, this namer consumes a high
+Due to the implementation of file watches in Java, this namer consumes a high
 amount of CPU and is not suitable for production use.
 </aside>
 
@@ -244,8 +244,7 @@ namers:
   tls:
     disableValidation: false
     commonName: consul.io
-    trustCerts:
-    - /certificates/cacert.pem
+    trustCertsBundle: /certificates/cacert.pem
     clientAuth:
       certPath: /certificates/cert.pem
       keyPath: /certificates/key.pem
@@ -257,7 +256,8 @@ Key               | Default Value                              | Description
 ----------------- | ------------------------------------------ | -----------
 disableValidation | false                                      | Enable this to skip hostname validation (unsafe). Setting `disableValidation: true` is incompatible with `clientAuth`.
 commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
-trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation.
+trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation (deprecated, please use trustCertsBundle).
+trustCertsBundle  | empty                                      | A file path of CA certs bundle to use for common name validation.
 clientAuth        | none                                       | A client auth object used to sign requests.
 
 If present, a clientAuth object must contain two properties:
@@ -296,7 +296,8 @@ dtab: |
 ```
 
 Linkerd provides support for service discovery via
-[Kubernetes](https://k8s.io/).
+[Kubernetes](https://k8s.io/).  The internal state of the Kubernetes namer can be viewed at the
+admin endpoint: `/namer_state/<prefix>.json`.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -816,6 +817,11 @@ section below).
 If the name matches the pattern in the config, it will be replaced by the
 name in the config.  Additionally, any variables in the pattern will capture
 the value of the matching path segment and may be used in the final name.
+
+Note: Pattern matches are greedy.  For example patterns like "{foo}{bar}"
+are ambiguous.  With the capture implementation, {foo} would capture the
+whole segment and {bar} would be empty. Similarly, the pattern "{foo}-{bar}"
+on the segment "a-b-c" would capture "a-b" into foo and "c" into bar.
 
 Key     | Default Value    | Description
 ------- | ---------------- | -----------

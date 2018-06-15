@@ -34,12 +34,13 @@ class ServiceNamer(
   private[this] val service: (String, String, Option[String]) => Activity[Svc] =
     untupled(Memoize[(String, String, Option[String]), Activity[Svc]] {
       case (nsName, serviceName, labelSelector) =>
-        mkApi(nsName)
+        val instrumentedAct = mkApi(nsName)
           .service(serviceName)
           .activity(
             Svc.fromResponse(nsName, serviceName),
             labelSelector = labelSelector
           ) { case (svc, event) => svc.update(event) }
+        instrumentedAct.underlying
     })
 
   def lookup(path: Path): Activity[NameTree[Name]] =

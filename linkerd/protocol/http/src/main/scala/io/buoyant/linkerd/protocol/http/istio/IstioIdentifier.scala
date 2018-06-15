@@ -1,7 +1,7 @@
 package io.buoyant.linkerd.protocol.http.istio
 
 import com.twitter.finagle.http.Request
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio._
@@ -43,7 +43,8 @@ case class IstioIdentifierConfig(
 
   override def newIdentifier(
     prefix: Path,
-    baseDtab: () => Dtab = () => Dtab.base
+    baseDtab: () => Dtab = () => Dtab.base,
+    routerParams: Stack.Params = Stack.Params.empty
   ): Identifier[Request] = {
 
     new IstioIdentifier(

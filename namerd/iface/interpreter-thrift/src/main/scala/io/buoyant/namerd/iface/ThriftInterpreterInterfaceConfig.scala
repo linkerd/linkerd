@@ -2,19 +2,15 @@ package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Namer, Path, Stack, Thrift, ThriftMux}
+import com.twitter.finagle.{Namer, Path, Stack, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param
 import com.twitter.scrooge.ThriftService
-import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
 import io.buoyant.namerd.iface.ThriftNamerInterface.LocalStamper
 import io.buoyant.namerd._
 import java.net.{InetAddress, InetSocketAddress}
 
 import com.twitter.finagle.tracing.NullTracer
-
-import scala.util.Random
 
 case class ThriftInterpreterInterfaceConfig(
   cache: Option[CapacityConfig] = None
@@ -65,15 +61,19 @@ case class ThriftServable(addr: InetSocketAddress, iface: ThriftService, params:
 case class CapacityConfig(
   bindingCacheActive: Option[Int] = None,
   bindingCacheInactive: Option[Int] = None,
+  bindingCacheInactiveTTLSecs: Option[Int] = None,
   addrCacheActive: Option[Int] = None,
-  addrCacheInactive: Option[Int] = None
+  addrCacheInactive: Option[Int] = None,
+  addrCacheInactiveTTLSecs: Option[Int] = None
 ) {
   private[this] val default = ThriftNamerInterface.Capacity.default
 
   def capacity = ThriftNamerInterface.Capacity(
     bindingCacheActive = bindingCacheActive.getOrElse(default.bindingCacheActive),
     bindingCacheInactive = bindingCacheInactive.getOrElse(default.bindingCacheInactive),
+    bindingCacheInactiveTTLSecs = bindingCacheInactiveTTLSecs.getOrElse(default.bindingCacheInactiveTTLSecs),
     addrCacheActive = addrCacheActive.getOrElse(default.addrCacheActive),
-    addrCacheInactive = addrCacheInactive.getOrElse(default.addrCacheInactive)
+    addrCacheInactive = addrCacheInactive.getOrElse(default.addrCacheInactive),
+    addrCacheInactiveTTLSecs = addrCacheInactiveTTLSecs.getOrElse(default.addrCacheInactiveTTLSecs)
   )
 }

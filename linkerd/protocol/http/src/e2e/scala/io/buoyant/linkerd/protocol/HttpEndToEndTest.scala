@@ -808,6 +808,70 @@ class HttpEndToEndTest
     }
   }
 
+  test("requests with Max-Forwards header, l5d-add-context and method TRACE are sent downstream") {
+    @volatile var headers: HeaderMap = null
+    @volatile var method: Method = null
+    val downstream = Downstream.mk("dog") { req =>
+      headers = req.headerMap
+      method = req.method
+      val resp = Response()
+      resp.contentString = "response from downstream"
+      resp
+    }
+    val dtab = Dtab.read(s"""
+      /svc/* => /$$/inet/127.1/${downstream.port} ;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.headerMap.add("Max-Forwards", "5")
+    req.headerMap.add("l5d-add-context", "true")
+    req.method = Method.Trace
+    val resp = await(client(req))
+    assert(resp.contentString.contains("response from downstream"))
+    assert(headers.contains("Max-Forwards"))
+    assert(headers.contains("l5d-add-context"))
+    assert(method == Method.Trace)
+
+  }
+
+  test("prints out human readable dtab resolution path"){
+    val downstream = Downstream.mk("dog") { req =>
+      Response()
+    }
+
+    val dtab = Dtab.read(s"""
+      /srv => /$$/inet/127.1/${downstream.port};
+      /svc => /srv;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.method = Method.Trace
+    req.headerMap.add("Max-Forwards", "5")
+    req.headerMap.add("l5d-add-context", "true")
+    val resp = await(client(req))
+    assert(resp.contentString.contains(
+      s"""|client name: /$$/inet/127.1/${downstream.port}
+          |addresses: [127.0.0.1:${downstream.port}]
+          |selected address: 127.0.0.1:${downstream.port}
+          |dtab resolution:
+          |  /svc/dog
+          |  /srv/dog (/svc=>/srv)
+          |  /$$/inet/127.1/${downstream.port}/dog (/srv=>/$$/inet/127.1/${downstream.port})
+          |""".stripMargin))
+  }
+
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
     // Arrange
     val stats = new InMemoryStatsReceiver

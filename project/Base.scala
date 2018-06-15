@@ -32,7 +32,7 @@ object Base {
 class Base extends Build {
   import Base._
 
-  val headVersion = "1.4.0"
+  val headVersion = "1.4.3"
   val openJdkVersion = "8u151"
 
   object Git {
@@ -106,7 +106,15 @@ class Base extends Build {
         Some("snapshots" at nexus + "content/repositories/snapshots")
       else
         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-    }
+    },
+    mappings in (Compile, packageBin) ~= { (ms: Seq[(File,String)]) => ms filter {
+      case (file,toPath) => {
+        file.getPath match {
+          case nodeModulesRE() => false
+          case _ => true
+        }
+      }
+    }}
   )
 
   val aggregateSettings = Seq(
@@ -281,11 +289,18 @@ class Base extends Build {
 
     /** Enable the test config for a project with basic dependencies */
     def withTests(): Project = project.dependsOn(testUtil % Test)
+    .settings(inConfig(Test)(Defaults.testSettings ++ Seq(
+      fork := true,
+      baseDirectory := new File(".")
+    )))
 
     /** Enables e2e test config for a project with basic dependencies */
     def withE2e(): Project = project
       .configs(EndToEndTest)
-      .settings(inConfig(EndToEndTest)(Defaults.testSettings ++ ScoverageSbtPlugin.projectSettings))
+      .settings(inConfig(EndToEndTest)(Defaults.testSettings ++ ScoverageSbtPlugin.projectSettings ++ Seq(
+        fork := true,
+        baseDirectory := new File(".")
+      )))
       .settings(libraryDependencies += "org.scoverage" %% "scalac-scoverage-runtime" % "1.3.0" % EndToEndTest)
       .dependsOn(testUtil % EndToEndTest)
 

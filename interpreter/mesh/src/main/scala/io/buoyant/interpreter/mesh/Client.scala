@@ -2,12 +2,14 @@ package io.buoyant.interpreter.mesh
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util.{NonFatal => _, _}
-import io.buoyant.grpc.runtime.{GrpcStatus, Stream}
-import io.buoyant.namer.{ConfiguredDtabNamer, Delegator, DelegateTree, Metadata}
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
+import io.buoyant.grpc.runtime.Stream
+import io.buoyant.namer.{DelegateTree, Delegator, InstrumentedActivity, InstrumentedVar, Metadata}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
 import java.net.{InetAddress, InetSocketAddress}
@@ -20,7 +22,7 @@ object Client {
     service: Service[h2.Request, h2.Response],
     backoffs: scala.Stream[Duration],
     timer: Timer
-  ): NameInterpreter with Delegator = {
+  ): NameInterpreter with Delegator with Admin.WithHandlers = {
     val interpreter = new mesh.Interpreter.Client(service)
     val resolver = new mesh.Resolver.Client(service)
     val delegator = new mesh.Delegator.Client(service)
@@ -49,7 +51,29 @@ object Client {
     delegator: mesh.Delegator,
     backoffs: scala.Stream[Duration],
     timer: Timer
-  ) extends NameInterpreter with Delegator {
+  ) extends NameInterpreter with Delegator with Admin.WithHandlers {
+
+    private case class InstrumentedBind(
+      act: InstrumentedActivity[NameTree[Name.Bound]],
+      stream: StreamState[mesh.BindReq, mesh.BoundTreeRsp]
+    )
+    private case class InstrumentedResolve(
+      act: InstrumentedVar[Addr],
+      stream: StreamState[mesh.ReplicasReq, mesh.Replicas]
+    )
+    private case class InstrumentedDtab(
+      act: InstrumentedActivity[Dtab],
+      stream: StreamState[mesh.DtabReq, mesh.DtabRsp]
+    )
+
+    private[this] val bindCacheMu = new {}
+    @volatile private[this] var bindCache = Map.empty[(Dtab, Path), InstrumentedBind]
+
+    private[this] val resolveCacheMu = new {}
+    @volatile private[this] var resolveCache = Map.empty[Path, InstrumentedResolve]
+
+    private[this] val dtabCacheMu = new {}
+    @volatile private[this] var dtabCache: InstrumentedDtab = null
 
     /**
      * When observed, streams bound trees from the mesh Interpreter.
@@ -58,16 +82,41 @@ object Client {
      * replica resolutions from the mesh Resolver.
      */
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] = {
-      val open = () => interpreter.streamBoundTree(mkBindReq(root, path, dtab))
-      streamActivity(open, decodeBoundTree, backoffs, timer)
+      val key = (dtab, path)
+      bindCacheMu.synchronized {
+        bindCache.get(key) match {
+          case Some(bind) => bind.act.underlying
+          case None =>
+            val streamState = new StreamState[mesh.BindReq, mesh.BoundTreeRsp]
+            val open = () => {
+              val req = mkBindReq(root, path, dtab)
+              streamState.recordApiCall(req)
+              interpreter.streamBoundTree(req)
+            }
+            val bind = streamActivity(open, decodeBoundTree, backoffs, timer, streamState)
+            bindCache += (key -> InstrumentedBind(bind, streamState))
+            bind.underlying
+        }
+      }
     }
 
     /**
-     * When observed, streams dtabs from the mesh server and
+     * When observed, streams dtabs from the mesh server.
      */
     override lazy val dtab: Activity[Dtab] = {
-      val open = () => delegator.streamDtab(mkDtabReq(root))
-      streamActivity(open, decodeDtab, backoffs, timer)
+      dtabCacheMu.synchronized {
+        if (dtabCache != null) {
+          dtabCache.act.underlying
+        } else {
+          val streamState = new StreamState[mesh.DtabReq, mesh.DtabRsp]
+          val open = () => {
+            val req = mkDtabReq(root)
+            streamState.recordApiCall(req)
+            delegator.streamDtab(req)
+          }
+          streamActivity(open, decodeDtab, backoffs, timer, streamState).underlying
+        }
+      }
     }
 
     override def delegate(
@@ -86,8 +135,21 @@ object Client {
     private[this] val resolve: Path => Var[Addr] = {
       case Path.empty => Var.value(Addr.Failed("empty"))
       case id =>
-        val open = () => resolver.streamReplicas(mkReplicasReq(id))
-        streamVar(Addr.Pending, open, replicasToAddr, backoffs, timer)
+        resolveCacheMu.synchronized {
+          resolveCache.get(id) match {
+            case Some(resolution) => resolution.act.underlying
+            case None =>
+              val streamState = new StreamState[mesh.ReplicasReq, mesh.Replicas]
+              val open = () => {
+                val req = mkReplicasReq(id)
+                streamState.recordApiCall(req)
+                resolver.streamReplicas(req)
+              }
+              val resolution = streamVar(Addr.Pending, open, replicasToAddr, backoffs, timer, streamState)
+              resolveCache += (id -> InstrumentedResolve(resolution, streamState))
+              resolution.underlying
+          }
+        }
     }
 
     private[this] val fromBoundNameTree: mesh.BoundNameTree => NameTree[Name.Bound] =
@@ -105,6 +167,63 @@ object Client {
       case mesh.DelegateTreeRsp(Some(ptree)) => Some(fromBoundDelegateTree(ptree))
       case _ => None
     }
+
+    override def adminHandlers: Seq[Admin.Handler] = Seq(
+      Admin.Handler(
+        s"/interpreter_state/io.l5d.mesh${root.show}.json",
+        new ClientStateHandler
+      )
+    )
+
+    class ClientStateHandler extends Service[Request, Response] {
+
+      private[this] val mapper = Parser.jsonObjectMapper(Nil)
+
+      override def apply(request: Request): Future[Response] = {
+        val binds = bindCache
+        val resolves = resolveCache
+        val dtab = dtabCache
+
+        val bindState = binds.groupBy {
+          case ((dtab, path), bind) => path
+        }.map {
+          case (path, binds) =>
+            path.show -> binds.map {
+              case ((dtab, _), InstrumentedBind(act, stream)) =>
+                val snapshot = act.stateSnapshot().map { treeOpt =>
+                  treeOpt.map(_.show)
+                }
+                dtab.show -> Map(
+                  "state" -> snapshot,
+                  "watch" -> stream
+                )
+            }
+        }
+        val resolveState = resolves.map {
+          case (path, InstrumentedResolve(act, stream)) =>
+            path.show -> Map(
+              "state" -> act.stateSnapshot(),
+              "watch" -> stream
+            )
+        }
+        val dtabState = Option(dtab).map { dtab =>
+          "dtab" -> Map(
+            "state" -> dtab.act.stateSnapshot(),
+            "watch" -> dtab.stream
+          )
+        }
+        val state = Map(
+          "bind" -> bindState,
+          "resolve" -> resolveState
+        ) ++ dtabState
+
+        val json = mapper.writeValueAsString(state)
+        val res = Response()
+        res.mediaType = MediaType.Json
+        res.contentString = json
+        Future.value(res)
+      }
+    }
   }
 
   /**
@@ -120,8 +239,9 @@ object Client {
     open: () => Stream[S],
     toT: Try[S] => Option[T],
     backoffs0: scala.Stream[Duration],
-    timer: Timer
-  ): Var[T] = Var.async[T](init) { state =>
+    timer: Timer,
+    streamState: StreamState[_, S]
+  ): InstrumentedVar[T] = InstrumentedVar[T](init) { state =>
     implicit val timer0 = timer
 
     // As we receive streamed messages, we are careful not to release
@@ -136,7 +256,9 @@ object Client {
       releasePrior: () => Future[Unit]
     ): Future[Unit] =
       if (closed) releasePrior().rescue(_rescueUnit)
-      else rsps.recv().transform {
+      else rsps.recv().respond { rep =>
+        streamState.recordResponse(rep.map(_.value))
+      }.transform {
         case Throw(_) if closed =>
           releasePrior().rescue(_rescueUnit)
 
@@ -166,6 +288,7 @@ object Client {
     val f = loop(open(), backoffs0, _releaseNop)
     Closable.make { _ =>
       closed = true
+      streamState.recordStreamEnd()
       f.raise(Failure("closed", Failure.Interrupted))
       f
     }
@@ -182,8 +305,9 @@ object Client {
     open: () => Stream[S],
     toT: S => Option[T],
     bos: scala.Stream[Duration],
-    timer: Timer
-  ): Activity[T] = {
+    timer: Timer,
+    state: StreamState[_, S]
+  ): InstrumentedActivity[T] = {
     val toState: Try[S] => Option[Activity.State[T]] = {
       case Throw(e) => Some(Activity.Failed(e))
       case Return(s) =>
@@ -192,7 +316,7 @@ object Client {
           case Some(t) => Some(Activity.Ok(t))
         }
     }
-    Activity(streamVar(Activity.Pending, open, toState, bos, timer))
+    new InstrumentedActivity(streamVar(Activity.Pending, open, toState, bos, timer, state))
   }
 
   private[this] val decodeDtab: mesh.DtabRsp => Option[Dtab] = {

@@ -5,7 +5,7 @@ import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.param.Label
-import com.twitter.finagle.{Dtab, Path, Service, http}
+import com.twitter.finagle._
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.{ClientConfig, IngressCache}
@@ -52,7 +52,8 @@ case class IngressIdentifierConfig(
 
   override def newIdentifier(
     prefix: Path,
-    baseDtab: () => Dtab = () => Dtab.base
+    baseDtab: () => Dtab = () => Dtab.base,
+    routerParams: Stack.Params = Stack.Params.empty
   ): Identifier[Request] = {
     val client = mkClient(Params.empty).configured(Label("ingress-identifier"))
     new IngressIdentifier(prefix, baseDtab, namespace, client.newService(dst), ingressClassAnnotation.getOrElse("linkerd"), ignoreDefaultBackends.getOrElse(false))

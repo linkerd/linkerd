@@ -1,8 +1,8 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Namer, Dtab, Path, Service}
-import com.twitter.finagle.http.{Status, Request, Response}
+import com.twitter.finagle.{Dtab, Namer, Path, Service}
+import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.util.Future
 import io.buoyant.admin.names.DelegateApiHandler
 import io.buoyant.namer.Delegator

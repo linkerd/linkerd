@@ -155,21 +155,17 @@ object DstBindingFactory {
       def mk(dst: Dst.Path): ServiceFactory[Req, Rsp] = {
         // dtabs aren't available when NoBrokers is thrown so we add them here
         // as well as add a binding timeout
-        val dyn = new ServiceFactoryProxy(new DynBoundFactory(dst.bind(namer), treeCache)) {
+        val underlying = new DynBoundFactory(dst.path, dst.bind(namer), treeCache, bindingTimeout.timeout)
+        val dyn = new ServiceFactoryProxy(underlying) {
           override def apply(conn: ClientConnection) = {
             val exc = new RequestTimeoutException(bindingTimeout.timeout, s"dyn binding ${dst.path.show}")
             self(conn).rescue(handleNoBrokers).raiseWithin(bindingTimeout.timeout, exc)
           }
 
           private val handleNoBrokers: PartialFunction[Throwable, Future[Service[Req, Rsp]]] = {
-            case e: NoBrokersAvailableException => nbae
+            case e: NoBrokersAvailableException => RichNoBrokersAvailableException(dst, namer)
           }
 
-          private lazy val nbae = Future.exception(new NoBrokersAvailableException(
-            dst.path.show,
-            dst.baseDtab,
-            dst.localDtab
-          ))
         }
 
         pathMk(dst, dyn)
@@ -219,4 +215,6 @@ object DstBindingFactory {
 
     def status = Status.Open
   }
+
+  case class DynTimeout(timeout: Duration) extends Throwable
 }

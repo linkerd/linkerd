@@ -2,7 +2,7 @@ package io.buoyant.linkerd.protocol.http
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.Request
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.{Dtab, Path, Stack}
 import io.buoyant.linkerd.IdentifierInitializer
 import io.buoyant.linkerd.protocol.HttpIdentifierConfig
 import io.buoyant.router.RoutingFactory.Identifier
@@ -21,6 +21,7 @@ case class StaticIdentifierConfig(path: Path) extends HttpIdentifierConfig {
   @JsonIgnore
   override def newIdentifier(
     prefix: Path,
-    baseDtab: () => Dtab = () => Dtab.base
+    baseDtab: () => Dtab = () => Dtab.base,
+    routerParams: Stack.Params = Stack.Params.empty
   ): Identifier[Request] = new StaticIdentifier(prefix ++ path, baseDtab)
 }

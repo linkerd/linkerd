@@ -1,9 +1,10 @@
 package io.buoyant.namerd.iface
 
-import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
+import com.twitter.conversions.time._
+import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util._
-import io.buoyant.namerd.iface.ThriftNamerInterface.{Stamp, Observer}
+import io.buoyant.namerd.iface.ThriftNamerInterface.{Observer, Stamp}
 import org.scalatest.FunSuite
 
 class ObserverCacheTest extends FunSuite {
@@ -43,7 +44,7 @@ class ObserverCacheTest extends FunSuite {
     var count = 0
 
     val stats = new InMemoryStatsReceiver
-    val cache = new ObserverCache[String, String](1, 0, stats, { _: String =>
+    val cache = new ObserverCache[String, String](1, 0, Int.MaxValue, stats, { _: String =>
       count += 1
       testObserver[String]().obs
     })
@@ -60,7 +61,7 @@ class ObserverCacheTest extends FunSuite {
   test("observer cache limits active observations") {
 
     val stats = new InMemoryStatsReceiver
-    val cache = new ObserverCache[String, String](2, 0, stats, _ => testObserver().obs)
+    val cache = new ObserverCache[String, String](2, 0, Int.MaxValue, stats, _ => testObserver().obs)
 
     // insert "one" and "two" into the active cache
     assert(cache.get("one").isReturn)
@@ -78,7 +79,7 @@ class ObserverCacheTest extends FunSuite {
     val two = testObserver[String]()
 
     val stats = new InMemoryStatsReceiver
-    val cache = new ObserverCache[String, String](1, 1, stats, {
+    val cache = new ObserverCache[String, String](1, 1, Int.MaxValue, stats, {
       case "one" => one.obs
       case "two" => two.obs
     })
@@ -103,7 +104,7 @@ class ObserverCacheTest extends FunSuite {
     val one = testObserver[String]()
 
     val stats = new InMemoryStatsReceiver
-    val cache = new ObserverCache[String, String](1, 1, stats, {
+    val cache = new ObserverCache[String, String](1, 1, Int.MaxValue, stats, {
       case "one" => one.obs
     })
 
@@ -133,7 +134,7 @@ class ObserverCacheTest extends FunSuite {
     val two = testObserver[String]()
 
     val stats = new InMemoryStatsReceiver
-    val cache = new ObserverCache[String, String](2, 1, stats, {
+    val cache = new ObserverCache[String, String](2, 1, Int.MaxValue, stats, {
       case "one" => one.obs
       case "two" => two.obs
     })
@@ -158,5 +159,42 @@ class ObserverCacheTest extends FunSuite {
     assert(one.closed.sample == true)
     assert(activeSize(stats) == 0)
     assert(inactiveSize(stats) == 1)
+  }
+
+  test("observer cache removes inactive observations after ttl time") {
+
+    val one = testObserver[String]()
+    val stats = new InMemoryStatsReceiver
+    val ttl = 1.second
+
+    Time.withCurrentTimeFrozen {
+      tc =>
+        val cache = new ObserverCache[String, String](1, 5, ttl.inSeconds, stats, {
+          case "one" => one.obs
+        }, Stopwatch.timeNanos)
+
+        // insert "one" into the active cache
+        assert(cache.get("one").get eq one.obs)
+        assert(activeSize(stats) == 1)
+        assert(inactiveSize(stats) == 0)
+        // update deactivates "one"
+        one.event.notify(Return("foo"))
+
+        assert(activeSize(stats) == 0)
+        assert(inactiveSize(stats) == 1)
+        assert(!one.closed.sample)
+
+        tc.advance(ttl / 2)
+        cache.inactiveCacheCleanup()
+        assert(activeSize(stats) == 0)
+        assert(inactiveSize(stats) == 1)
+        assert(!one.closed.sample)
+
+        tc.advance(ttl / 2)
+        cache.inactiveCacheCleanup()
+        assert(activeSize(stats) == 0)
+        assert(inactiveSize(stats) == 0)
+        assert(one.closed.sample)
+    }
   }
 }

@@ -47,6 +47,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // ensure the client-stack framing filter is placed below the stats filter
       // so that any malframed responses it fails are counted as errors
       .insertAfter(FailureAccrualFactory.role, FramingFilter.clientModule)
+      .insertAfter(FailureAccrualFactory.role, DiagnosticTracer.module)
       .remove(ClientDtabContextFilter.role)
 
     Http.router
@@ -232,19 +233,19 @@ case class HttpConfig(
   }
 
   @JsonIgnore
-  private[this] val combinedIdentifier = identifier.map { configs =>
+  private[this] def combinedIdentifier(params: Stack.Params) = identifier.map { configs =>
     Http.param.HttpIdentifier { (prefix, dtab) =>
-      RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab)))
+      RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab, params)))
     }
   }
+
   @JsonIgnore
-  override def routerParams: Stack.Params = super.routerParams
+  private[this] def routerParamsPartial: Stack.Params = super.routerParams
     .maybeWith(httpAccessLog.map(AccessLogger.param.File.apply))
     .maybeWith(httpAccessLogRollPolicy.map(Policy.parse _ andThen AccessLogger.param.RollPolicy.apply))
     .maybeWith(httpAccessLogAppend.map(AccessLogger.param.Append.apply))
     .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
     .maybeWith(loggerParam)
-    .maybeWith(combinedIdentifier)
     .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
     .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
@@ -252,4 +253,7 @@ case class HttpConfig(
     .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
     .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
+
+  @JsonIgnore
+  override def routerParams = routerParamsPartial.maybeWith(combinedIdentifier(routerParamsPartial))
 }

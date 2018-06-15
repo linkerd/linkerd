@@ -1,0 +1,3 @@
+io.buoyant.interpreter.mesh.BoundNameTreeSerializer
+io.buoyant.interpreter.mesh.EndpointSerializer
+io.buoyant.interpreter.mesh.PathSerializer

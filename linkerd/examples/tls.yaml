@@ -13,8 +13,7 @@ routers:
     configs:
     - prefix: "/#/io.l5d.fs/{service}"
       tls:
-        trustCerts:
-        - /foo/caCert.pem
+        trustCertsBundle: /foo/caCert.pem
         commonName: "{service}"
   servers:
   - port: 4140
@@ -22,3 +21,4 @@ routers:
     tls:
       certPath: /foo/cert.pem
       keyPath: /foo/key.pem
+      intermediateCertsPath: /foo/ca-chain.pem

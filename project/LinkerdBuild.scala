@@ -46,7 +46,7 @@ object LinkerdBuild extends Base {
     .withTests()
 
   lazy val k8s = projectDir("k8s")
-    .dependsOn(Namer.core, istioProto)
+    .dependsOn(Namer.core, istioProto, admin)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
     .withTests()
@@ -56,63 +56,6 @@ object LinkerdBuild extends Base {
     .withLibs(Deps.jackson)
     .withTests()
 
-  object Router {
-    val core = projectDir("router/core")
-      .dependsOn(Finagle.buoyantCore)
-      .withTwitterLib(Deps.finagle("core"))
-      .withTests()
-      .withE2e()
-      .settings(coverageExcludedPackages := ".*XXX_.*")
-
-    val baseHttp = projectDir("router/base-http")
-      .dependsOn(core)
-
-    val h2 = projectDir("router/h2")
-      .dependsOn(baseHttp, Finagle.h2 % "compile->compile;test->test")
-      .withTests()
-      .withE2e()
-
-    val http = projectDir("router/http")
-      .dependsOn(baseHttp)
-      .withTwitterLibs(Deps.finagle("http"))
-      .withLib(Deps.boringssl)
-      .withTests()
-      .withE2e()
-
-    val mux = projectDir("router/mux")
-      .dependsOn(core)
-      .withTwitterLib(Deps.finagle("mux"))
-      .withE2e()
-
-    val thriftIdl = projectDir("router/thrift-idl")
-      .withTwitterLib(Deps.finagle("thrift"))
-      .settings(Seq(
-        coverageExcludedPackages := ".*thriftscala.*",
-        scalacOptions -= "-Xfatal-warnings")
-      )
-
-    val thrift = projectDir("router/thrift")
-      .withTwitterLib(Deps.finagle("thrift"))
-      .withTests()
-      .withE2e()
-      .dependsOn(
-        core,
-        thriftIdl % "test,e2e"
-      )
-
-    val thriftMux = projectDir("router/thriftmux")
-      .withTwitterLib(Deps.finagle("thriftmux"))
-      .withTests()
-      .withE2e()
-      .dependsOn(
-        core,
-        thrift,
-        thriftIdl % "test,e2e"
-      )
-
-    val all = aggregateDir("router", core, baseHttp, h2, http, mux, thrift, thriftMux)
-  }
-
   object Mesh {
     val core = projectDir("mesh/core")
       .dependsOn(Grpc.runtime)
@@ -120,6 +63,12 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("mesh", core)
   }
+
+  val admin = projectDir("admin")
+    .dependsOn(configCore)
+    .withTwitterLib(Deps.twitterServer)
+    .withTwitterLib(Deps.finagle("stats"))
+    .withTests()
 
   object Namer {
     val core = projectDir("namer/core")
@@ -177,10 +126,65 @@ object LinkerdBuild extends Base {
 
   }
 
-  val admin = projectDir("admin")
-    .dependsOn(configCore, Namer.core)
-    .withTwitterLib(Deps.twitterServer)
-    .withTwitterLib(Deps.finagle("stats"))
+  object Router {
+    val core = projectDir("router/core")
+      .dependsOn(Finagle.buoyantCore, Namer.core)
+      .withTwitterLib(Deps.finagle("core"))
+      .withTests()
+      .withE2e()
+      .settings(coverageExcludedPackages := ".*XXX_.*")
+
+    val baseHttp = projectDir("router/base-http")
+      .dependsOn(core)
+
+    val h2 = projectDir("router/h2")
+      .dependsOn(baseHttp, Finagle.h2 % "compile->compile;test->test")
+      .withTests()
+      .withE2e()
+
+    val http = projectDir("router/http")
+      .dependsOn(baseHttp)
+      .withTwitterLibs(Deps.finagle("http"))
+      .withLib(Deps.boringssl)
+      .withTests()
+      .withE2e()
+
+    val mux = projectDir("router/mux")
+      .dependsOn(core)
+      .withTwitterLib(Deps.finagle("mux"))
+      .withE2e()
+
+    val thriftIdl = projectDir("router/thrift-idl")
+      .withTwitterLib(Deps.finagle("thrift"))
+      .settings(Seq(
+        coverageExcludedPackages := ".*thriftscala.*",
+        scalacOptions -= "-Xfatal-warnings")
+      )
+
+    val thrift = projectDir("router/thrift")
+      .withTwitterLib(Deps.finagle("thrift"))
+      .withTests()
+      .withE2e()
+      .dependsOn(
+        core,
+        thriftIdl % "test,e2e"
+      )
+
+    val thriftMux = projectDir("router/thriftmux")
+      .withTwitterLib(Deps.finagle("thriftmux"))
+      .withTests()
+      .withE2e()
+      .dependsOn(
+        core,
+        thrift,
+        thriftIdl % "test,e2e"
+      )
+
+    val all = aggregateDir("router", core, baseHttp, h2, http, mux, thrift, thriftMux)
+  }
+
+  val adminNames = projectDir("admin/names")
+    .dependsOn(admin, Namer.core)
     .withTests()
 
   object Telemetry {
@@ -260,6 +264,7 @@ object LinkerdBuild extends Base {
     val core = projectDir("namerd/core")
       .dependsOn(
         admin,
+        adminNames,
         configCore,
         Namer.core,
         Namer.fs % "test",
@@ -479,7 +484,7 @@ object LinkerdBuild extends Base {
 
     val mesh = projectDir("interpreter/mesh")
       .withTests()
-      .dependsOn(Namer.core, Mesh.core, Grpc.runtime)
+      .dependsOn(Namer.core, Mesh.core, Grpc.runtime, admin)
 
     val subnet = projectDir("interpreter/subnet")
       .dependsOn(Namer.core)
@@ -576,7 +581,7 @@ object LinkerdBuild extends Base {
       .withTwitterLib(Deps.twitterServer)
       .withTests()
       .dependsOn(core % "compile->compile;test->test")
-      .dependsOn(LinkerdBuild.admin, Namer.core, Router.http)
+      .dependsOn(LinkerdBuild.admin, LinkerdBuild.adminNames, Namer.core, Router.http)
       .dependsOn(Protocol.thrift % "test", Interpreter.perHost % "test")
 
     val main = projectDir("linkerd/main")
@@ -784,6 +789,7 @@ object LinkerdBuild extends Base {
     .settings(aggregateSettings ++ unidocSettings)
     .aggregate(
       admin,
+      adminNames,
       configCore,
       consul,
       etcd,

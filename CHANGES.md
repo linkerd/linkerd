@@ -1,3 +1,73 @@
+## 1.4.3 2018-06-12
+
+This is a follow up release that includes diagnostic tracing for H2 requests.
+
+Full release notes:
+
+* Add diagnostic tracing for H2 requests, allowing Linkerd to add h2 request routing information at
+the end of h2 streams to downstream services.
+* Pass stack params to announcer plugins, allowing them to report metrics correctly. 
+
+## 1.4.2 2018-06-11
+
+Linkerd 1.4.2 continues its focus on diagnostics and stability. This release introduces Diagnostic 
+Tracing, a feature that helps describe how Linkerd routes requests by displaying detailed routing 
+information from each hop through your application. Stay tuned for a deep dive blog post about this 
+feature coming soon. 
+
+We’re also excited to share improvements to Linkerd’s error handling. Previously, when Linkerd 
+failed to route a request, it could fail with a notoriously confusing `No Hosts Available` error. 
+Now, these errors include more useful, informative diagnostic information to help explain the cause 
+of the failure.
+
+Full release notes:
+
+* Diagnostics
+   * Improve error reporting when receiving `No Hosts Available` exception.  Linkerd returns a less cryptic user-friendly message that includes information such as alternative service name resolutions and dtabs used for name resolution.
+   * Add a new diagnostic tracing feature. It allows Linkerd to add routing information to the response of a `TRACE` request forwarded to a service.
+* Fixes an issue where underscores in match patterns of `io.l5d.rewrite` no longer work.
+
+## 1.4.1 2018-05-25
+
+Linkerd 1.4.1 is focused on adding diagnostics and improved behavior in
+production environments.
+
+This release features contributions from Strava, Signal, OfferUp, Scalac,
+Salesforce, and Buoyant.  A big thank you to:
+
+* [Alex Leong](https://github.com/adleong/)
+* [Dan Vulpe](https://github.com/dvulpe)
+* [Dennis Adjei](https://github.com/dadjeibaah)
+* [J Evans](https://github.com/jayeve)
+* [Justin Venus](https://github.com/JustinVenus)
+* [Leo Liang](https://github.com/leozc)
+* [Matthew Huxtable](https://github.com/mhuxtable)
+* [Michał Mrożek](https://github.com/mmrozek)
+* [Peter Fich](https://github.com/peterfich)
+* [Robert Panzer](https://github.com/robertpanzer)
+* [Shakti Das](https://github.com/shakti-das)
+
+Full release notes:
+
+* Diagnostics:
+  * Add watch state admin endpoints where you can inspect the current state of Linkerd's watches, including information such as time of last update and last known value.  These can be extremely valuable for debugging communication between Linkerd and other components such as Namerd or Kubernetes.
+    * Kubernetes namer watch state: `/namer_state/io.l5d.k8s.json`
+    * Namerd interpreter watch state: `/interpreter_state/io.l5d.namerd/<namespace>.json`
+    * Namerd mesh interpreter watch state: `/interpreter_state/io.l5d.mesh/<root>.json`
+* TLS:
+  * Add the `intermediateCertsPath` config setting to client and server TLS.  This allows you to specify a file containing intermediate CA certificates supporting the main certificate.
+  * Allow the TLS protocols to be configured which enables the ability to use TLSv1.2 specific ciphers.
+* HTTP, HTTP/2:
+  * Avoiding upgrading HTTP/1.0 requests to HTTP/1.1.  This prevents servers from sending responses that the client cannot handle (e.g. chunk encoded responses).
+  * Fix a bug where Linkerd was not writing the `l5d-ctx-*` headers on HTTP/2 requests..
+  * Add support for adding a 'Forwarded' header to HTTP/2 requests.
+* Make Linkerd and Namerd honor the shutdown grace period when using the `/admin/shutdown` endpoint.
+* Pass stack params to announcer plugins, allowing them to report metrics correctly.
+* Add support for extracting substrings in path patterns.  This allows you to, for example, configure TLS commonNames based on substrings of a path segment instead of the entire segment.
+* Add a TTL to Namerd's inactive cache so that Namerd will tear down watches on idle services.
+* Improve fallback behavior in the io.l5d.marathon namer so that fallback occurs if an app has no replicas.
+* Fix an ArrayIndexOutOfBoundsException in ForwardClientCertFilter.
+
 ## 1.4.0 2018-04-30
 
 Linkerd 1.4.0 upgrades us to the latest versions of Finagle and Netty and

@@ -8,10 +8,12 @@ import java.io.File
 
 case class TlsServerConfig(
   certPath: String,
+  intermediateCertsPath: Option[String],
   keyPath: String,
   caCertPath: Option[String] = None,
   ciphers: Option[Seq[String]] = None,
-  requireClientAuth: Option[Boolean] = None
+  requireClientAuth: Option[Boolean] = None,
+  protocols: Option[Seq[String]] = None
 ) {
   def params(
     alpnProtocols: Option[Seq[String]],
@@ -34,12 +36,22 @@ case class TlsServerConfig(
       case _ => FClientAuth.Off
     }
 
+    val keyCredentials = intermediateCertsPath match {
+      case Some(intermediate) => KeyCredentials.CertKeyAndChain(
+        new File(certPath),
+        new File(keyPath),
+        new File(intermediate)
+      )
+      case None => KeyCredentials.CertAndKey(new File(certPath), new File(keyPath))
+    }
+
     Stack.Params.empty + Transport.ServerSsl(Some(SslServerConfiguration(
       clientAuth = clientAuth,
-      keyCredentials = KeyCredentials.CertAndKey(new File(certPath), new File(keyPath)),
+      keyCredentials = keyCredentials,
       trustCredentials = trust,
       cipherSuites = cipherSuites,
-      applicationProtocols = appProtocols
+      applicationProtocols = appProtocols,
+      protocols = protocols.map(Protocols.Enabled).getOrElse(Protocols.Unspecified)
     ))) + SslServerEngineFactory.Param(sslServerEngine)
   }
 }

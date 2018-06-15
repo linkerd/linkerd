@@ -298,15 +298,14 @@ class HttpEndToEndTest extends FunSuite with Awaits {
       val rsp1 = get()
       assert(err == None)
       assert(rsp1.status == Status.Ok)
-      // downstream connection is reused but upstream is not
-      assert(downstreamCounter("connects") == Some(1))
+      assert(downstreamCounter("connects") == Some(2))
       assert(serverCounter("connects") == Some(2))
 
       retriesToDo = 1
       val rsp2 = get()
       assert(err == None)
       assert(rsp2.status == Status.Ok)
-      assert(downstreamCounter("connects") == Some(1))
+      assert(downstreamCounter("connects") == Some(4))
       assert(serverCounter("connects") == Some(3))
 
     } finally {

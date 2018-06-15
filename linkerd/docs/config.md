@@ -53,7 +53,7 @@ the `config/` directory.
 
 #### File Format
 
-The configuration may be specified as a JSON or YAML object. There are no requirements on field ordering, though it's generally good style to start a router with the _protocol_. Four top level keys are supported:
+The configuration may be specified as a JSON or YAML object. There are no requirements on field ordering, though it's generally good style to start a router with the _protocol_. Five top level keys are supported:
 
 Key | Required | Description
 --- | -------- | -----------
@@ -84,6 +84,7 @@ Key | Default Value | Description
 ip | loopback address | IP for the admin interface. A value like 0.0.0.0 configures admin to listen on all local IPv4 interfaces.
 port | `9990` | Port for the admin interface.
 httpIdentifierPort | none | Port for the http identifier debug endpoint.
+shutdownGraceMs | 10000 | maximum grace period before the Linkerd process exits
 tls | no tls | The admin interface will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 
 #### Administrative endpoints
