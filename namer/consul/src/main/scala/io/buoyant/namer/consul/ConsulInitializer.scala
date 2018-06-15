@@ -34,8 +34,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *   tls:
  *     disableValidation: false
  *     commonName: consul.io
- *     trustCerts:
- *     - /certificates/cacert.pem
+ *     trustCertsBundle: /certificates/cacert.pem
  *     clientAuth:
  *       certPath: /certificates/cert.pem
  *       keyPath: /certificates/key.pem
