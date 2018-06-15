@@ -36,6 +36,17 @@ class DefaultInitializer extends H2ClassifierInitializer {
 
 object DefaultInitializer extends DefaultInitializer
 
+class CompliantConfig extends H2ClassifierConfig {
+  override def mk: H2Classifier = GrpcClassifiers.Compliant
+}
+
+class CompliantInitializer extends H2ClassifierInitializer {
+  val configClass = classOf[DefaultConfig]
+  override val configId = "io.l5d.h2.grpc.Compliant"
+}
+
+object CompliantInitializer extends CompliantInitializer
+
 // TODO: support parsing the status codes by name rather than by number?
 class RetryableStatusCodesConfig(val retryableStatusCodes: Set[Int]) extends H2ClassifierConfig {
   override def mk: H2Classifier = new GrpcClassifiers.RetryableStatusCodes(retryableStatusCodes)

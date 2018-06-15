@@ -37,6 +37,10 @@ abstract class H2ClassifierInitializer extends ConfigInitializer
     name = "io.l5d.h2.grpc.default"
   ),
   new Type(
+    value = classOf[grpc.CompliantConfig],
+    name = "io.l5d.h2.grpc.compliant"
+  ),
+  new Type(
     value = classOf[grpc.RetryableStatusCodesConfig],
     name = "io.l5d.h2.grpc.retryableStatusCodes"
   )
