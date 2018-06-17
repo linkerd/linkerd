@@ -256,6 +256,7 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
+       |   -XX:+PerfDisableSharedMem                                     \
        |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
