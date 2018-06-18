@@ -85,7 +85,8 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
     init <- Seq(
       AlwaysRetryableInitializer,
       NeverRetryableInitializer,
-      DefaultInitializer
+      DefaultInitializer,
+      CompliantInitializer
     )
     kind = init.configId
   } {

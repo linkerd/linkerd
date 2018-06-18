@@ -4,5 +4,6 @@ io.buoyant.linkerd.protocol.h2.RetryableRead5XXInitializer
 io.buoyant.linkerd.protocol.h2.AllSuccessfulInitializer
 io.buoyant.linkerd.protocol.h2.grpc.AlwaysRetryableInitializer
 io.buoyant.linkerd.protocol.h2.grpc.DefaultInitializer
+io.buoyant.linkerd.protocol.h2.grpc.CompliantInitializer
 io.buoyant.linkerd.protocol.h2.grpc.NeverRetryableInitializer
 io.buoyant.linkerd.protocol.h2.grpc.RetryableStatusCodesInitializer

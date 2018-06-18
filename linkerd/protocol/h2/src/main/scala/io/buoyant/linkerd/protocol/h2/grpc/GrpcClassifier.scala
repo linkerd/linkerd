@@ -1,5 +1,7 @@
 package io.buoyant.linkerd.protocol.h2.grpc
 
+import com.twitter.finagle.buoyant.h2.Status.{ClientError, ServerError}
+import com.twitter.finagle.buoyant.h2.{Reset, Response, Status}
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.util.{Return, Throw}
@@ -9,6 +11,8 @@ import io.buoyant.grpc.runtime.GrpcStatus.{Ok, Unavailable}
 trait GrpcClassifier extends H2Classifier {
 
   def retryable(status: GrpcStatus): Boolean
+  def retryable(status: Status): Boolean = false
+  def retryable(throwable: Throwable): Boolean = false
 
   /**
    * Since GRPC sends status codes in the
@@ -16,18 +20,43 @@ trait GrpcClassifier extends H2Classifier {
    * Thrown.
    */
   override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
-    case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
-    case H2ReqRep(_, Return(GrpcStatus(Ok(_)))) => ResponseClass.Success
+    // Classify exceptions
+    case H2ReqRep(_, Throw(throwable)) =>
+      if (retryable(throwable)) ResponseClass.RetryableFailure
+      else ResponseClass.NonRetryableFailure
+    // Classify gRPC responses
+    case H2ReqRep(_, Return(GrpcStatus(Ok(_)))) =>
+      ResponseClass.Success
     case H2ReqRep(_, Return(GrpcStatus(status))) =>
+      if (retryable(status)) ResponseClass.RetryableFailure
+      else ResponseClass.NonRetryableFailure
+    // Classify HTTP/2 responses
+    case H2ReqRep(_, Return(Response(ClientError(status)))) =>
+      if (retryable(status)) ResponseClass.RetryableFailure
+      else ResponseClass.NonRetryableFailure
+    case H2ReqRep(_, Return(Response(ServerError(status)))) =>
       if (retryable(status)) ResponseClass.RetryableFailure
       else ResponseClass.NonRetryableFailure
   }
 
   override def streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
+    // Classify exceptions
+    case H2ReqRepFrame(_, Return((_, Some(Throw(throwable))))) =>
+      if (retryable(throwable)) ResponseClass.RetryableFailure
+      else ResponseClass.NonRetryableFailure
+    // Classify gRPC responses
     case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(Ok(_))))))) => ResponseClass.Success
     case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(status)))))) =>
       if (retryable(status)) ResponseClass.RetryableFailure
       else ResponseClass.NonRetryableFailure
+    // Classify HTTP/2 responses
+    case H2ReqRepFrame(_, Return((Response(ClientError(status)), _))) =>
+      if (retryable(status)) ResponseClass.RetryableFailure
+      else ResponseClass.NonRetryableFailure
+    case H2ReqRepFrame(_, Return((Response(ServerError(status)), _))) =>
+      if (retryable(status)) ResponseClass.RetryableFailure
+      else ResponseClass.NonRetryableFailure
+    // Otherwise
     case _ => ResponseClass.NonRetryableFailure
   }
 }
@@ -62,6 +91,35 @@ object GrpcClassifiers {
   object Default extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = status match {
       case Unavailable(_) => true
+      case _ => false
+    }
+  }
+
+  /**
+   * The fully standards compliant H2Classifier for gRPC.
+   *
+   * - gRPC UNAVILABLE response is marked as retryable.
+   * - HTTP/2 RST_STREAM:REFUSED_STREAM is marked as retryable.
+   * - HTTP/2 429, 502, 503, and 504 responses are marked as retryable.
+   * - All other failures are marked as non-retryable.
+   *
+   * See: https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#errors
+   * See: https://github.com/grpc/grpc/blob/master/doc/http-grpc-status-mapping.md
+   */
+  object Compliant extends GrpcClassifier {
+    override def retryable(status: GrpcStatus): Boolean = status match {
+      case Unavailable(_) => true
+      case _ => false
+    }
+
+    override def retryable(status: Status): Boolean =
+      status == Status.TooManyRequests ||
+        status == Status.ServiceUnavailable ||
+        status == Status.BadGateway ||
+        status == Status.GatewayTimeout
+
+    override def retryable(throwable: Throwable): Boolean = throwable match {
+      case Reset.Refused => true
       case _ => false
     }
   }

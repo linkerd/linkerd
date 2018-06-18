@@ -140,6 +140,9 @@ object Response {
   def apply(headers: Headers, stream: Stream): Response =
     Impl(headers, stream)
 
+  def unapply(arg: Response): Option[Status] =
+    Some(arg.status)
+
   private case class Impl(
     headers: Headers,
     stream: Stream
