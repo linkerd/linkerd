@@ -513,6 +513,37 @@ class HttpEndToEndTest
 
   }
 
+  test("clearContext will remove linkerd error headers and body when identifier is set", Retryable) {
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/a/b => /$$/inet/127.1/1234
+          |  identifier:
+          |    kind: io.l5d.path
+          |    segments: 2
+          |  servers:
+          |  - port: 0
+          |    clearContext: true
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request("/a")
+    req.host = "test"
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+
+      resp.headerMap.keys must not contain ("l5d-err", "l5d-success-class", "l5d-retryable")
+      resp.contentString must be("")
+    } finally {
+      await(c.close())
+      await(s.close())
+    }
+
+  }
+
   test("timestampHeader adds header", Retryable) {
     @volatile var headers: Option[HeaderMap] = None
     val downstream = Downstream.mk("test") {
