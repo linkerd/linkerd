@@ -7,7 +7,6 @@ import com.twitter.finagle.ssl.{KeyCredentials, Protocols, TrustCredentials}
 import com.twitter.finagle.ssl.client.{SslClientConfiguration, SslClientEngineFactory}
 import com.twitter.finagle.transport.Transport
 import com.twitter.io.StreamIO
-
 import scala.util.control.NoStackTrace
 
 case class TlsClientConfig(

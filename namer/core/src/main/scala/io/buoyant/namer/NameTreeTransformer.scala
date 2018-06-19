@@ -4,6 +4,7 @@ import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle._
 import com.twitter.util.{Activity, Future}
+import io.buoyant.admin.Admin
 
 /**
  * A NameTreeTransformer performs some kind of transformation on bound
@@ -55,7 +56,7 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
   protected def transformDelegate(tree: DelegateTree[Name.Bound]): Future[DelegateTree[Name.Bound]]
 
   /** Like wrap, but preserving the ability of the NameInterpreter to delegate */
-  def delegatingWrap(underlying: NameInterpreter with Delegator): NameInterpreter with Delegator = new NameInterpreter with Delegator {
+  def delegatingWrap(underlying: NameInterpreter with Delegator): NameInterpreter with Delegator = new NameInterpreter with Delegator with Admin.WithHandlers {
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
       underlying.bind(dtab, path).flatMap(transform)
 
@@ -66,6 +67,11 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
       underlying.delegate(dtab, tree).flatMap(transformDelegate)
 
     override def dtab: Activity[Dtab] = underlying.dtab
+
+    override def adminHandlers: Seq[Admin.Handler] = underlying match {
+      case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
+      case _ => Nil
+    }
   }
 }
 
