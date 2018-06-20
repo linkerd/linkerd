@@ -187,7 +187,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     if (closed.compareAndSet(false, true)) {
       log.debug("[%s] resetting all streams: %s", prefix, err)
       streams.values.asScala.foreach {
-        case StreamOpen(st) => st.remoteReset(err)
+        case StreamOpen(st) => st.reset(err, local = false)
         case _ =>
       }
       demuxing.raise(Failure(err).flagged(Failure.Interrupted))

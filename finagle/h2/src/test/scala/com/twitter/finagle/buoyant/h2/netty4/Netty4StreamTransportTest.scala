@@ -175,13 +175,11 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val reqStream = Stream.empty()
-    val req = Request("http", Method.Get, "host", "/path", reqStream)
+    val req = Request("http", Method.Get, "host", "/path", Stream.empty())
     val endF = await(transport.send(req))
     assert(!rspF.isDefined)
 
     val rsp = assertRecvResponse(200, eos = true)
-    reqStream.close()
 
     eventually { assert(transport.onReset.isDefined) }
     assert(await(transport.onReset.liftToTry) == Return.Unit)
@@ -201,7 +199,7 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
 
-    reqStream.reset(Reset.Cancel)
+    reqStream.cancel(Reset.Cancel)
     eventually { assert(transport.onReset.isDefined) }
     assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
     assert(transport.isClosed)
@@ -232,7 +230,7 @@ class Netty4StreamTransportTest extends FunSuite {
     await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
     assert(!transport.onReset.isDefined)
 
-    reqStream.reset(Reset.Cancel)
+    reqStream.cancel(Reset.Cancel)
     eventually { assert(rspF.isDefined) }
     assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
 
@@ -313,8 +311,8 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!transport.onReset.isDefined)
     assert(!transport.isClosed)
 
-    reqStream.reset(Reset.InternalError)
-    assert(await(endF.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
+    reqStream.cancel(Reset.InternalError)
+    assert(await(endF.liftToTry) == Throw(Reset.InternalError))
     assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.InternalError)))
     assert(transport.isClosed)
     assert(!closed.get)
@@ -351,29 +349,22 @@ class Netty4StreamTransportTest extends FunSuite {
   test("client: response cancelation resets stream: Failure(Reset)") {
     val ctx = new ClientCtx {}
     assert(!ctx.rspF.isDefined)
-    ctx.rspF.raise(Failure(Reset.EnhanceYourCalm))
+    ctx.rspF.raise(Reset.EnhanceYourCalm)
     assert(await(ctx.rspF.liftToTry) == Throw(Reset.EnhanceYourCalm))
   }
 
-  test("client: response cancelation resets stream: Failure(Interrupted)") {
+  test("client: response cancelation resets stream: Exception") {
     val ctx = new ClientCtx {}
     assert(!ctx.rspF.isDefined)
-    ctx.rspF.raise(Failure("foo").flagged(Failure.Interrupted))
+    ctx.rspF.raise(Failure("foo"))
     assert(await(ctx.rspF.liftToTry) == Throw(Reset.Cancel))
   }
 
   test("client: response cancelation resets stream: Failure(Rejected)") {
     val ctx = new ClientCtx {}
     assert(!ctx.rspF.isDefined)
-    ctx.rspF.raise(Failure("foo").flagged(Failure.Rejected))
+    ctx.rspF.raise(Reset.Refused)
     assert(await(ctx.rspF.liftToTry) == Throw(Reset.Refused))
-  }
-
-  test("client: response cancelation resets stream: Exception") {
-    val ctx = new ClientCtx {}
-    assert(!ctx.rspF.isDefined)
-    ctx.rspF.raise(new Exception("ugh"))
-    assert(await(ctx.rspF.liftToTry) == Throw(Reset.InternalError))
   }
 
   test("client: fails request with `connection` header") {
@@ -385,7 +376,7 @@ class Netty4StreamTransportTest extends FunSuite {
     req.headers.set("connection", "awesome")
     val rst = Reset.ProtocolError
     val localRst = StreamError.Local(rst)
-    assert(await(transport.send(req).liftToTry) == Throw(localRst))
+    assert(await(transport.send(req).liftToTry) == Throw(rst))
     assert(await(rspF.liftToTry) == Throw(rst))
     assert(await(transport.onReset.liftToTry) == Throw(localRst))
     assert(transport.isClosed)
@@ -400,7 +391,7 @@ class Netty4StreamTransportTest extends FunSuite {
     req.headers.set("te", "chunked, trailers")
     val rst = Reset.ProtocolError
     val localRst = StreamError.Local(rst)
-    assert(await(transport.send(req).liftToTry) == Throw(localRst))
+    assert(await(transport.send(req).liftToTry) == Throw(rst))
     assert(await(rspF.liftToTry) == Throw(rst))
     assert(await(transport.onReset.liftToTry) == Throw(localRst))
     assert(transport.isClosed)
@@ -410,8 +401,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ClientCtx {}
     import ctx._
 
-    val reqStream = Stream.empty()
-    val req = Request("http", Method.Get, "host", "/path", reqStream)
+    val req = Request("http", Method.Get, "host", "/path", Stream.empty())
     req.headers.set("te", "trailers")
     val rst = Reset.ProtocolError
     val localRst = StreamError.Local(rst)
@@ -422,7 +412,6 @@ class Netty4StreamTransportTest extends FunSuite {
 
     assertRecvResponse(200, eos = true)
     assert(rspF.isDefined)
-    reqStream.close()
     assert(transport.onReset.poll == Some(Return.Unit))
     assert(transport.isClosed)
   }
@@ -510,7 +499,7 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(rspStreamQ.offer(Netty4Message.Trailers(trailers)))
     ctx.synchronized {
       assert(written.head == new DefaultHttp2HeadersFrame(trailers, true)
-        .stream(H2FrameStream(id, Http2Stream.State.OPEN)))
+        .stream(H2FrameStream(id, Http2Stream.State.HALF_CLOSED_LOCAL)))
       written = written.tail
     }
   }
@@ -527,7 +516,7 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!transport.onReset.isDefined)
     assert(!rspEndF.isDefined)
 
-    rspStream.reset(Reset.Cancel)
+    rspStream.cancel(Reset.Cancel)
     eventually { assert(transport.onReset.isDefined) }
     assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
     assert(transport.isClosed)
@@ -561,7 +550,7 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!transport.isClosed)
     assert(!transport.onReset.isDefined)
 
-    rspStream.reset(Reset.Cancel)
+    rspStream.cancel(Reset.Cancel)
     eventually { assert(transport.onReset.isDefined) }
     assert(await(transport.onReset.liftToTry) == Throw(StreamError.Local(Reset.Cancel)))
     assert(transport.isClosed)
@@ -654,7 +643,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ServerCtx {}
     import ctx._
 
-    assert(transport.recv({
+    assert(!transport.recv({
       val hs = new DefaultHttp2Headers
       hs.scheme("testscheme")
       hs.method("TEST")
@@ -674,7 +663,7 @@ class Netty4StreamTransportTest extends FunSuite {
     val ctx = new ServerCtx {}
     import ctx._
 
-    assert(transport.recv({
+    assert(!transport.recv({
       val hs = new DefaultHttp2Headers
       hs.scheme("testscheme")
       hs.method("TEST")
