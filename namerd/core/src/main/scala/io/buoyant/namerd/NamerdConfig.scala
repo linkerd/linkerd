@@ -59,7 +59,7 @@ private[namerd] case class NamerdConfig(
     val dtabStore = storage.mkDtabStore(Stack.Params.empty + param.Stats(stats.scope("dtabstore")))
     val namersByPfx = mkNamers(Stack.Params.empty + param.Stats(stats.scope("namer")))
     val ifaces = mkInterfaces(dtabStore, namersByPfx, stats.scope("interface"))
-    val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)
+    val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress, stats)
 
     new Namerd(ifaces, dtabStore, namersByPfx, adminImpl, telemeters)
   }
