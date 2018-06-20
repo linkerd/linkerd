@@ -438,13 +438,31 @@ object LinkerdHeaders {
   }
 
   class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
-    def apply(req: Request, service: Service[Request, Response]) = {
-      for ((k, _) <- req.headers.toSeq) {
+
+    private[this] def clearLinkerdHeaders(headers: Headers) = {
+      for ((k, _) <- headers.toSeq) {
         if (k.toLowerCase.startsWith(LinkerdHeaders.Prefix)) {
-          req.headers.remove(k)
+          headers.remove(k)
         }
       }
-      service(req)
+    }
+
+    def apply(req: Request, service: Service[Request, Response]) = {
+      clearLinkerdHeaders(req.headers)
+      service(req).map { resp =>
+        val rsp = resp.dup()
+        if (rsp.headers.contains(Err.Key)) {
+          Stream.readToEnd(rsp.stream)
+          rsp.headers.remove("content-length")
+          rsp.headers.remove("content-type")
+          clearLinkerdHeaders(rsp.headers)
+          Response(rsp.headers, Stream.empty())
+        } else {
+          clearLinkerdHeaders(rsp.headers)
+          rsp
+        }
+
+      }
     }
   }
 
