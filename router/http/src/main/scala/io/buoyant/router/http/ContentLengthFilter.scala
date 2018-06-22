@@ -40,8 +40,8 @@ object ContentLengthFilter {
       service(request).flatMap { response =>
 
         if (response.version == Version.Http10
-            && !hasTransferEncoding(response)
-            && response.contentLength.isEmpty) {
+          && !hasTransferEncoding(response)
+          && response.contentLength.isEmpty) {
           Reader.readAll(response.reader).map { buf =>
             response.setChunked(false)
             response.contentLength = buf.length
