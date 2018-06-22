@@ -1,9 +1,12 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
+import io.buoyant.admin.Admin
 import io.buoyant.consul.v1
+import io.buoyant.namer.InstrumentedActivity
 
 object ConsulNamer {
 
@@ -35,28 +38,54 @@ object ConsulNamer {
     new UntaggedNamer(lookup, prefix)
   }
 
-  private[this] class TaggedNamer(lookup: LookupCache, prefix: Path) extends Namer {
+  private[this] trait NamerWithHandlers extends Namer with Admin.WithHandlers {
+    protected def prefix: Path
+    val handlerPrefix = prefix.drop(1).show.drop(1) // drop leading "/#/"
+    override def adminHandlers: Seq[Admin.Handler] = Seq(
+      Admin.Handler(
+        s"/namer_state/${handlerPrefix}.json",
+        new ConsulNamerHandler()
+      )
+    )
+  }
+
+  private[this] class TaggedNamer(protected val lookup: LookupCache, protected val prefix: Path)
+    extends NamerWithHandlers {
+
+    private[this] val lookupStatus = Map.empty[Path, InstrumentedBind]
 
     def lookup(path: Path): Activity[NameTree[Name]] =
       path.take(3) match {
         case id@Path.Utf8(dc, tag, service) =>
           val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
-          lookup(dc, k, prefix ++ id, path.drop(3))
+          lookup(dc, k, prefix ++ id, path.drop(3)).underlying
 
         case _ => Activity.value(NameTree.Neg)
       }
   }
 
-  private[this] class UntaggedNamer(lookup: LookupCache, prefix: Path) extends Namer {
+  private[this] class UntaggedNamer(protected val lookup: LookupCache, protected val prefix: Path)
+    extends NamerWithHandlers {
+
+    private[this] val lookupStatus = Map.empty[Path, InstrumentedBind]
 
     def lookup(path: Path): Activity[NameTree[Name]] =
       path.take(2) match {
         case id@Path.Utf8(dc, service) =>
           val k = SvcKey(service.toLowerCase, None)
-          lookup(dc, k, prefix ++ id, path.drop(2))
+          lookup(dc, k, prefix ++ id, path.drop(2)).underlying
 
         case _ => Activity.value(NameTree.Neg)
       }
+  }
+
+  private[this] case class InstrumentedBind(
+    act: InstrumentedActivity[NameTree[Name.Bound]],
+    poll: PollState[http.Request, v1.Indexed[Seq[v1.ServiceNode]]]
+  )
+
+  class ConsulNamerHandler() extends Service[Request, Response] {
+    override def apply(request: Request): Future[Response] = ???
   }
 
 }
