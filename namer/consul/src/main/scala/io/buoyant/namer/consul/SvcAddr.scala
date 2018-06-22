@@ -6,7 +6,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1
-import io.buoyant.namer.{Metadata, InstrumentedVar}
+import io.buoyant.namer.Metadata
 import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
@@ -44,7 +44,7 @@ private[consul] object SvcAddr {
     tagWeights: Map[String, Double] = Map.empty,
     stats: Stats,
     stateWatch: Option[PollState[http.Request, v1.IndexedServiceNodes]] = None
-  )(implicit timer: Timer = DefaultTimer): InstrumentedVar[Addr] = {
+  )(implicit timer: Timer = DefaultTimer): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] = {
       val apiCall = consulApi.serviceNodes(
@@ -65,7 +65,7 @@ private[consul] object SvcAddr {
 
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
-    InstrumentedVar[Addr](Addr.Pending) { state =>
+    Var.async[Addr](Addr.Pending) { state =>
       stats.opens.incr()
       @volatile var stopped: Boolean = false
       def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentValueToLog: Addr): Future[Unit] = {
