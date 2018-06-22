@@ -7,12 +7,13 @@ import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.util.{Closable, Duration, Future}
 
 trait ConsulApi extends BaseApi {
+
   def serviceMap(
     datacenter: Option[String] = None,
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[Map[String, Seq[String]]]]
+  ): ApiCall[Indexed[Map[String, Seq[String]]]]
 
   def serviceNodes(
     serviceName: String,
@@ -21,7 +22,8 @@ trait ConsulApi extends BaseApi {
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[Seq[ServiceNode]]]
+  ): ApiCall[Indexed[Seq[ServiceNode]]]
+
 }
 
 object CatalogApi {
@@ -38,10 +40,10 @@ class CatalogApi(
   val catalogPrefix = s"$uriPrefix/catalog"
 
   // https://www.consul.io/docs/agent/http/catalog.html#catalog_datacenters
-  def datacenters(retry: Boolean = false): Future[Seq[String]] = {
-    val req = mkreq(http.Method.Get, s"$catalogPrefix/datacenters", None)
-    executeJson[Seq[String]](req, retry).map(_.value)
-  }
+  def datacenters(retry: Boolean = false): ApiCall[Seq[String]] = ApiCall(
+    req = mkreq(http.Method.Get, s"$catalogPrefix/datacenters", None),
+    call = req => executeJson[Seq[String]](req, retry).map(_.value)
+  )
 
   // https://www.consul.io/docs/agent/http/catalog.html#catalog_services
   def serviceMap(
@@ -49,16 +51,16 @@ class CatalogApi(
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[Map[String, Seq[String]]]] = {
-    val req = mkreq(
+  ): ApiCall[Indexed[Map[String, Seq[String]]]] = ApiCall(
+    req = mkreq(
       http.Method.Get,
       s"$catalogPrefix/services",
       consistency,
       "index" -> blockingIndex,
       "dc" -> datacenter
-    )
-    executeJson[Map[String, Seq[String]]](req, retry)
-  }
+    ),
+    call = req => executeJson[Map[String, Seq[String]]](req, retry)
+  )
 
   // https://www.consul.io/docs/agent/http/catalog.html#catalog_service
   def serviceNodes(
@@ -68,17 +70,17 @@ class CatalogApi(
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[Seq[ServiceNode]]] = {
-    val req = mkreq(
+  ): ApiCall[Indexed[Seq[ServiceNode]]] = ApiCall(
+    req = mkreq(
       http.Method.Get,
       s"$catalogPrefix/service/$serviceName",
       consistency,
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "tag" -> tag
-    )
-    executeJson[Seq[ServiceNode]](req, retry)
-  }
+    ),
+    call = req => executeJson[Seq[ServiceNode]](req, retry)
+  )
 }
 
 object HealthApi {
@@ -108,8 +110,8 @@ class HealthApi(
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[Seq[ServiceNode]]] = {
-    val req = mkreq(
+  ): ApiCall[Indexed[Seq[ServiceNode]]] = ApiCall(
+    req = mkreq(
       http.Method.Get,
       s"$healthPrefix/service/$serviceName",
       consistency,
@@ -119,8 +121,8 @@ class HealthApi(
       // if passing=true only nodes with all health statuses in passing state are returned,
       // if passing=false no server side filtering is performed.
       "passing" -> Some((statuses == Set(HealthStatus.Passing)).toString)
-    )
-    executeJson[Seq[ServiceHealth]](req, retry).map { indexed =>
+    ),
+    call = req => executeJson[Seq[ServiceHealth]](req, retry).map { indexed =>
       val result = indexed.value.map { health =>
         val service = health.Service
         val checks =
@@ -149,7 +151,7 @@ class HealthApi(
       }
       Indexed[Seq[ServiceNode]](nodes, indexed.index)
     }
-  }
+  )
 }
 
 case class Node(

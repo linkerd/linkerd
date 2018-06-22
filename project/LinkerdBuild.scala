@@ -77,7 +77,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val consul = projectDir("namer/consul")
-      .dependsOn(LinkerdBuild.consul, core)
+      .dependsOn(LinkerdBuild.consul, core, admin)
       .withTests()
 
     val curator = projectDir("namer/curator")

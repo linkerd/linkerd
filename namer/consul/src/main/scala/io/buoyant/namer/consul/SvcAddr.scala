@@ -6,7 +6,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1
-import io.buoyant.namer.Metadata
+import io.buoyant.namer.{Metadata, InstrumentedVar}
 import java.net.InetSocketAddress
 import scala.util.control.NoStackTrace
 
@@ -43,21 +43,25 @@ private[consul] object SvcAddr {
     preferServiceAddress: Option[Boolean] = None,
     tagWeights: Map[String, Double] = Map.empty,
     stats: Stats
-  )(implicit timer: Timer = DefaultTimer): Var[Addr] = {
+  )(implicit timer: Timer = DefaultTimer): InstrumentedVar[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
+    val pollState = new PollState[http.Request, v1.Indexed[Seq[v1.ServiceNode]]]
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
-      consulApi.serviceNodes(
-        key.name,
-        datacenter = Some(datacenter),
-        tag = key.tag,
-        blockingIndex = index,
-        consistency = consistency,
-        retry = false
+      InstrumentedApiCall.execute(
+        call = consulApi.serviceNodes(
+          key.name,
+          datacenter = Some(datacenter),
+          tag = key.tag,
+          blockingIndex = index,
+          consistency = consistency,
+          retry = false
+        ),
+        watch = pollState
       ).map(indexedToAddresses(preferServiceAddress, tagWeights))
 
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
-    Var.async[Addr](Addr.Pending) { state =>
+    InstrumentedVar[Addr](Addr.Pending) { state =>
       stats.opens.incr()
       @volatile var stopped: Boolean = false
       def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentValueToLog: Addr): Future[Unit] = {
@@ -117,7 +121,7 @@ private[consul] object SvcAddr {
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()
-        pending.raise(Failure("service observation released", ServiceRelease, Failure.Interrupted))
+        pending.raise(Failure(ServiceRelease.getMessage, ServiceRelease, Failure.Interrupted))
         pending
       }
     }

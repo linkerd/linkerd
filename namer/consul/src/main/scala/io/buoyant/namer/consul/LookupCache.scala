@@ -6,6 +6,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
+import io.buoyant.namer.{InstrumentedActivity, InstrumentedVar}
 import scala.Function.untupled
 
 private[consul] object LookupCache {
@@ -33,10 +34,10 @@ private[consul] class LookupCache(
   private[this] val cachedCounter = service.counter("cached")
   private[this] val serviceStats = SvcAddr.Stats(service)
 
-  private[this] val cachedLookup: (String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
-    untupled(Memoize[(String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
+  private[this] val cachedLookup: (String, SvcKey, Path, Path) => InstrumentedActivity[NameTree[Name.Bound]] =
+    untupled(Memoize[(String, SvcKey, Path, Path), InstrumentedActivity[NameTree[Name.Bound]]] {
       case (dc, key, id, residual) =>
-        val addrFuture: Future[Var[Addr]] = resolveDc(dc).join(domain).map {
+        val addrFuture: Future[InstrumentedVar[Addr]] = resolveDc(dc).join(domain).map {
           case ((dcName, domainOption)) =>
             SvcAddr(
               consulApi,
@@ -51,19 +52,19 @@ private[consul] class LookupCache(
             )
         }
 
-        val observation = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { observationState =>
+        val instrumentedObsv = InstrumentedActivity[NameTree[Name.Bound]] { observationState =>
           val closableFuture = addrFuture.transform {
             case Return(addr) =>
-              val observationClosable = addr.changes.respond {
+              val observationClosable = addr.underlying.changes.respond {
                 case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
                 case Addr.Pending => observationState.update(Activity.Pending)
                 case Addr.Failed(why) => observationState.update(Activity.Failed(why))
-                case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual))))
+                case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr.underlying, id, residual))))
               }
               Future.value(observationClosable)
             case Throw(cause) =>
               // We probably failed to fetch agent config. This is critical.
-              // TODO: if this has happened only restart can restore namerd to working state. Throw exception instead?
+              // TODO: if this has happened only restart can restore consul namer to working state. Throw exception instead?
               observationState.update(Activity.Failed(cause))
               Future.value(Closable.nop)
           }
@@ -74,7 +75,7 @@ private[consul] class LookupCache(
         }
 
         cachedCounter.incr()
-        new Activity(observation)
+        instrumentedObsv
     })
 
   def apply(
@@ -82,7 +83,7 @@ private[consul] class LookupCache(
     key: SvcKey,
     id: Path,
     residual: Path
-  ): Activity[NameTree[Name]] = {
+  ): InstrumentedActivity[NameTree[Name.Bound]] = {
     log.debug("consul lookup: %s %s", dc, id.show)
     lookupCounter.incr()
     cachedLookup(dc, key, id, residual)
