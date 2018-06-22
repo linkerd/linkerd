@@ -11,6 +11,7 @@ import scala.Function.untupled
 
 private[consul] object LookupCache {
   val DefaultBackoffs: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 5.seconds)
+
 }
 
 /**
@@ -34,8 +35,8 @@ private[consul] class LookupCache(
   private[this] val cachedCounter = service.counter("cached")
   private[this] val serviceStats = SvcAddr.Stats(service)
 
-  private[this] val cachedLookup: (String, SvcKey, Path, Path) => InstrumentedActivity[NameTree[Name.Bound]] =
-    untupled(Memoize[(String, SvcKey, Path, Path), InstrumentedActivity[NameTree[Name.Bound]]] {
+  private[this] val cachedLookup: (String, SvcKey, Path, Path) => InstrumentedBind =
+    untupled(Memoize[(String, SvcKey, Path, Path), InstrumentedBind] {
       case (dc, key, id, residual) =>
         val pollState = SvcAddr.mkConsulPollState
         val addrFuture: Future[Var[Addr]] = resolveDc(dc).join(domain).map {
@@ -77,7 +78,7 @@ private[consul] class LookupCache(
         }
 
         cachedCounter.incr()
-        instrumentedObsv
+        InstrumentedBind(instrumentedObsv, pollState)
     })
 
   def apply(
@@ -85,7 +86,7 @@ private[consul] class LookupCache(
     key: SvcKey,
     id: Path,
     residual: Path
-  ): InstrumentedActivity[NameTree[Name.Bound]] = {
+  ): InstrumentedBind = {
     log.debug("consul lookup: %s %s", dc, id.show)
     lookupCounter.incr()
     cachedLookup(dc, key, id, residual)
@@ -108,3 +109,9 @@ private[consul] class LookupCache(
 
   private[this] lazy val localDc: Future[Option[String]] = agentConfig.map(_.flatMap(_.Datacenter))
 }
+
+/* collects the binding metrics to expose */
+private[consul] case class InstrumentedBind(
+  act: InstrumentedActivity[NameTree[Name.Bound]],
+  poll: PollState[http.Request, v1.IndexedServiceNodes]
+)

@@ -7,6 +7,7 @@ import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.consul.v1
 import io.buoyant.namer.InstrumentedActivity
+import scala.collection.mutable
 
 object ConsulNamer {
 
@@ -52,13 +53,16 @@ object ConsulNamer {
   private[this] class TaggedNamer(protected val lookup: LookupCache, protected val prefix: Path)
     extends NamerWithHandlers {
 
-    private[this] val lookupStatus = Map.empty[Path, InstrumentedBind]
+    //use a mutable and avoid mutex to get a faster response, could lead to any catastrofic failure scenario?
+    private[this] val lookupStatus = mutable.Map.empty[Path, InstrumentedBind]
 
     def lookup(path: Path): Activity[NameTree[Name]] =
       path.take(3) match {
         case id@Path.Utf8(dc, tag, service) =>
           val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
-          lookup(dc, k, prefix ++ id, path.drop(3)).underlying
+          val bind = lookup(dc, k, prefix ++ id, path.drop(3))
+          lookupStatus(path) = bind
+          bind.act.underlying
 
         case _ => Activity.value(NameTree.Neg)
       }
@@ -67,22 +71,20 @@ object ConsulNamer {
   private[this] class UntaggedNamer(protected val lookup: LookupCache, protected val prefix: Path)
     extends NamerWithHandlers {
 
-    private[this] val lookupStatus = Map.empty[Path, InstrumentedBind]
+    //use a mutable and avoid mutex to get a faster response, could lead to any catastrofic failure scenario?
+    private[this] val lookupStatus = mutable.Map.empty[Path, InstrumentedBind]
 
     def lookup(path: Path): Activity[NameTree[Name]] =
       path.take(2) match {
         case id@Path.Utf8(dc, service) =>
           val k = SvcKey(service.toLowerCase, None)
-          lookup(dc, k, prefix ++ id, path.drop(2)).underlying
+          val bind = lookup(dc, k, prefix ++ id, path.drop(2))
+          lookupStatus(path) = bind
+          bind.act.underlying
 
         case _ => Activity.value(NameTree.Neg)
       }
   }
-
-  private[this] case class InstrumentedBind(
-    act: InstrumentedActivity[NameTree[Name.Bound]],
-    poll: PollState[http.Request, v1.Indexed[Seq[v1.ServiceNode]]]
-  )
 
   class ConsulNamerHandler() extends Service[Request, Response] {
     override def apply(request: Request): Future[Response] = ???
