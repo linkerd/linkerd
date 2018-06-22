@@ -13,7 +13,7 @@ trait ConsulApi extends BaseApi {
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): ApiCall[Indexed[Map[String, Seq[String]]]]
+  ): ApiCall[IndexedServiceMap]
 
   def serviceNodes(
     serviceName: String,
@@ -22,7 +22,7 @@ trait ConsulApi extends BaseApi {
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): ApiCall[Indexed[Seq[ServiceNode]]]
+  ): ApiCall[IndexedServiceNodes]
 
 }
 

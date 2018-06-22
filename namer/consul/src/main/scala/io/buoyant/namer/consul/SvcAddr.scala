@@ -42,22 +42,26 @@ private[consul] object SvcAddr {
     consistency: Option[v1.ConsistencyMode] = None,
     preferServiceAddress: Option[Boolean] = None,
     tagWeights: Map[String, Double] = Map.empty,
-    stats: Stats
+    stats: Stats,
+    stateWatch: Option[PollState[http.Request, v1.IndexedServiceNodes]] = None
   )(implicit timer: Timer = DefaultTimer): InstrumentedVar[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
-    val pollState = new PollState[http.Request, v1.Indexed[Seq[v1.ServiceNode]]]
-    def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
-      InstrumentedApiCall.execute(
-        call = consulApi.serviceNodes(
-          key.name,
-          datacenter = Some(datacenter),
-          tag = key.tag,
-          blockingIndex = index,
-          consistency = consistency,
-          retry = false
-        ),
-        watch = pollState
-      ).map(indexedToAddresses(preferServiceAddress, tagWeights))
+    def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] = {
+      val apiCall = consulApi.serviceNodes(
+        key.name,
+        datacenter = Some(datacenter),
+        tag = key.tag,
+        blockingIndex = index,
+        consistency = consistency,
+        retry = false
+      )
+      (stateWatch match {
+        case Some(pollState) =>
+          InstrumentedApiCall.execute(apiCall, pollState)
+        case None =>
+          apiCall()
+      }).map(indexedToAddresses(preferServiceAddress, tagWeights))
+    }
 
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
@@ -127,6 +131,8 @@ private[consul] object SvcAddr {
     }
   }
 
+  def mkConsulPollState: PollState[http.Request, v1.Indexed[Seq[v1.ServiceNode]]] = new PollState
+
   private[this] def mkMeta(key: SvcKey, dc: String, domain: Option[String]) =
     domain match {
       case None => Addr.Metadata.empty
@@ -138,7 +144,7 @@ private[consul] object SvcAddr {
         Addr.Metadata(Metadata.authority -> authority)
     }
 
-  private[this] def indexedToAddresses(preferServiceAddress: Option[Boolean], tagWeights: Map[String, Double]): v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
+  private[this] def indexedToAddresses(preferServiceAddress: Option[Boolean], tagWeights: Map[String, Double]): v1.IndexedServiceNodes => v1.Indexed[Set[Address]] = {
     case v1.Indexed(nodes, idx) =>
       val addrs = preferServiceAddress match {
         case Some(false) => nodes.flatMap(serviceNodeToNodeAddr(_, tagWeights)).toSet

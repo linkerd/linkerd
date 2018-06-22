@@ -39,12 +39,12 @@ class PollState[Req, Rep] {
   protected var error: Option[Throwable] = None
 }
 
-object InstrumentedApiCall {
+private[consul] object InstrumentedApiCall {
 
-  def execute[Rep](call: v1.ApiCall[Rep], watch: PollState[http.Request, Rep]): Future[Rep] = {
-    watch.recordApiCall(call.req)
+  def execute[Rep](call: v1.ApiCall[Rep], pollWatch: PollState[http.Request, Rep]): Future[Rep] = {
+    pollWatch.recordApiCall(call.req)
     val f = call()
-    f.respond(watch.recordResponse)
+    f.respond(pollWatch.recordResponse)
     f
   }
 

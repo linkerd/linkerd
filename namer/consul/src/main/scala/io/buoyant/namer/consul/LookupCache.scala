@@ -37,6 +37,7 @@ private[consul] class LookupCache(
   private[this] val cachedLookup: (String, SvcKey, Path, Path) => InstrumentedActivity[NameTree[Name.Bound]] =
     untupled(Memoize[(String, SvcKey, Path, Path), InstrumentedActivity[NameTree[Name.Bound]]] {
       case (dc, key, id, residual) =>
+        val pollState = SvcAddr.mkConsulPollState
         val addrFuture: Future[InstrumentedVar[Addr]] = resolveDc(dc).join(domain).map {
           case ((dcName, domainOption)) =>
             SvcAddr(
@@ -48,7 +49,8 @@ private[consul] class LookupCache(
               consistency = consistency,
               preferServiceAddress = preferServiceAddress,
               weights,
-              serviceStats
+              serviceStats,
+              Some(pollState)
             )
         }
 
