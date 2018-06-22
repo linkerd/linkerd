@@ -38,7 +38,7 @@ private[consul] class LookupCache(
     untupled(Memoize[(String, SvcKey, Path, Path), InstrumentedActivity[NameTree[Name.Bound]]] {
       case (dc, key, id, residual) =>
         val pollState = SvcAddr.mkConsulPollState
-        val addrFuture: Future[InstrumentedVar[Addr]] = resolveDc(dc).join(domain).map {
+        val addrFuture: Future[Var[Addr]] = resolveDc(dc).join(domain).map {
           case ((dcName, domainOption)) =>
             SvcAddr(
               consulApi,
@@ -57,11 +57,11 @@ private[consul] class LookupCache(
         val instrumentedObsv = InstrumentedActivity[NameTree[Name.Bound]] { observationState =>
           val closableFuture = addrFuture.transform {
             case Return(addr) =>
-              val observationClosable = addr.underlying.changes.respond {
+              val observationClosable = addr.changes.respond {
                 case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
                 case Addr.Pending => observationState.update(Activity.Pending)
                 case Addr.Failed(why) => observationState.update(Activity.Failed(why))
-                case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr.underlying, id, residual))))
+                case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual))))
               }
               Future.value(observationClosable)
             case Throw(cause) =>
