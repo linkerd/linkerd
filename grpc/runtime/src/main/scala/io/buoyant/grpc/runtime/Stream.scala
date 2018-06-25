@@ -2,14 +2,13 @@ package io.buoyant.grpc.runtime
 
 import com.twitter.concurrent.{AsyncMutex, AsyncQueue}
 import com.twitter.finagle.Failure
-import com.twitter.finagle.buoyant.h2
-import com.twitter.io.Buf
-import com.twitter.util.{Activity, Event, Future, Promise, Return, Throw, Try, Var}
+import com.twitter.finagle.buoyant.h2.Reset
+import com.twitter.util._
 
 trait Stream[+T] {
   def recv(): Future[Stream.Releasable[T]]
 
-  def reset(err: GrpcStatus): Unit
+  def reset(err: Reset): Unit
 }
 
 object Stream {
@@ -19,7 +18,7 @@ object Stream {
 
   trait Provider[-T] {
     def send(t: T): Future[Unit]
-    def close(): Future[Unit]
+    def close(grpcStatus: GrpcStatus = GrpcStatus.Ok()): Future[Unit]
   }
 
   private def failAndDrainQueue[T](q: AsyncQueue[Releasable[T]], e: Throwable): Unit = {
@@ -35,8 +34,8 @@ object Stream {
   }
 
   def fromQueue[T](q: AsyncQueue[Releasable[T]]): Stream[T] = new Stream[T] {
-    override def reset(rst: GrpcStatus): Unit = {
-      failAndDrainQueue(q, rst)
+    override def reset(err: Reset): Unit = {
+      failAndDrainQueue(q, err)
     }
     override def recv(): Future[Releasable[T]] = q.poll()
   }
@@ -53,14 +52,14 @@ object Stream {
   def exception[T](e: Throwable): Stream[T] = new Stream[T] {
     val eF = Future.exception(e)
     override def recv(): Future[Releasable[T]] = eF
-    override def reset(rst: GrpcStatus): Unit = ()
+    override def reset(err: Reset): Unit = ()
   }
 
   def mk[T]: Stream[T] with Provider[T] = new Stream[T] with Provider[T] {
     // TODO bound queue? not strictly necessary if send() future observed...
     private[this] val q = new AsyncQueue[Releasable[T]]
 
-    override def reset(e: GrpcStatus): Unit = {
+    override def reset(e: Reset): Unit = {
       failAndDrainQueue(q, e)
     }
 
@@ -76,14 +75,14 @@ object Stream {
       else Future.exception(Failure("rejected", Failure.Rejected))
     }
 
-    override def close(): Future[Unit] = {
-      q.fail(GrpcStatus.Ok(), discard = false)
+    override def close(grpcStatus: GrpcStatus = GrpcStatus.Ok()): Future[Unit] = {
+      q.fail(grpcStatus, discard = false)
       Future.Unit
     }
   }
 
   def empty(status: GrpcStatus): Stream[Nothing] = new Stream[Nothing] {
-    override def reset(e: GrpcStatus): Unit = ()
+    override def reset(e: Reset): Unit = ()
     override def recv(): Future[Releasable[Nothing]] = Future.exception(status)
   }
 
@@ -116,7 +115,7 @@ object Stream {
       private[this] var streamRef: Either[Future[Stream[T]], Try[Stream[T]]] =
         Left(streamFut)
 
-      def reset(e: GrpcStatus): Unit = synchronized {
+      def reset(e: Reset): Unit = synchronized {
         streamRef match {
           case Right(_) =>
           case Left(f) =>
@@ -141,14 +140,13 @@ object Stream {
             t match {
               case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
                 val status = cause match {
-                  case Some(s: GrpcStatus) => s
-                  case Some(e) => GrpcStatus.Canceled(e.getMessage)
-                  case None => GrpcStatus.Canceled()
+                  case Some(e: Reset) => e
+                  case _ => Reset.Cancel
                 }
                 reset(status)
                 f.raise(e)
               case _ =>
-                reset(GrpcStatus.Canceled(t.getMessage))
+                reset(Reset.Cancel)
                 f.raise(t)
             }
         }
