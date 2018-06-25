@@ -139,7 +139,7 @@ object Linker {
 
       val routerImpls = mkRouters(params + Namers(namersByPrefix) + fparam.Stats(stats.scope("rt")))
 
-      val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress)
+      val adminImpl = admin.getOrElse(DefaultAdminConfig).mk(DefaultAdminAddress, stats)
 
       Impl(routerImpls, namersByPrefix, tracer, telemeters, adminImpl)
     }

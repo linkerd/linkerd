@@ -86,6 +86,7 @@ port | `9990` | Port for the admin interface.
 httpIdentifierPort | none | Port for the http identifier debug endpoint.
 shutdownGraceMs | 10000 | maximum grace period before the Linkerd process exits
 tls | no tls | The admin interface will serve over TLS if this parameter is provided. see [TLS](#server-tls).
+workerThreads | 2 | The number of worker threads used to serve the admin interface.
 
 #### Administrative endpoints
 
