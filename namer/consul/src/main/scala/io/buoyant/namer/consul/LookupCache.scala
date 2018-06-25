@@ -7,9 +7,11 @@ import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.{InstrumentedActivity, InstrumentedVar}
-import scala.Function.untupled
+import java.util.concurrent.ConcurrentHashMap
 
 private[consul] object LookupCache {
+  type DataCenterName = String
+
   val DefaultBackoffs: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 5.seconds)
 
 }
@@ -25,7 +27,8 @@ private[consul] class LookupCache(
   consistency: Option[v1.ConsistencyMode] = None,
   preferServiceAddress: Option[Boolean] = None,
   weights: Map[String, Double] = Map.empty,
-  stats: StatsReceiver = NullStatsReceiver
+  stats: StatsReceiver = NullStatsReceiver,
+  pathParser: Path => Option[(LookupCache.DataCenterName, SvcKey, Path, Path)]
 ) {
 
   private[this] val localDcMoniker = ".local"
@@ -35,61 +38,70 @@ private[consul] class LookupCache(
   private[this] val cachedCounter = service.counter("cached")
   private[this] val serviceStats = SvcAddr.Stats(service)
 
-  private[this] val cachedLookup: (String, SvcKey, Path, Path) => InstrumentedBind =
-    untupled(Memoize[(String, SvcKey, Path, Path), InstrumentedBind] {
-      case (dc, key, id, residual) =>
-        val pollState = SvcAddr.mkConsulPollState
-        val addrFuture: Future[Var[Addr]] = resolveDc(dc).join(domain).map {
-          case ((dcName, domainOption)) =>
-            SvcAddr(
-              consulApi,
-              LookupCache.DefaultBackoffs,
-              dcName,
-              key,
-              domainOption,
-              consistency = consistency,
-              preferServiceAddress = preferServiceAddress,
-              weights,
-              serviceStats,
-              Some(pollState)
-            )
+  /*
+   * use a shared mutex only on write, the ConcurrentHM impl should guarantee
+   * happens-before semantic of reads wrt to updates (as per docs)
+   */
+  private[this] val lookupStatusMu = new {}
+  private[consul] val lookupStatus = new ConcurrentHashMap[Path, InstrumentedBind]()
+
+  private[this] val lookup: (String, SvcKey, Path, Path) => InstrumentedBind =
+    (dc, key, id, residual) => {
+      val pollState = SvcAddr.mkConsulPollState
+      val addrFuture: Future[Var[Addr]] = resolveDc(dc).join(domain).map {
+        case ((dcName, domainOption)) =>
+          SvcAddr(
+            consulApi,
+            LookupCache.DefaultBackoffs,
+            dcName,
+            key,
+            domainOption,
+            consistency = consistency,
+            preferServiceAddress = preferServiceAddress,
+            weights,
+            serviceStats,
+            Some(pollState)
+          )
+      }
+
+      val instrumentedObsv = InstrumentedActivity[NameTree[Name.Bound]] { observationState =>
+        val closableFuture = addrFuture.transform {
+          case Return(addr) =>
+            val observationClosable = addr.changes.respond {
+              case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
+              case Addr.Pending => observationState.update(Activity.Pending)
+              case Addr.Failed(why) => observationState.update(Activity.Failed(why))
+              case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual))))
+            }
+            Future.value(observationClosable)
+          case Throw(cause) =>
+            // We probably failed to fetch agent config. This is critical.
+            // TODO: if this has happened only restart can restore consul namer to working state. Throw exception instead?
+            observationState.update(Activity.Failed(cause))
+            Future.value(Closable.nop)
         }
 
-        val instrumentedObsv = InstrumentedActivity[NameTree[Name.Bound]] { observationState =>
-          val closableFuture = addrFuture.transform {
-            case Return(addr) =>
-              val observationClosable = addr.changes.respond {
-                case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
-                case Addr.Pending => observationState.update(Activity.Pending)
-                case Addr.Failed(why) => observationState.update(Activity.Failed(why))
-                case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr, id, residual))))
-              }
-              Future.value(observationClosable)
-            case Throw(cause) =>
-              // We probably failed to fetch agent config. This is critical.
-              // TODO: if this has happened only restart can restore consul namer to working state. Throw exception instead?
-              observationState.update(Activity.Failed(cause))
-              Future.value(Closable.nop)
-          }
-
-          Closable.make { deadline =>
-            closableFuture.flatMap(_.close(deadline))
-          }
+        Closable.make { deadline =>
+          closableFuture.flatMap(_.close(deadline))
         }
+      }
 
-        cachedCounter.incr()
-        InstrumentedBind(instrumentedObsv, pollState)
-    })
+      cachedCounter.incr()
+      InstrumentedBind(instrumentedObsv, pollState)
+    }
 
-  def apply(
-    dc: String,
-    key: SvcKey,
-    id: Path,
-    residual: Path
-  ): InstrumentedBind = {
-    log.debug("consul lookup: %s %s", dc, id.show)
-    lookupCounter.incr()
-    cachedLookup(dc, key, id, residual)
+  def apply(servicePath: Path): Option[Activity[NameTree[Name]]] = {
+    val bound =
+      Option(lookupStatus.get(servicePath)) orElse
+        pathParser(servicePath).map {
+          case (dc, key, id, residual) =>
+            log.debug("consul lookup: %s %s", dc, id.show)
+            lookupCounter.incr()
+            val binding = lookup(dc, key, id, residual)
+            lookupStatusMu.synchronized { lookupStatus.put(servicePath, binding) }
+            binding
+        }
+    bound.map(_.act.underlying)
   }
 
   private[this] def resolveDc(datacenter: String): Future[String] =
