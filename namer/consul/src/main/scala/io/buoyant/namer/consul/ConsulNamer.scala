@@ -21,8 +21,16 @@ object ConsulNamer {
     weights: Map[String, Double] = Map.empty,
     stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats)
-    new TaggedNamer(lookup, prefix)
+    val taggingParser = (path: Path) =>
+      path.take(3) match {
+        case id@Path.Utf8(dc, tag, service) =>
+          val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
+          Some((dc, k, prefix ++ id, path.drop(3)))
+        case _ => None
+      }
+
+    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats, taggingParser)
+    new NamerWithHandlers(lookup, prefix)
   }
 
   def untagged(
@@ -35,12 +43,25 @@ object ConsulNamer {
     weights: Map[String, Double] = Map.empty,
     stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats)
-    new UntaggedNamer(lookup, prefix)
+    val untaggingParser = (path: Path) =>
+      path.take(2) match {
+        case id@Path.Utf8(dc, service) =>
+          val k = SvcKey(service.toLowerCase, None)
+          Some((dc, k, prefix ++ id, path.drop(2)))
+        case _ => None
+      }
+
+    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats, untaggingParser)
+    new NamerWithHandlers(lookup, prefix)
   }
 
-  private[this] trait NamerWithHandlers extends Namer with Admin.WithHandlers {
-    protected def prefix: Path
+  private[this] class NamerWithHandlers(protected val cache: LookupCache, protected val prefix: Path)
+    extends Namer
+    with Admin.WithHandlers {
+
+    def lookup(path: Path): Activity[NameTree[Name]] =
+      cache(path).getOrElse(Activity.value(NameTree.Neg))
+
     val handlerPrefix = prefix.drop(1).show.drop(1) // drop leading "/#/"
     override def adminHandlers: Seq[Admin.Handler] = Seq(
       Admin.Handler(
@@ -48,42 +69,6 @@ object ConsulNamer {
         new ConsulNamerHandler()
       )
     )
-  }
-
-  private[this] class TaggedNamer(protected val lookup: LookupCache, protected val prefix: Path)
-    extends NamerWithHandlers {
-
-    //use a mutable and avoid mutex to get a faster response, could lead to any catastrofic failure scenario?
-    private[this] val lookupStatus = mutable.Map.empty[Path, InstrumentedBind]
-
-    def lookup(path: Path): Activity[NameTree[Name]] =
-      path.take(3) match {
-        case id@Path.Utf8(dc, tag, service) =>
-          val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
-          val bind = lookup(dc, k, prefix ++ id, path.drop(3))
-          lookupStatus(path) = bind
-          bind.act.underlying
-
-        case _ => Activity.value(NameTree.Neg)
-      }
-  }
-
-  private[this] class UntaggedNamer(protected val lookup: LookupCache, protected val prefix: Path)
-    extends NamerWithHandlers {
-
-    //use a mutable and avoid mutex to get a faster response, could lead to any catastrofic failure scenario?
-    private[this] val lookupStatus = mutable.Map.empty[Path, InstrumentedBind]
-
-    def lookup(path: Path): Activity[NameTree[Name]] =
-      path.take(2) match {
-        case id@Path.Utf8(dc, service) =>
-          val k = SvcKey(service.toLowerCase, None)
-          val bind = lookup(dc, k, prefix ++ id, path.drop(2))
-          lookupStatus(path) = bind
-          bind.act.underlying
-
-        case _ => Activity.value(NameTree.Neg)
-      }
   }
 
   class ConsulNamerHandler() extends Service[Request, Response] {
