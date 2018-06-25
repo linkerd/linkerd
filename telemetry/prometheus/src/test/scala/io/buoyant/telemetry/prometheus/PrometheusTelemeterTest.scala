@@ -87,6 +87,22 @@ class PrometheusTelemeterTest extends FunSuite {
                      |""".stripMargin)
   }
 
+  test("empty histograms are not printed") {
+    val (stats, handler) = statsAndHandler
+    val stat = stats.scope("foo", "bar").stat("bas")
+    val metricsTreeStat =
+      stats.tree.resolve(Seq("foo", "bar", "bas")).metric.asInstanceOf[Metric.Stat]
+
+    // endpoint should return no data before first snapshot
+    val rsp0 = await(handler(Request(prometheusPath))).contentString
+    assert(rsp0 == "")
+
+    metricsTreeStat.snapshot()
+
+    val rsp1 = await(handler(Request(prometheusPath))).contentString
+    assert(rsp1 == "")
+  }
+
   test("metric labels are escaped") {
     val (stats, handler) = statsAndHandler
     val counter = stats.scope("rt", "incoming", "service", """\x5b\x31\x32\x33\x2e\x31\x32\x33\x2e\x31\x32\x33\x2e\x31\x32\x33\x5dun"esc""").counter("requests")
