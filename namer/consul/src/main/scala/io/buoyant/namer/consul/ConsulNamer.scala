@@ -1,13 +1,13 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
 import io.buoyant.consul.v1
 import io.buoyant.namer.InstrumentedActivity
-import scala.collection.mutable
 
 object ConsulNamer {
 
@@ -66,13 +66,35 @@ object ConsulNamer {
     override def adminHandlers: Seq[Admin.Handler] = Seq(
       Admin.Handler(
         s"/namer_state/${handlerPrefix}.json",
-        new ConsulNamerHandler()
+        new ConsulNamerHandler(cache.status)
       )
     )
   }
 
-  class ConsulNamerHandler() extends Service[Request, Response] {
-    override def apply(request: Request): Future[Response] = ???
+  class ConsulNamerHandler(callStatus: => Map[Path, InstrumentedBind])
+    extends Service[Request, Response] {
+
+    private[this] val mapper = Parser.jsonObjectMapper(Nil)
+
+    override def apply(request: Request): Future[Response] = {
+      val state = callStatus.map {
+        case (path, InstrumentedBind(act, poll)) =>
+          path.show -> Map(
+            "state" -> act.stateSnapshot,
+            "poll" -> poll
+          )
+      }
+
+      val res = {
+        val r = Response()
+        r.mediaType = MediaType.Json
+        r.contentString = mapper.writeValueAsString(state)
+        r
+      }
+
+      Future.value(res)
+
+    }
   }
 
 }

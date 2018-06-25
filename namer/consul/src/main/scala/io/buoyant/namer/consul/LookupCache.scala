@@ -8,6 +8,7 @@ import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.{InstrumentedActivity, InstrumentedVar}
 import java.util.concurrent.ConcurrentHashMap
+import scala.collection.JavaConverters._
 
 private[consul] object LookupCache {
   type DataCenterName = String
@@ -43,7 +44,9 @@ private[consul] class LookupCache(
    * happens-before semantic of reads wrt to updates (as per docs)
    */
   private[this] val lookupStatusMu = new {}
-  private[consul] val lookupStatus = new ConcurrentHashMap[Path, InstrumentedBind]()
+  private[this] val lookupStatus = new ConcurrentHashMap[Path, InstrumentedBind]()
+
+  private[consul] def status: Map[Path, InstrumentedBind] = lookupStatus.asScala.toMap
 
   private[this] val lookup: (String, SvcKey, Path, Path) => InstrumentedBind =
     (dc, key, id, residual) => {
