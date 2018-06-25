@@ -1,11 +1,12 @@
 package io.buoyant.namer.consul
 
 import com.twitter.conversions.time._
+import com.twitter.finagle.http.Request
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Addr, Address, Failure}
 import com.twitter.util.{Duration, Future, Promise, Timer, Var}
-import io.buoyant.consul.v1.{CatalogApi, ConsistencyMode, HealthStatus, Indexed, ServiceNode}
+import io.buoyant.consul.v1.{ApiCall, CatalogApi, ConsistencyMode, HealthStatus, Indexed, IndexedServiceNodes, ServiceNode}
 import io.buoyant.namer.consul.SvcAddr.Stats
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
@@ -17,6 +18,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
   implicit val timer: Timer = DefaultTimer
 
   val hangForLongBackoff = Stream.continually(Duration.Top)
+  val emptyRequest = Request()
 
   def service(host: String = "8.8.8.8", port: Int = 53): (ServiceNode, InetSocketAddress) =
     (
@@ -33,7 +35,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         new InetSocketAddress(host, port)
     )
 
-  def apiStub(stubFn: (String, Option[String], Option[String], Option[String], Option[ConsistencyMode], Boolean) => Future[Indexed[Seq[ServiceNode]]]) =
+  def apiStub(stubFn: (String, Option[String], Option[String], Option[String], Option[ConsistencyMode], Boolean) => Future[IndexedServiceNodes]) =
     new CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -42,7 +44,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = stubFn(serviceName, datacenter, tag, blockingIndex, consistency, retry)
+      ): ApiCall[IndexedServiceNodes] = ApiCall(emptyRequest, _ => stubFn(serviceName, datacenter, tag, blockingIndex, consistency, retry))
     }
 
   test("should keep last known Addr.Bound value on error") {
