@@ -100,8 +100,11 @@ private[consul] class LookupCache(
           case (dc, key, id, residual) =>
             log.debug("consul lookup: %s %s", dc, id.show)
             lookupCounter.incr()
-            val binding = lookup(dc, key, id, residual)
-            lookupStatusMu.synchronized { lookupStatus.put(servicePath, binding) }
+            var binding: InstrumentedBind = null
+            lookupStatusMu.synchronized {
+              binding = Option(lookupStatus.get(servicePath)).getOrElse(lookup(dc, key, id, residual))
+              lookupStatus.put(servicePath, binding)
+            }
             binding
         }
     bound.map(_.act.underlying)
