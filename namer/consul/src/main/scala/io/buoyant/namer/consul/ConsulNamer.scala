@@ -1,5 +1,6 @@
 package io.buoyant.namer.consul
 
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.twitter.finagle._
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
@@ -74,7 +75,9 @@ object ConsulNamer {
   class ConsulNamerHandler(callStatus: => Map[Path, InstrumentedBind])
     extends Service[Request, Response] {
 
-    private[this] val mapper = Parser.jsonObjectMapper(Nil)
+    private[this] val mapper =
+      Parser.jsonObjectMapper(Nil)
+        .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
 
     override def apply(request: Request): Future[Response] = {
       val state = callStatus.map {
