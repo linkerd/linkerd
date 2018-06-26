@@ -343,9 +343,7 @@ object Headers {
           service(req)
         }
       }
-
     }
-
   }
 
   /**
@@ -397,7 +395,6 @@ object Headers {
         service(req)
       }
     }
-
   }
 
   /**
@@ -469,7 +466,6 @@ object Headers {
             new BoundFilter(dst.name).andThen(factory)
         }
     }
-
   }
 
   class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
