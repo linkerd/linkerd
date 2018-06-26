@@ -35,16 +35,16 @@ import scala.collection.breakOut
  *   - `l5d-dst-concrete`: the concrete client name after delegation
  *   - `l5d-dst-residual`: an optional residual path remaining after delegation
  *   - `l5d-reqid`: a token that may be used to correlate requests in
- *                  a callgraph across services and linkerd instances
+ * a callgraph across services and linkerd instances
  *
  * And in addition to the context headers, linkerd may emit the following
  * headers on outgoing responses:
  *
  *   - `l5d-err`: indicates a linkerd-generated error. Error responses
- *                that do not have this header are application errors.
+ * that do not have this header are application errors.
  *   - `l5d-retryable`: if true, the request for this response is known to be
- *                safe to retry (for example, because it was not delivered to
- *                its destination)
+ * safe to retry (for example, because it was not delivered to
+ * its destination)
  */
 object Headers {
   val Prefix = "l5d-"
@@ -70,6 +70,7 @@ object Headers {
         val description = "Extracts linkerd context from http headers"
 
         val deadline = new Deadline.ServerFilter
+
         def dtab(maxHeaderSize: Int) = new Dtab.ServerFilter(maxHeaderSize)
 
         def make(maxHeaderSize: hparam.MaxHeaderSize, next: ServiceFactory[Request, Response]) =
@@ -203,18 +204,19 @@ object Headers {
               service(req)
           }
       }
+
     }
 
     /**
      * There are two headers used to control local Dtabs in linkerd:
      *
      *   1. `l5d-ctx-dtab` is read and _written_ by linkerd. It is
-     *      intended to managed entirely by linkerd, and applications
-     *      should only forward requests prefixed by `l5d-ctx-*`.
+     * intended to managed entirely by linkerd, and applications
+     * should only forward requests prefixed by `l5d-ctx-*`.
      *
      *   2. `l5d-dtab` is to be provided by users. Applications are
-     *       not required to forward `l5d-dtab` when fronted by
-     *       linkerd.
+     * not required to forward `l5d-dtab` when fronted by
+     * linkerd.
      *
      * `l5d-dtab` is appended to `l5d-ctx-dtab`, so that user-provided
      * delegations take precdence.
@@ -227,7 +229,9 @@ object Headers {
 
       def get(headers: HeaderMap, key: String): Try[FDtab] =
         if (!headers.contains(key)) EmptyReturn
-        else Try { FDtab(headers.getAll(key).flatMap(FDtab.read(_))(breakOut)) }
+        else Try {
+          FDtab(headers.getAll(key).flatMap(FDtab.read(_))(breakOut))
+        }
 
       def get(headers: HeaderMap): Try[FDtab] =
         for {
@@ -286,10 +290,16 @@ object Headers {
           service(req)
         }
       }
+
     }
 
     object Trace {
       val Key = Prefix + "trace"
+      val OpentracingSpanHeader = "x-b3-spanid";
+      val OpentracingParentHeader = "x-b3-parentspanid";
+      val OpentracingTraceHeader = "x-b3-traceid";
+      val OpentracingSampleHeader = "x-b3-sampled";
+      val OpentracingFlagsHeader = "x-b3-flags";
 
       /**
        * Get a trace id from a base64 encoded buffer.
@@ -297,21 +307,30 @@ object Headers {
        * Based on com.twitter.finagle.tracing.Trace.idCtx.tryUnmarshal
        *
        * The wire format is (big-endian):
-       *   ''reqId:8 parentId:8 traceId:8 flags:8''
+       * ''reqId:8 parentId:8 traceId:8 flags:8''
        */
       def read(b64: String): Try[TraceId] =
-        Try { Base64.getDecoder.decode(b64) }.flatMap(TraceId.deserialize(_))
+        Try {
+          Base64.getDecoder.decode(b64)
+        }.flatMap(TraceId.deserialize(_))
 
       def get(headers: HeaderMap): Option[TraceId] =
-        for {
-          header <- headers.get(Key)
-          traceId <- read(header).toOption
-        } yield traceId
+        if (headers.contains(OpentracingSpanHeader)) {
+          Some(TraceId.apply(SpanId.fromString(headers.get(OpentracingTraceHeader).get), SpanId.fromString(headers.get(OpentracingParentHeader).get), SpanId.fromString(headers.get(OpentracingSpanHeader).get).get, Some(if (headers.get(OpentracingSampleHeader).get.toInt == 1) true else false), Flags.apply(headers.get(OpentracingFlagsHeader).get.toInt)));
+        } else {
+          for {
+            header <- headers.get(Key)
+            traceId <- read(header).toOption
+          } yield traceId
+        }
 
       def set(headers: HeaderMap, id: TraceId): Unit = {
         val bytes = TraceId.serialize(id)
         val b64 = Base64.getEncoder.encodeToString(bytes)
         val _ = headers.set(Key, b64)
+        val __ = headers.set(OpentracingSpanHeader, id.spanId.toString)
+        val ___ = headers.set(OpentracingTraceHeader, id.traceId.toString)
+        val ____ = headers.set(OpentracingParentHeader, id.parentId.toString)
       }
 
       def clear(headers: HeaderMap): Unit = {
@@ -324,7 +343,9 @@ object Headers {
           service(req)
         }
       }
+
     }
+
   }
 
   /**
@@ -376,6 +397,7 @@ object Headers {
         service(req)
       }
     }
+
   }
 
   /**
@@ -393,6 +415,7 @@ object Headers {
     /** Encodes `l5d-dst-service` on outgoing requests. */
     class PathFilter(path: Path) extends SimpleFilter[Request, Response] {
       private[this] val pathShow = path.show
+
       def apply(req: Request, service: Service[Request, Response]) = {
         req.headerMap.set(Path, pathShow)
         service(req)
@@ -404,6 +427,7 @@ object Headers {
         new Stack.Module1[BuoyantDst.Path, ServiceFactory[Request, Response]] {
           val role = Stack.Role("Headers.Path")
           val description = s"Adds the '$Path' header to requests and responses"
+
           def make(dst: BuoyantDst.Path, factory: ServiceFactory[Request, Response]) =
             new PathFilter(dst.path).andThen(factory)
         }
@@ -418,6 +442,7 @@ object Headers {
         case com.twitter.finagle.Path.empty => None
         case path => Some(path.show)
       }
+
       private[this] def annotate(msg: Message): Unit = {
         val headers = msg.headerMap
         val _b = headers.set(Bound, boundShow)
@@ -439,10 +464,12 @@ object Headers {
         new Stack.Module1[BuoyantDst.Bound, ServiceFactory[Request, Response]] {
           val role = Stack.Role("Headers.Bound")
           val description = s"Adds the $Bound and $Residual headers to requests and responses"
+
           def make(dst: BuoyantDst.Bound, factory: ServiceFactory[Request, Response]) =
             new BoundFilter(dst.name).andThen(factory)
         }
     }
+
   }
 
   class ClearMiscServerFilter extends SimpleFilter[Request, Response] {
@@ -504,4 +531,5 @@ object Headers {
         Try(value.toBoolean).toOption
       }.getOrElse(false)
   }
+
 }
