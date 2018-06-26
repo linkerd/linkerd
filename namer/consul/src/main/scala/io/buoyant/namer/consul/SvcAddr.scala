@@ -43,7 +43,7 @@ private[consul] object SvcAddr {
     preferServiceAddress: Option[Boolean] = None,
     tagWeights: Map[String, Double] = Map.empty,
     stats: Stats,
-    stateWatch: Option[PollState[http.Request, v1.IndexedServiceNodes]] = None
+    stateWatch: PollState[http.Request, v1.IndexedServiceNodes]
   )(implicit timer: Timer = DefaultTimer): Var[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] = {
@@ -55,12 +55,8 @@ private[consul] object SvcAddr {
         consistency = consistency,
         retry = false
       )
-      (stateWatch match {
-        case Some(pollState) =>
-          InstrumentedApiCall.execute(apiCall, pollState)
-        case None =>
-          apiCall()
-      }).map(indexedToAddresses(preferServiceAddress, tagWeights))
+      InstrumentedApiCall.execute(apiCall, stateWatch)
+        .map(indexedToAddresses(preferServiceAddress, tagWeights))
     }
 
     // Start by fetching the service immediately, and then long-poll

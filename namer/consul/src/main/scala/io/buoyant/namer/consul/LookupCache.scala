@@ -63,7 +63,7 @@ private[consul] class LookupCache(
             preferServiceAddress = preferServiceAddress,
             weights,
             serviceStats,
-            Some(pollState)
+            pollState
           )
       }
 

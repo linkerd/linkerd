@@ -66,7 +66,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     }
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
+    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
 
     // then
     await(addr.changes.toFuture)
@@ -91,7 +91,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     val backoffs: Stream[Duration] = Stream.fill(numOfAttempts)(10.millis) #::: hang #:: Stream.empty
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
+    val addr: Var[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
     addr.changes.respond(_ => ())
 
     // then
@@ -131,7 +131,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     }
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
+    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
 
     // then
     await(addr.changes.toFuture)
