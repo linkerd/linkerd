@@ -11,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
 
 private[consul] object LookupCache {
-  type DataCenterName = String
 
   val DefaultBackoffs: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 5.seconds)
 
@@ -28,8 +27,7 @@ private[consul] class LookupCache(
   consistency: Option[v1.ConsistencyMode] = None,
   preferServiceAddress: Option[Boolean] = None,
   weights: Map[String, Double] = Map.empty,
-  stats: StatsReceiver = NullStatsReceiver,
-  pathParser: Path => Option[(LookupCache.DataCenterName, SvcKey, Path, Path)]
+  stats: StatsReceiver = NullStatsReceiver
 ) {
 
   private[this] val localDcMoniker = ".local"
@@ -93,17 +91,17 @@ private[consul] class LookupCache(
       InstrumentedBind(instrumentedObsv, pollState)
     }
 
-  def apply(servicePath: Path): Option[Activity[NameTree[Name]]] = {
+  def apply(servicePath: ConsulPath): Option[Activity[NameTree[Name]]] = {
     val bound =
-      Option(lookupStatus.get(servicePath)) orElse
-        pathParser(servicePath).map {
-          case (dc, key, id, residual) =>
+      Option(lookupStatus.get(servicePath.raw)) orElse
+        servicePath.scheme.map {
+          case PathScheme(dc, key, id, residual) =>
             log.debug("consul lookup: %s %s", dc, id.show)
             lookupCounter.incr()
             var binding: InstrumentedBind = null
             lookupStatusMu.synchronized {
-              binding = Option(lookupStatus.get(servicePath)).getOrElse(lookup(dc, key, id, residual))
-              lookupStatus.put(servicePath, binding)
+              binding = Option(lookupStatus.get(servicePath.raw)).getOrElse(lookup(dc, key, id, residual))
+              lookupStatus.put(servicePath.raw, binding)
             }
             binding
         }

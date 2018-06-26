@@ -22,16 +22,8 @@ object ConsulNamer {
     weights: Map[String, Double] = Map.empty,
     stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val taggingParser = (path: Path) =>
-      path.take(3) match {
-        case id@Path.Utf8(dc, tag, service) =>
-          val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
-          Some((dc, k, prefix ++ id, path.drop(3)))
-        case _ => None
-      }
-
-    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats, taggingParser)
-    new NamerWithHandlers(lookup, prefix)
+    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats)
+    new TaggedNamer(lookup, prefix)
   }
 
   def untagged(
@@ -44,32 +36,60 @@ object ConsulNamer {
     weights: Map[String, Double] = Map.empty,
     stats: StatsReceiver = NullStatsReceiver
   ): Namer = {
-    val untaggingParser = (path: Path) =>
-      path.take(2) match {
-        case id@Path.Utf8(dc, service) =>
-          val k = SvcKey(service.toLowerCase, None)
-          Some((dc, k, prefix ++ id, path.drop(2)))
-        case _ => None
-      }
-
-    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats, untaggingParser)
-    new NamerWithHandlers(lookup, prefix)
+    val lookup = new LookupCache(consulApi, agentApi, setHost, consistency, preferServiceAddress, weights, stats)
+    new UntaggedNamer(lookup, prefix)
   }
 
-  private[this] class NamerWithHandlers(protected val cache: LookupCache, protected val prefix: Path)
+  private[this] trait NamerWithHandlers
     extends Namer
     with Admin.WithHandlers {
 
-    def lookup(path: Path): Activity[NameTree[Name]] =
-      cache(path).getOrElse(Activity.value(NameTree.Neg))
+    def prefix: Path
 
-    val handlerPrefix = prefix.drop(1).show.drop(1) // drop leading "/#/"
+    def caching: LookupCache
+
+    def parse(path: Path): ConsulPath
+
+    def lookup(path: Path): Activity[NameTree[Name]] =
+      caching(parse(path)).getOrElse(Activity.value(NameTree.Neg))
+
+    //lazy to avoid initialization order issues
+    lazy val handlerPrefix = prefix.drop(1).show.drop(1) // drop leading "/#/"
+
     override def adminHandlers: Seq[Admin.Handler] = Seq(
       Admin.Handler(
         s"/namer_state/${handlerPrefix}.json",
-        new ConsulNamerHandler(cache.status)
+        new ConsulNamerHandler(caching.status)
       )
     )
+  }
+
+  private[this] class TaggedNamer(val caching: LookupCache, val prefix: Path) extends NamerWithHandlers {
+
+    override def parse(path: Path): ConsulPath = {
+      val scheme = path.take(3) match {
+        case id@Path.Utf8(dc, tag, service) =>
+          val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
+          Some(PathScheme(dc, k, prefix ++ id, path.drop(3)))
+        case _ => None
+      }
+      ConsulPath(path, scheme)
+    }
+
+  }
+
+  private[this] class UntaggedNamer(val caching: LookupCache, val prefix: Path) extends NamerWithHandlers {
+
+    override def parse(path: Path): ConsulPath = {
+      val scheme = path.take(2) match {
+        case id@Path.Utf8(dc, service) =>
+          val k = SvcKey(service.toLowerCase, None)
+          Some(PathScheme(dc, k, prefix ++ id, path.drop(2)))
+        case _ => None
+      }
+      ConsulPath(path, scheme)
+    }
+
   }
 
   class ConsulNamerHandler(callStatus: => Map[Path, InstrumentedBind])
