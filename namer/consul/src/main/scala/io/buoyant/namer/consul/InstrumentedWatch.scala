@@ -41,21 +41,14 @@ class PollState[Req, Rep] {
 
 private[consul] object InstrumentedApiCall {
 
-  def execute[Rep](call: v1.ApiCall[Rep], pollWatch: PollState[RequestSnapshot, Rep]): Future[Rep] = {
+  def execute[Rep](call: v1.ApiCall[Rep], pollWatch: PollState[String, Rep]): Future[Rep] = {
     pollWatch.recordApiCall(capture(call.req))
     val f = call()
     f.respond(pollWatch.recordResponse)
     f
   }
 
-  /** this class is intended to be serialized */
-  private[consul] case class RequestSnapshot(
-    method: String,
-    uri: String,
-    headers: mutable.Map[String, String]
-  )
-
-  def capture(req: http.Request): RequestSnapshot =
-    RequestSnapshot(req.method.toString, req.uri, req.headerMap)
+  def capture(req: http.Request): String =
+    s"${req.method} ${req.uri}"
 
 }

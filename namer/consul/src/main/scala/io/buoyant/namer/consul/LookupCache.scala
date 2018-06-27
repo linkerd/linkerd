@@ -129,5 +129,5 @@ private[consul] class LookupCache(
 /* collects the binding metrics to expose */
 private[consul] case class InstrumentedBind(
   act: InstrumentedActivity[NameTree[Name.Bound]],
-  poll: PollState[InstrumentedApiCall.RequestSnapshot, v1.IndexedServiceNodes]
+  poll: PollState[String, v1.IndexedServiceNodes]
 )
