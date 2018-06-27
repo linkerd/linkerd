@@ -8,6 +8,7 @@ import com.twitter.finagle.{Addr, Address, Failure}
 import com.twitter.util.{Duration, Future, Promise, Timer, Var}
 import io.buoyant.consul.v1.{ApiCall, CatalogApi, ConsistencyMode, HealthStatus, Indexed, IndexedServiceNodes, ServiceNode}
 import io.buoyant.namer.consul.SvcAddr.Stats
+import io.buoyant.namer.InstrumentedVar
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
@@ -66,11 +67,15 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     }
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
 
     // then
-    await(addr.changes.toFuture)
-    addr.sample() match {
+    await(addr.underlying.changes.toFuture)
+    addr.running shouldBe false
+    addr.lastStartedAt shouldBe 'defined
+    addr.lastStoppedAt shouldBe 'defined
+    addr.lastUpdatedAt shouldBe 'defined
+    addr.underlying.sample() match {
       case Addr.Bound(addrSet, _) =>
         addrSet should have size 1
         addrSet.head should matchPattern { case Address.Inet(addr, _) if addr == serviceAddr => }
@@ -91,8 +96,8 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     val backoffs: Stream[Duration] = Stream.fill(numOfAttempts)(10.millis) #::: hang #:: Stream.empty
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
-    addr.changes.respond(_ => ())
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    addr.underlying.changes.respond(_ => ())
 
     // then
     await(retried)
@@ -131,10 +136,14 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     }
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
 
     // then
-    await(addr.changes.toFuture)
-    addr.sample() should matchPattern { case Addr.Neg => }
+    await(addr.underlying.changes.toFuture)
+    addr.running shouldBe false
+    addr.lastStartedAt shouldBe 'defined
+    addr.lastStoppedAt shouldBe 'defined
+    addr.lastUpdatedAt shouldBe 'defined
+    addr.underlying.sample() should matchPattern { case Addr.Neg => }
   }
 }

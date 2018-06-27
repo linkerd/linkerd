@@ -101,9 +101,9 @@ object ConsulNamer {
 
     override def apply(request: Request): Future[Response] = {
       val state = callStatus.map {
-        case (path, InstrumentedBind(act, poll)) =>
+        case (path, InstrumentedBind(addr, poll)) =>
           path.show -> Map(
-            "state" -> act.stateSnapshot,
+            "state" -> addr.stateSnapshot,
             "poll" -> poll
           )
       }
