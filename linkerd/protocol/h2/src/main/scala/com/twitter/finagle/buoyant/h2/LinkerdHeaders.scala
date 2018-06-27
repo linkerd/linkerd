@@ -451,14 +451,16 @@ object LinkerdHeaders {
       clearLinkerdHeaders(req.headers)
       service(req).map { resp =>
         val rsp = resp.dup()
-        if (rsp.headers.contains(Err.Key)) {
-          Stream.readToEnd(rsp.stream)
-          rsp.headers.remove("content-length")
-          rsp.headers.remove("content-type")
-          clearLinkerdHeaders(rsp.headers)
-          Response(rsp.headers, Stream.empty())
+        val headers = rsp.headers
+        if (headers.contains(Err.Key)) {
+          // Reads and discards all frames from the stream to avoid H2 frame leaks
+          val _ = Stream.readToEnd(rsp.stream)
+          headers.remove("content-length")
+          headers.remove("content-type")
+          clearLinkerdHeaders(headers)
+          Response(headers, Stream.empty())
         } else {
-          clearLinkerdHeaders(rsp.headers)
+          clearLinkerdHeaders(headers)
           rsp
         }
 
