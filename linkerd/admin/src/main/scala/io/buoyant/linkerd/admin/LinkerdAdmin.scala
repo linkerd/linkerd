@@ -71,16 +71,40 @@ object LinkerdAdmin {
     Handler("/", new HttpIdentifierHandler(identifiers))
   }
 
+  def extractInterpreterNavItems(routers: Seq[Router]): Seq[Admin.NavItem] = {
+    routers.flatMap { router =>
+      router.interpreter match {
+        case withNav: Admin.WithNavItems =>
+          withNav.navItems.map { item =>
+            item.copy(url = s"/${router.label}${item.url}")
+          }
+        case _ => Nil
+      }
+    }
+  }
+
+  def extractInterpreterHandlers(routers: Seq[Router]): Seq[Admin.Handler] = {
+    routers.flatMap { router =>
+      router.interpreter match {
+        case withHandlers: Admin.WithHandlers =>
+          withHandlers.adminHandlers.map { handler =>
+            handler.copy(url = s"/${router.label}${handler.url}")
+          }
+        case _ =>
+          Nil
+      }
+    }
+  }
+
   def apply(lc: Linker.LinkerConfig, linker: Linker): Seq[Handler] = {
     val navItems = Seq(
       NavItem("dtab", "delegator"),
       NavItem("logging", "logging")
     ) ++ Admin.extractNavItems(
         linker.namers.map(_._2) ++
-          linker.routers.map(_.interpreter) ++
           linker.routers ++
           linker.telemeters
-      ) :+ NavItem("help", "help")
+      ) ++ extractInterpreterNavItems(linker.routers) :+ NavItem("help", "help")
 
     def uniqBy[T, U](items: Seq[T])(f: T => U): Seq[T] = items match {
       case Nil => items
@@ -94,9 +118,8 @@ object LinkerdAdmin {
     val extHandlers = Admin.extractHandlers(
       linker.namers.map(_._2) ++
         linker.routers ++
-        linker.routers.map(_.interpreter) ++
         linker.telemeters
-    ).map {
+    ) ++ extractInterpreterHandlers(linker.routers).map {
         case Handler(url, service, css) =>
           val adminFilter = new AdminFilter(adminHandler, css)
           Handler(url, adminFilter.andThen(service), css)
