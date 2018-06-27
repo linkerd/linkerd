@@ -72,9 +72,12 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   protected val defaultServer = {
     val stk = Http.server.stack
       .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
-      .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
+      .remove(Headers.Ctx.serverModule.role)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
+      // Headers.Ctx.serverModule needs to be before the ErrorResponder module
+      // so that errors responses from the ErrorResponder will be cleared when clearContext is set
+      .prepend(Headers.Ctx.serverModule)
       // ensure the server-stack framing filter is placed below the stats filter
       // so that any malframed requests it fails are counted as errors
       .insertAfter(StatsFilter.role, FramingFilter.serverModule)
