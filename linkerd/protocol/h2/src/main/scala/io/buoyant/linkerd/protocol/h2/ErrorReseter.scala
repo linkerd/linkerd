@@ -1,6 +1,6 @@
 package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.finagle.buoyant.h2.{Request, Reset, Response, Status, Stream}
+import com.twitter.finagle.buoyant.h2.{LinkerdHeaders, Request, Reset, Response, Status, Stream}
 import com.twitter.finagle.naming.buoyant.{RichConnectionFailedExceptionWithPath, RichNoBrokersAvailableException}
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.logging.{Level, Logger}
@@ -26,13 +26,9 @@ class ErrorReseter extends SimpleFilter[Request, Response] {
       log.info("unroutable request: %s: %s", req, reason)
       RefusedF
     case e: RichNoBrokersAvailableException =>
-      Future.value(
-        Response(Status.BadGateway, Stream.const(e.exceptionMessage()))
-      )
+      Future.value(LinkerdHeaders.Err.respond(e.exceptionMessage(), Status.BadGateway))
     case e: RichConnectionFailedExceptionWithPath =>
-      Future.value(
-        Response(Status.BadGateway, Stream.const(e.exceptionMessage))
-      )
+      Future.value(LinkerdHeaders.Err.respond(e.exceptionMessage, Status.BadGateway))
     case H2ResponseException(rsp) =>
       Future.value(rsp)
   }

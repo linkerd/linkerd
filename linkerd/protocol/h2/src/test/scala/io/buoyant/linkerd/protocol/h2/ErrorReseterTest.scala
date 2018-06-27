@@ -1,8 +1,9 @@
 package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.io.Buf
-import com.twitter.finagle.{Failure, Service}
+import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.{Status => _, _}
 import com.twitter.finagle.buoyant.h2._
+import com.twitter.finagle.naming.buoyant.RichNoBrokersAvailableException
 import com.twitter.util.{Future, Throw}
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
 import io.buoyant.router.RoutingFactory
@@ -50,5 +51,14 @@ class ErrorReseterTest extends FunSuite with Awaits {
     assert(rsp.status == Status.Cowabunga)
     assert(!rsp.headers.contains("l5d-err"))
     assert(rsp.stream.isEmpty)
+  }
+
+  test("response from exceptions should have l5d-err header"){
+    val service = ErrorReseter.filter.andThen(Service.mk[Request, Response]{_ =>
+      Future.exception(new RichNoBrokersAvailableException(Dst.Path.empty,None, None))
+    })
+    val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
+    val resp = await(service(req))
+    assert(resp.headers.contains("l5d-err"))
   }
 }
