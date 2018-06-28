@@ -96,7 +96,7 @@ object ConsulNamer {
 
   }
 
-  class ConsulNamerHandler(callStatus: => Map[Path, InstrumentedBind])
+  class ConsulNamerHandler(callStatus: => Map[Path, InstrumentedAddr])
     extends Service[Request, Response] {
 
     private[this] val mapper =
@@ -105,7 +105,7 @@ object ConsulNamer {
 
     override def apply(request: Request): Future[Response] = {
       val state = callStatus.map {
-        case (path, InstrumentedBind(addr, poll)) =>
+        case (path, InstrumentedAddr(addr, poll)) =>
           path.show -> Map(
             "state" -> addr.stateSnapshot,
             "poll" -> poll

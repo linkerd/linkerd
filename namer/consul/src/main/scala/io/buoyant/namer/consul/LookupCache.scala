@@ -43,9 +43,9 @@ private[consul] class LookupCache(
    * happens-before semantic of reads wrt to updates (as per docs)
    */
   private[this] val lookupStatusMu = new {}
-  private[this] val lookupStatus = new ConcurrentHashMap[Path, InstrumentedBind]()
+  private[this] val lookupStatus = new ConcurrentHashMap[Path, InstrumentedAddr]()
 
-  private[consul] def status: Map[Path, InstrumentedBind] = lookupStatus.asScala.toMap
+  private[consul] def status: Map[Path, InstrumentedAddr] = lookupStatus.asScala.toMap
 
   private[this] val lookupAddress: (Path, String, SvcKey) => Future[InstrumentedVar[Addr]] =
     (raw, dc, key) => {
@@ -74,7 +74,7 @@ private[consul] class LookupCache(
             if (lookupStatus.containsKey(raw)) {
               cachedAddr() = lookupStatus.get(raw).addr
             } else {
-              lookupStatus.put(raw, InstrumentedBind(addr, pollState))
+              lookupStatus.put(raw, InstrumentedAddr(addr, pollState))
               cachedCounter.incr()
             }
           }
@@ -113,7 +113,7 @@ private[consul] class LookupCache(
       case (raw, dc, key, id, residual) => {
         val cached = Option(lookupStatus.get(raw))
         val address = cached match {
-          case Some(InstrumentedBind(addr, _)) =>
+          case Some(InstrumentedAddr(addr, _)) =>
             Future(addr)
           case None =>
             log.debug("consul lookup: %s %s", dc, id.show)
@@ -146,7 +146,7 @@ private[consul] class LookupCache(
 }
 
 /* collects the binding metrics to expose */
-private[consul] case class InstrumentedBind(
+private[consul] case class InstrumentedAddr(
   addr: InstrumentedVar[Addr],
   poll: PollState[String, v1.IndexedServiceNodes]
 )
