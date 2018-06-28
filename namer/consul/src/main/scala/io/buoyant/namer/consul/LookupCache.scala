@@ -109,20 +109,18 @@ private[consul] class LookupCache(
         Activity(observation)
     })
 
-  def apply(servicePath: ConsulPath): Option[Activity[NameTree[Name]]] =
-    servicePath.scheme.map {
-      case PathScheme(dc, key, id, residual) =>
-        val cached = Option(lookupStatus.get(servicePath.raw))
-        val address = cached match {
-          case Some(InstrumentedBind(addr, _)) =>
-            Future(addr)
-          case None =>
-            log.debug("consul lookup: %s %s", dc, id.show)
-            lookupCounter.incr()
-            lookupAddress(servicePath.raw, dc, key)
-        }
-        convertToName(address, id, residual)
+  def apply(raw: Path, dc: String, key: SvcKey, id: Path, residual: Path): Activity[NameTree[Name]] = {
+    val cached = Option(lookupStatus.get(raw))
+    val address = cached match {
+      case Some(InstrumentedBind(addr, _)) =>
+        Future(addr)
+      case None =>
+        log.debug("consul lookup: %s %s", dc, id.show)
+        lookupCounter.incr()
+        lookupAddress(raw, dc, key)
     }
+    convertToName(address, id, residual)
+  }
 
   private[this] def resolveDc(datacenter: String): Future[String] =
     if (datacenter == localDcMoniker)

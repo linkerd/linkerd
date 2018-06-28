@@ -51,7 +51,11 @@ object ConsulNamer {
     def parse(path: Path): ConsulPath
 
     def lookup(path: Path): Activity[NameTree[Name]] =
-      caching(parse(path)).getOrElse(Activity.value(NameTree.Neg))
+      parse(path) match {
+        case ConsulPath(raw, Some(PathScheme(dc, key, id, residual))) =>
+          caching(raw, dc, key, id, residual)
+        case _ => Activity.value(NameTree.Neg)
+      }
 
     //lazy to avoid initialization order issues
     lazy val handlerPrefix = prefix.drop(1).show.drop(1) // drop leading "/#/"
