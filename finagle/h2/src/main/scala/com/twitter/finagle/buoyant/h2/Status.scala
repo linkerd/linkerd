@@ -5,7 +5,6 @@ package com.twitter.finagle.buoyant.h2
  */
 
 case class Status(code: Int) {
-  require(100 <= code && code < 600)
   override def toString = code.toString
 }
 
