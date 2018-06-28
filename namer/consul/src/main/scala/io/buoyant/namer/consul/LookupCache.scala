@@ -83,44 +83,49 @@ private[consul] class LookupCache(
     }
 
   private[this] val convertToName: (Future[InstrumentedVar[Addr]], Path, Path) => Activity[NameTree[Name]] =
-    untupled(Memoize[(Future[InstrumentedVar[Addr]], Path, Path), Activity[NameTree[Name]]] {
-      case (addrFuture, id, residual) =>
-        val observation = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { observationState =>
-          val closableFuture = addrFuture.transform {
-            case Return(addr) =>
-              val observationClosable = addr.underlying.changes.respond {
-                case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
-                case Addr.Pending => observationState.update(Activity.Pending)
-                case Addr.Failed(why) => observationState.update(Activity.Failed(why))
-                case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr.underlying, id, residual))))
-              }
-              Future.value(observationClosable)
-            case Throw(cause) =>
-              // We probably failed to fetch agent config. This is critical.
-              // TODO: if this has happened only restart can restore consul namer to working state. Throw exception instead?
-              observationState.update(Activity.Failed(cause))
-              Future.value(Closable.nop)
-          }
-
-          Closable.make { deadline =>
-            closableFuture.flatMap(_.close(deadline))
-          }
+    (addrFuture, id, residual) => {
+      val observation = Var.async[Activity.State[NameTree[Name.Bound]]](Activity.Pending) { observationState =>
+        val closableFuture = addrFuture.transform {
+          case Return(addr) =>
+            val observationClosable = addr.underlying.changes.respond {
+              case Addr.Neg => observationState.update(Activity.Ok(NameTree.Neg))
+              case Addr.Pending => observationState.update(Activity.Pending)
+              case Addr.Failed(why) => observationState.update(Activity.Failed(why))
+              case Addr.Bound(_, _) => observationState.update(Activity.Ok(NameTree.Leaf(Name.Bound(addr.underlying, id, residual))))
+            }
+            Future.value(observationClosable)
+          case Throw(cause) =>
+            // We probably failed to fetch agent config. This is critical.
+            // TODO: if this has happened only restart can restore consul namer to working state. Throw exception instead?
+            observationState.update(Activity.Failed(cause))
+            Future.value(Closable.nop)
         }
-        Activity(observation)
+
+        Closable.make { deadline =>
+          closableFuture.flatMap(_.close(deadline))
+        }
+      }
+      Activity(observation)
+    }
+
+  private[this] val compute: (Path, String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
+    untupled(Memoize[(Path, String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
+      case (raw, dc, key, id, residual) => {
+        val cached = Option(lookupStatus.get(raw))
+        val address = cached match {
+          case Some(InstrumentedBind(addr, _)) =>
+            Future(addr)
+          case None =>
+            log.debug("consul lookup: %s %s", dc, id.show)
+            lookupCounter.incr()
+            lookupAddress(raw, dc, key)
+        }
+        convertToName(address, id, residual)
+      }
     })
 
-  def apply(raw: Path, dc: String, key: SvcKey, id: Path, residual: Path): Activity[NameTree[Name]] = {
-    val cached = Option(lookupStatus.get(raw))
-    val address = cached match {
-      case Some(InstrumentedBind(addr, _)) =>
-        Future(addr)
-      case None =>
-        log.debug("consul lookup: %s %s", dc, id.show)
-        lookupCounter.incr()
-        lookupAddress(raw, dc, key)
-    }
-    convertToName(address, id, residual)
-  }
+  def apply(raw: Path, dc: String, key: SvcKey, id: Path, residual: Path): Activity[NameTree[Name]] =
+    compute(raw, dc, key, id, residual)
 
   private[this] def resolveDc(datacenter: String): Future[String] =
     if (datacenter == localDcMoniker)
