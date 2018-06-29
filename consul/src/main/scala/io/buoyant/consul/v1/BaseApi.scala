@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.http.Request
+import com.twitter.finagle.buoyant.RetryFilter
 import com.twitter.finagle.param.HighResTimer
-import com.twitter.finagle.service.{RetryBudget, RetryFilter, RetryPolicy}
+import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{ConnectionFailedException, Failure, Filter, http}
@@ -48,7 +49,8 @@ trait BaseApi extends Closable {
     },
     HighResTimer.Default,
     stats,
-    RetryBudget.Infinite
+    RetryBudget.Infinite,
+    _.reader.discard()
   )
 
   def getClient(retry: Boolean) = {

@@ -15,12 +15,14 @@ These organizations are publicly using Linkerd in production:
 - [NCBI](https://www.ncbi.nlm.nih.gov)
 - [NextVR](https://nextvr.com)
 - [Olark](https://www.olark.com)
+- [OZON.ru](https://www.ozon.ru)
 - [PayPal](https://www.paypal.com/)
 - [Planet Labs](https://www.planet.com/)
 - [Salesforce](https://www.salesforce.com/)
 - [Strava](https://www.strava.com/)
 - [Taboola](https://www.taboola.com/)
 - [UserZoom](https://www.userzoom.com/)
+- [WePay](https://www.wepay.com/)
 - [Zooz](https://www.zooz.com/)
 
 If you're using Linkerd and aren't on this list, feel free to

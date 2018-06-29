@@ -72,7 +72,7 @@ object LinkerdBuild extends Base {
 
   object Namer {
     val core = projectDir("namer/core")
-      .dependsOn(configCore)
+      .dependsOn(configCore, admin)
       .withLib(Deps.jacksonCore)
       .withTests()
 
@@ -585,11 +585,12 @@ object LinkerdBuild extends Base {
       .dependsOn(Protocol.thrift % "test", Interpreter.perHost % "test")
 
     val main = projectDir("linkerd/main")
-      .dependsOn(admin, configCore, core)
+      .dependsOn(admin, configCore, core, Protocol.http % "e2e", Interpreter.namerd % "e2e", Interpreter.perHost % "e2e")
       .withTwitterLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties("io/buoyant/linkerd")
       .settings(coverageExcludedPackages := ".*")
+      .withE2e()
 
     /*
      * linkerd packaging configurations.
