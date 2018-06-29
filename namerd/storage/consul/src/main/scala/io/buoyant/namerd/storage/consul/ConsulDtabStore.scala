@@ -13,7 +13,7 @@ import io.buoyant.config.Parser
 import io.buoyant.consul.v1._
 import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState
 import io.buoyant.namer.InstrumentedVar
-import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabNamespaceInvalidException, DtabVersionMismatchException, Version}
+import io.buoyant.namerd.DtabStore._
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
 
@@ -253,7 +253,11 @@ class ConsulDtabStoreHandler(status: => Map[Ns, InstrumentedDtab])
       case (ns, InstrumentedDtab(act, state)) =>
         ns -> Map(
           "state" -> act.stateSnapshot.map {
-            case Activity.Ok(Some(dtab)) => dtab
+            case Activity.Ok(Some(dtab)) =>
+              Map(
+                "version" -> DtabStore.versionString(dtab.version),
+                "dtab" -> dtab.dtab.show
+              )
             case Activity.Ok(None) => ""
             case Activity.Pending => "Still pending"
             case Activity.Failed(exc) => exc.getMessage

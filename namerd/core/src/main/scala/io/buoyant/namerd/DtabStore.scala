@@ -2,7 +2,7 @@ package io.buoyant.namerd
 
 import com.twitter.finagle.Dtab
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Future}
+import com.twitter.util.{Activity, Future, Base64StringEncoder}
 
 case class VersionedDtab(dtab: Dtab, version: DtabStore.Version)
 
@@ -80,6 +80,12 @@ object DtabStore {
 
     override def put(ns: Ns, dtab: Dtab): Future[Unit] =
       validate(ns, dtab) before self.put(ns, dtab)
+  }
+
+  def versionString(buf: Buf): String = {
+    val versionBytes = new Array[Byte](buf.length)
+    buf.write(versionBytes, 0)
+    Base64StringEncoder.encode(versionBytes)
   }
 
 }
