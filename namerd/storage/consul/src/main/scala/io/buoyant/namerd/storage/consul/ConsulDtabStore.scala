@@ -2,11 +2,14 @@ package io.buoyant.namerd
 package storage.consul
 
 import com.google.common.cache.{CacheBuilder, CacheLoader}
+import com.twitter.finagle._
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
 import io.buoyant.consul.v1._
 import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState
 import io.buoyant.namer.InstrumentedVar
@@ -21,15 +24,14 @@ class ConsulDtabStore(
   readConsistency: Option[ConsistencyMode] = None,
   writeConsistency: Option[ConsistencyMode] = None,
   implicit val _timer: Timer = DefaultTimer
-) extends DtabStore {
+) extends DtabStore
+  with Admin.WithHandlers {
 
   private[this] val log = Logger.get("consul")
 
   private[this] val validNs = raw"^[A-Za-z0-9_-]+".r
 
   private[this] val dtabStatus = new ConcurrentHashMap[Ns, InstrumentedDtab]()
-
-  private[this] def status: Map[Ns, InstrumentedDtab] = dtabStatus.asScala.toMap
 
   def namespaceIsValid(ns: Ns): Boolean = ns match {
     case validNs(_*) => true
@@ -230,9 +232,62 @@ class ConsulDtabStore(
     dtabStatus.putIfAbsent(ns, InstrumentedDtab(run, pollState))
     Activity(run.underlying).stabilize
   }
+
+  val handlerPrefix = root.show.drop(1) // drop leading "/"
+
+  override def adminHandlers: Seq[Admin.Handler] = Seq(
+    Admin.Handler(
+      s"/namer_dtabs_store/${handlerPrefix}.json",
+      new ConsulDtabStoreHandler(dtabStatus.asScala.toMap)
+    )
+  )
 }
 
 private[consul] case class InstrumentedDtab(
   act: InstrumentedVar[Activity.State[Option[VersionedDtab]]],
   state: PollState[String, Indexed[String]]
 )
+  val handlerPrefix = root.show.drop(1) // drop leading "/"
+
+  override def adminHandlers: Seq[Admin.Handler] = Seq(
+    Admin.Handler(
+      s"/namer_dtabs_store/${handlerPrefix}.json",
+      new ConsulDtabStoreHandler(dtabStatus.asScala.toMap)
+    )
+  )
+}
+
+private[consul] case class InstrumentedDtab(
+  act: InstrumentedVar[Activity.State[Option[VersionedDtab]]],
+  state: PollState[String, Indexed[String]]
+)
+
+class ConsulDtabStoreHandler(status: => Map[Ns, InstrumentedDtab])
+  extends Service[Request, Response] {
+  private[this] val mapper = Parser.jsonObjectMapper(Nil)
+
+  override def apply(request: Request): Future[Response] = {
+    val state = status.map {
+      case (ns, InstrumentedDtab(act, state)) =>
+        ns -> Map(
+          "state" -> act.stateSnapshot.map {
+            case Activity.Ok(Some(dtab)) => dtab
+            case Activity.Ok(None) => ""
+            case Activity.Pending => "Still pending"
+            case Activity.Failed(exc) => exc.getMessage
+          },
+          "poll" -> state
+        )
+    }
+
+    val res = {
+      val r = Response()
+      r.mediaType = MediaType.Json
+      r.contentString = mapper.writeValueAsString(state)
+      r
+    }
+
+    Future.value(res)
+  }
+
+}
