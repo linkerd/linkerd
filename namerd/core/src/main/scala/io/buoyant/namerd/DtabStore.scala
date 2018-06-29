@@ -1,6 +1,6 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.Dtab
+import com.twitter.finagle.{Dentry, Dtab}
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Future}
 
@@ -54,6 +54,8 @@ object DtabStore {
 
   class DtabNamespaceInvalidException(ns: Ns)
     extends Exception(s"invalid dtab namespace $ns: namespace must contain only letter, number or '-' characters")
+  class DtabContainsInvalidDentriesException(dentries: IndexedSeq[Dentry])
+    extends Exception(s"The dtab contains invalid dentries: $dentries")
 
   object Forbidden extends Exception("You do not have sufficient permissions")
 
