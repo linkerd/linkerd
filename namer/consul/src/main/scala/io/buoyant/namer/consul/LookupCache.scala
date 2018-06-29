@@ -42,7 +42,6 @@ private[consul] class LookupCache(
    * use a shared mutex only on write, the ConcurrentHM impl should guarantee
    * happens-before semantic of reads wrt to updates (as per docs)
    */
-  private[this] val lookupStatusMu = new {}
   private[this] val lookupStatus = new ConcurrentHashMap[Path, InstrumentedAddr]()
 
   private[consul] def status: Map[Path, InstrumentedAddr] = lookupStatus.asScala.toMap
@@ -67,15 +66,10 @@ private[consul] class LookupCache(
       }
 
       //if the lookup succeeded we want to cache the result, double checking for race conditions
-      addrFuture.map {
+      addrFuture.onSuccess {
         addr =>
-          lookupStatusMu.synchronized {
-            if (!lookupStatus.containsKey(raw)) {
-              lookupStatus.put(raw, InstrumentedAddr(addr, pollState))
-              cachedCounter.incr()
-            }
-            lookupStatus.get(raw).addr
-          }
+          lookupStatus.put(raw, InstrumentedAddr(addr, pollState))
+          cachedCounter.incr()
       }
     }
 
