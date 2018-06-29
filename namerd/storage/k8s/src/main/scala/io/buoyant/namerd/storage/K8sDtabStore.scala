@@ -1,14 +1,17 @@
 package io.buoyant.namerd.storage
 
-import com.twitter.finagle.{Http, Dtab => FDtab}
+import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.{Http, Service, Dtab => FDtab}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
 import io.buoyant.k8s.ObjectMeta
+import io.buoyant.namer.InstrumentedActivity
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
 import io.buoyant.namerd.storage.kubernetes._
-import io.buoyant.namerd.{Ns, DtabStore, VersionedDtab}
-import java.util.concurrent.atomic.AtomicReference
+import io.buoyant.namerd.{DtabStore, Ns, VersionedDtab}
 import scala.collection.breakOut
 
 /**
@@ -29,7 +32,7 @@ import scala.collection.breakOut
  *                  differs from Dtab namespaces)
  */
 class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
-  extends DtabStore {
+  extends DtabStore with Admin.WithHandlers {
   private[this] val log = Logger()
 
   // NOTE: we construct two clients, one for the streaming watch requests, one for everything else.
@@ -69,7 +72,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   // semantics. If those are required, we would probably need to implement a synchronized means of
   // reading `act` and using that value to feed to `witness`, rather than taking the `foldLeft`
   // approach as below.
-  private[this] val act: Activity[NsMap] =
+  private[this] val act: InstrumentedActivity[NsMap] =
     watchApi.dtabs.activity(dtabListToNsMap) {
       (nsMap: NsMap, watchEvent) =>
         watchEvent match {
@@ -80,10 +83,10 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
             log.error("k8s watch error: %s", e)
             nsMap
         }
-    }.underlying
+    }
 
   /** List all Dtab namespaces */
-  def list(): Activity[Set[Ns]] = act.map(_.keySet)
+  def list(): Activity[Set[Ns]] = act.underlying.map(_.keySet)
 
   private[this] def namedDtab(ns: String, dtab: FDtab, version: Option[String] = None): Dtab = Dtab(
     dentries = dtab,
@@ -139,7 +142,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
 
   /** Watch a dtab and its version. */
   def observe(ns: String): Activity[Option[VersionedDtab]] =
-    act.map(_.get(ns))
+    act.underlying.map(_.get(ns))
 
   /**
    * Create a new dtab.  Returns a DtabNamespaceAlreadyExistsException if a
@@ -160,6 +163,30 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
     api.dtabs.named(ns).delete.unit.rescue {
       case io.buoyant.k8s.Api.NotFound(_) =>
         Future.exception(new DtabNamespaceDoesNotExistException(ns))
+    }
+  }
+
+  override def adminHandlers: Seq[Admin.Handler] = {
+    Seq(Admin.Handler(s"storage/dtabs.json", new DtabStoreStateHandler))
+  }
+
+  private[K8sDtabStore] class DtabStoreStateHandler extends Service[Request, Response] {
+    private[this] val mapper = Parser.jsonObjectMapper(Nil)
+
+    override def apply(request: Request): Future[Response] = {
+      val state = act.stateSnapshot().map {
+        case Some(nsMap: NsMap) => nsMap.collect {
+          case (dtabName, dtab) => dtabName -> Map(
+            "version" -> DtabStore.versionString(dtab.version),
+            "dtab" -> dtab.dtab.show
+          )
+        }
+        case _ => Map.empty
+      }
+
+      val rep = Response(Status.Ok)
+      rep.contentString = mapper.writeValueAsString(state)
+      Future.value(rep)
     }
   }
 }

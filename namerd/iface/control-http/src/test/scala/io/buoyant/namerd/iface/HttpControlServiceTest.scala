@@ -22,7 +22,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     "tlop" -> Dtab.read("/yeezy => /pablo")
   )
 
-  val v1Stamp = DtabHandler.versionString(InMemoryDtabStore.InitialVersion)
+  val v1Stamp = DtabStore.versionString(InMemoryDtabStore.InitialVersion)
 
   def newDtabStore(dtabs: Map[String, Dtab] = defaultDtabs): DtabStore =
     new InMemoryDtabStore(dtabs)
