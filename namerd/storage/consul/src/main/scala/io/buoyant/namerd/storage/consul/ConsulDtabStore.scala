@@ -247,20 +247,6 @@ private[consul] case class InstrumentedDtab(
   act: InstrumentedVar[Activity.State[Option[VersionedDtab]]],
   state: PollState[String, Indexed[String]]
 )
-  val handlerPrefix = root.show.drop(1) // drop leading "/"
-
-  override def adminHandlers: Seq[Admin.Handler] = Seq(
-    Admin.Handler(
-      s"/namer_dtabs_store/${handlerPrefix}.json",
-      new ConsulDtabStoreHandler(dtabStatus.asScala.toMap)
-    )
-  )
-}
-
-private[consul] case class InstrumentedDtab(
-  act: InstrumentedVar[Activity.State[Option[VersionedDtab]]],
-  state: PollState[String, Indexed[String]]
-)
 
 class ConsulDtabStoreHandler(status: => Map[Ns, InstrumentedDtab])
   extends Service[Request, Response] {
