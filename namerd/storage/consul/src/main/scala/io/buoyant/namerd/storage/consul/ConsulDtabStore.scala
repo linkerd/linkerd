@@ -47,22 +47,18 @@ class ConsulDtabStore(
         // avoid awkward situations when we cannot observe listed namespace
         .filter(namespaceIsValid)
 
-    val pollState = mkPollState[Indexed[Seq[String]]]
-
     val run = Var.async[Activity.State[Set[Ns]]](Activity.Pending) { updates =>
       @volatile var running = true
 
       def cycle(index: Option[String], backoffs0: Stream[Duration]): Future[Unit] =
-        if (running) {
-
-          val apiCall = api.list(
+        if (running)
+          api.list(
             s"${root.show}/",
             blockingIndex = index,
             datacenter = datacenter,
             consistency = readConsistency,
             retry = true
-          )
-          InstrumentedApiCall.execute(apiCall, pollState)
+          )()
             .transform {
               case Return(result) =>
                 val namespaces = result.value.flatMap(namespace).toSet
@@ -78,7 +74,7 @@ class ConsulDtabStore(
                 val sleep #:: backoffs1 = backoffs0
                 Future.sleep(sleep).before(cycle(None, backoffs1))
             }
-        } else
+        else
           Future.Unit
       val pending = cycle(None, api.backoffs)
       Closable.make { _ =>
