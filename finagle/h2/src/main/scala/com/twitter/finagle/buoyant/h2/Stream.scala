@@ -1,10 +1,9 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Return, Throw, Try}
 import io.netty.buffer.{ByteBuf, Unpooled}
-import java.nio.charset.{Charset, StandardCharsets => JChar}
+import java.nio.charset.{StandardCharsets => JChar}
 
 /**
  * A Stream represents a stream of Data frames, optionally

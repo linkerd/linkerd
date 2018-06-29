@@ -2,7 +2,6 @@ package io.buoyant.grpc.runtime
 
 import com.twitter.finagle.{Failure, Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
-import com.twitter.io.Buf
 import com.twitter.util.{Future, Return, Throw, Try}
 
 object ServerDispatcher {

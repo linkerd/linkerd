@@ -2,7 +2,6 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.conversions.storage._
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.io.Buf
 import com.twitter.util.StdBenchAnnotations
 import io.buoyant.test.Awaits
 import io.netty.buffer.Unpooled
