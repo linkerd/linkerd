@@ -9,7 +9,10 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.consul.v1._
 import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState
+import io.buoyant.namer.InstrumentedVar
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabNamespaceInvalidException, DtabVersionMismatchException, Version}
+import java.util.concurrent.ConcurrentHashMap
+import scala.collection.JavaConverters._
 
 class ConsulDtabStore(
   api: KvApi,
@@ -23,6 +26,10 @@ class ConsulDtabStore(
   private[this] val log = Logger.get("consul")
 
   private[this] val validNs = raw"^[A-Za-z0-9_-]+".r
+
+  private[this] val dtabStatus = new ConcurrentHashMap[Ns, InstrumentedDtab]()
+
+  private[this] def status: Map[Ns, InstrumentedDtab] = dtabStatus.asScala.toMap
 
   def namespaceIsValid(ns: Ns): Boolean = ns match {
     case validNs(_*) => true
@@ -166,7 +173,7 @@ class ConsulDtabStore(
   private[this] def _observe(ns: Ns): Activity[Option[VersionedDtab]] = {
     val key = s"${root.show}/$ns"
     val pollState = mkPollState[Indexed[String]]
-    val run = Var.async[Activity.State[Option[VersionedDtab]]](Activity.Pending) { updates =>
+    val run = InstrumentedVar[Activity.State[Option[VersionedDtab]]](Activity.Pending) { updates =>
       @volatile var running = true
 
       def cycle(index: Option[String], backoffs0: Stream[Duration]): Future[Unit] =
@@ -220,10 +227,12 @@ class ConsulDtabStore(
         Future.Unit
       }
     }
-    Activity(run).stabilize
+    dtabStatus.putIfAbsent(ns, InstrumentedDtab(run, pollState))
+    Activity(run.underlying).stabilize
   }
 }
 
 private[consul] case class InstrumentedDtab(
+  act: InstrumentedVar[Activity.State[Option[VersionedDtab]]],
   state: PollState[String, Indexed[String]]
 )
