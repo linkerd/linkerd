@@ -193,7 +193,9 @@ namers:
      weight: 5.0
 ```
 
-Linkerd provides support for service discovery via [Consul](https://www.consul.io/).
+Linkerd provides support for service discovery via [Consul](https://www.consul.io/).  
+The internal store of the Consul dtabs can be viewed at the
+admin endpoint: `/storage/namerd/dtabs.json` by default.
 
 Key | Default Value | Description
 --- | ------------- | -----------

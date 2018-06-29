@@ -233,7 +233,7 @@ class ConsulDtabStore(
 
   override def adminHandlers: Seq[Admin.Handler] = Seq(
     Admin.Handler(
-      s"/namer_dtabs_store/${handlerPrefix}.json",
+      s"/storage/${handlerPrefix}.json",
       new ConsulDtabStoreHandler(dtabStatus.asScala.toMap)
     )
   )
