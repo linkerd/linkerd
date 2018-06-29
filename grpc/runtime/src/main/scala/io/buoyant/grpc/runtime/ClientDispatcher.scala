@@ -1,9 +1,9 @@
 package io.buoyant.grpc.runtime
 
-import com.twitter.finagle.{Failure, Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
-import com.twitter.io.Buf
-import com.twitter.util.{Future, Promise, Return, Throw, Try}
+import com.twitter.finagle.{Failure, Service => FinagleService}
+import com.twitter.util._
+import io.netty.buffer.Unpooled
 
 object ClientDispatcher {
 
@@ -25,7 +25,7 @@ object ClientDispatcher {
           frames.write(frame).before(loop())
 
         case Throw(s@GrpcStatus.Ok(_)) =>
-          frames.write(h2.Frame.Data(Buf.Empty, eos = true))
+          frames.write(h2.Frame.Data(Unpooled.EMPTY_BUFFER, eos = true))
 
         case Throw(s: GrpcStatus) =>
           frames.cancel(s.toReset)
@@ -58,7 +58,7 @@ object ClientDispatcher {
       case Throw(Failure(Some(e))) => Future.exception(e)
       case Throw(e) => Future.exception(e)
       case Return(rsp) =>
-        val f = Codec.bufferGrpcFrame(rsp.stream).map(codec.decodeBuf)
+        val f = Codec.bufferGrpcFrame(rsp.stream).map(codec.decodeByteBuffer)
 
         val p = new Promise[T]
         p.setInterruptHandler {

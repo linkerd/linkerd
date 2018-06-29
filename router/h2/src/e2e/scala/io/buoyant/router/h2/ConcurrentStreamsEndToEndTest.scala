@@ -2,10 +2,10 @@ package io.buoyant.router
 package h2
 
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.io.Buf
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.test.FunSuite
+import io.netty.buffer.ByteBuf
 import scala.annotation.tailrec
 
 class ConcurrentStreamsEndToEndTest
@@ -46,9 +46,10 @@ class ConcurrentStreamsEndToEndTest
       @tailrec def streamToAllInStep(streamers: Seq[Streamer], remaining: Long): Unit = {
         require(remaining > 0)
         val len = math.min(frameSize, remaining).toInt
-        val buf = mkBuf(len)
+        val buf = mkByteBuf(len)
         val eos = len == remaining
-        await(Future.collect(streamers.map(_.stream(buf, eos))))
+        await(Future.collect(streamers.map(_.stream(buf.duplicate().retain(), eos))))
+        buf.release()
         if (!eos) streamToAllInStep(streamers, remaining - len)
       }
 
@@ -65,7 +66,7 @@ class ConcurrentStreamsEndToEndTest
     }
 
   case class Streamer(reader: Stream, writer: Stream.Writer) {
-    def stream(buf: Buf, eos: Boolean): Future[Unit] = {
+    def stream(buf: ByteBuf, eos: Boolean): Future[Unit] = {
       def read(remaining: Int): Future[Unit] = {
         log.debug("Streamer.read < %d", remaining)
         reader.read().transform {
@@ -75,7 +76,7 @@ class ConcurrentStreamsEndToEndTest
 
           case Return(d: Frame.Data) =>
             log.debug("Streamer.read > %s", d)
-            (remaining - d.buf.length) match {
+            (remaining - d.buf.readableBytes) match {
               case 0 =>
                 assert(d.isEnd == eos)
                 d.release()
@@ -89,7 +90,8 @@ class ConcurrentStreamsEndToEndTest
         }
       }
 
-      writer.write(Frame.Data(buf, eos)).before(read(buf.length))
+      val sz = buf.readableBytes
+      writer.write(Frame.Data(buf, eos)).before(read(sz))
     }
   }
 }

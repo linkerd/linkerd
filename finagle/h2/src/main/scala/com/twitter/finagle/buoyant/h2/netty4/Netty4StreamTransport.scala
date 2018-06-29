@@ -543,7 +543,7 @@ object Netty4StreamTransport {
     val recordLocalFrame: Frame => Unit = {
       case d: Frame.Data =>
         localDataFrames.incr()
-        localDataBytes.add(d.buf.length)
+        localDataBytes.add(d.buf.readableBytes())
       case t: Frame.Trailers => localTrailersCount.incr()
     }
 
@@ -555,7 +555,7 @@ object Netty4StreamTransport {
     val recordRemoteFrame: Frame => Unit = {
       case d: Frame.Data =>
         remoteDataFrames.incr()
-        remoteDataBytes.add(d.buf.length)
+        remoteDataBytes.add(d.buf.readableBytes())
       case _: Frame.Trailers => remoteTrailersCount.incr()
     }
 

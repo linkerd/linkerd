@@ -2,7 +2,6 @@ package io.buoyant.grpc.runtime
 
 import com.twitter.finagle.{Failure, Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
-import com.twitter.io.Buf
 import com.twitter.util.{Future, Return, Throw, Try}
 
 object ServerDispatcher {
@@ -76,7 +75,7 @@ object ServerDispatcher {
 
     private[this] def acceptUnary[Req](codec: Codec[Req], req: h2.Request): Future[Req] =
       Codec.bufferWithStatus(req.stream).map {
-        case (buf, _) => codec.decodeBuf(Codec.decodeGrpcFrame(buf))
+        case (buf, _) => codec.decodeByteBuffer(Codec.decodeGrpcFrame(buf))
       }
 
     private[this] def acceptStreaming[Req](codec: Codec[Req], req: h2.Request): Stream[Req] =

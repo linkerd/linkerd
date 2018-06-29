@@ -3,13 +3,13 @@ package netty4
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Failure
-import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.FunSuite
+import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.immutable.Queue
 
@@ -146,8 +146,8 @@ class Netty4StreamTransportTest extends FunSuite {
     val dataf = rsp.stream.read()
     assert(!dataf.isDefined)
 
-    val buf = Buf.Utf8("space ghost coast to coast")
-    transport.recv(new DefaultHttp2DataFrame(BufAsByteBuf(buf)).stream(H2FrameStream(id, Http2Stream.State.OPEN)))
+    val buf = Unpooled.copiedBuffer("space ghost coast to coast", StandardCharsets.UTF_8)
+    transport.recv(new DefaultHttp2DataFrame(buf).stream(H2FrameStream(id, Http2Stream.State.OPEN)))
     transport.recv({
       val hs = new DefaultHttp2Headers
       hs.set("trailers", "yea")
@@ -304,7 +304,7 @@ class Netty4StreamTransportTest extends FunSuite {
     assert(!rspF.isDefined)
     val reqStream = Stream()
     val endF = await(transport.send(Request("http", Method.Get, "host", "/path", reqStream)))
-    await(reqStream.write(Frame.Data(Buf.Utf8("upshut"), eos = false)))
+    await(reqStream.write(Frame.Data("upshut", eos = false)))
     assert(!endF.isDefined)
 
     val rsp = assertRecvResponse(200, eos = true)
@@ -426,13 +426,13 @@ class Netty4StreamTransportTest extends FunSuite {
     val d0f = req.stream.read()
     assert(!d0f.isDefined)
     assert(transport.recv({
-      val bb = BufAsByteBuf(Buf.Utf8("data"))
+      val bb = Unpooled.copiedBuffer("data", StandardCharsets.UTF_8)
       new DefaultHttp2DataFrame(bb, false).stream(H2FrameStream(id, Http2Stream.State.OPEN))
     }))
     assert(d0f.isDefined)
     await(d0f) match {
       case f: Frame.Data =>
-        assert(f.buf == Buf.Utf8("data"))
+        assert(f.buf.toString(StandardCharsets.UTF_8) == "data")
         assert(!f.isEnd)
       case f =>
         fail(s"unexpected frame: $f")
@@ -479,17 +479,17 @@ class Netty4StreamTransportTest extends FunSuite {
       written = written.tail
     }
 
-    val buf = Buf.Utf8("Looks like some tests were totally excellent")
+    val buf = Unpooled.copiedBuffer("Looks like some tests were totally excellent", StandardCharsets.UTF_8)
     assert(rspStreamQ.offer(Frame.Data(buf, false)))
     ctx.synchronized {
-      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf(buf), false)
+      assert(written.head == new DefaultHttp2DataFrame(buf, false)
         .stream(H2FrameStream(id, Http2Stream.State.OPEN)))
       written = written.tail
     }
 
     assert(rspStreamQ.offer(Frame.Data(buf, false)))
     ctx.synchronized {
-      assert(written.head == new DefaultHttp2DataFrame(BufAsByteBuf(buf), false)
+      assert(written.head == new DefaultHttp2DataFrame(buf, false)
         .stream(H2FrameStream(id, Http2Stream.State.OPEN)))
       written = written.tail
     }

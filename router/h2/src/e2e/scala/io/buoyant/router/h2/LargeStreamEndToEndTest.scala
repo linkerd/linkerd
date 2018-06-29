@@ -69,9 +69,9 @@ class LargeStreamEndToEndTest
           d.release().onSuccess(_ => log.debug("released %s", d))
 
         case Return(d: Frame.Data) =>
-          val eos = bytesWritten + d.buf.length >= streamLen
+          val eos = bytesWritten + d.buf.readableBytes >= streamLen
           val len = math.min(frameSize, streamLen - bytesWritten)
-          val frame = Frame.Data(mkBuf(len.toInt), eos)
+          val frame = Frame.Data(mkByteBuf(len.toInt), eos)
           log.debug("releasing %s", d)
           val releaseF = d.release()
           releaseF.onSuccess(_ => log.debug("released %s", d))
@@ -82,7 +82,7 @@ class LargeStreamEndToEndTest
       }
     }
 
-    writer.write(Frame.Data(mkBuf(frameSize), false))
+    writer.write(Frame.Data(mkByteBuf(frameSize), false))
       .before(loop(frameSize, false))
   }
 

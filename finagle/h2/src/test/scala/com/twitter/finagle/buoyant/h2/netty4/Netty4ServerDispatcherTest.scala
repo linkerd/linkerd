@@ -113,7 +113,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     }
     sentq = sentq.tail
 
-    assert(bartmanStream.offer(Frame.Data(Buf.Utf8("0"), false)))
+    assert(bartmanStream.offer(Frame.Data("0", false)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
@@ -125,7 +125,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     }
     sentq = sentq.tail
 
-    assert(elBartoStream.offer(Frame.Data(Buf.Utf8("0"), true)))
+    assert(elBartoStream.offer(Frame.Data("0", true)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>
@@ -137,7 +137,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     }
     sentq = sentq.tail
 
-    assert(bartmanStream.offer(Frame.Data(Buf.Utf8("0"), true)))
+    assert(bartmanStream.offer(Frame.Data("0", true)))
     eventually {
       sentq.headOption match {
         case Some(f: Http2DataFrame) =>

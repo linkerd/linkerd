@@ -3,9 +3,11 @@ package com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.{Dtab => FDtab, Status => _, _}
 import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
 import com.twitter.finagle.context.{Contexts, Deadline => FDeadline}
+import com.twitter.finagle.http.MediaType
 import com.twitter.finagle.tracing._
-import com.twitter.io.Buf
 import com.twitter.util.{Future, Return, Throw, Time, Try}
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
 import scala.collection.breakOut
 
@@ -454,10 +456,14 @@ object LinkerdHeaders {
     val Key = Prefix + "err"
 
     def respond(msg: String, status: Status = Status.InternalServerError): Response = {
-      val rsp = Response(status, Stream.const(Buf.Utf8(msg)))
-      rsp.headers.add(Key, msg)
-      rsp.headers.set("content-type", "text/plain")
-      rsp
+      Response(
+        Headers(
+          Headers.Status -> status.code.toString,
+          Key -> URLEncoder.encode(msg, ISO_8859_1.toString),
+          "content-type" -> MediaType.PlainText,
+          "content-length" -> msg.length.toString
+        ), Stream.const(msg)
+      )
     }
   }
 }

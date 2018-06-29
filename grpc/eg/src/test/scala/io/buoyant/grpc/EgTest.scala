@@ -7,6 +7,7 @@ import com.twitter.util.{Await, Future, Promise, Throw}
 import io.buoyant.grpc.runtime._
 import io.buoyant.eg.{Eg, base}
 import io.buoyant.test.FunSuite
+import io.netty.buffer.Unpooled
 import java.nio.ByteBuffer
 import java.util.Arrays
 
@@ -26,7 +27,7 @@ object EgTest {
     102, 111, 111, 10, 3, 98, 97, 114, 10, 3, 98, 97, 104,
     10, 3, 98, 97, 122
   )
-  val msgBuf = Buf.ByteArray.Owned(msgBytes)
+  val msgBuf = Unpooled.wrappedBuffer(msgBytes)
 
   val expectedEnumeration = Eg.Message.Enumeration.THREEFOUR
   val expectedException = base.Exception(Some("i'ma givem hell"))
@@ -48,32 +49,32 @@ class EgTest extends FunSuite {
   import EgTest._
 
   test("sizeOf") {
-    assert(Eg.Message.codec.sizeOf(expectedMsg) == msgBuf.length)
+    assert(Eg.Message.codec.sizeOf(expectedMsg) == msgBuf.readableBytes())
   }
 
   test("decode") {
-    assert(Eg.Message.codec.decodeBuf(msgBuf) == expectedMsg)
+    assert(Eg.Message.codec.decodeByteBuffer(msgBuf.nioBuffer()) == expectedMsg)
   }
 
   test("encode") {
-    val bb = ByteBuffer.allocate(msgBuf.length)
+    val bb = ByteBuffer.allocate(msgBuf.readableBytes())
     val pbos = CodedOutputStream.newInstance(bb.duplicate())
     Eg.Message.codec.encode(expectedMsg, pbos)
     assert(Arrays.equals(bb.array, msgBytes))
   }
 
   test("roundtrip decode/encode") {
-    val bb = ByteBuffer.allocate(msgBuf.length)
+    val bb = ByteBuffer.allocate(msgBuf.readableBytes())
     val pbos = CodedOutputStream.newInstance(bb.duplicate())
-    Eg.Message.codec.encode(Eg.Message.codec.decodeBuf(msgBuf), pbos)
+    Eg.Message.codec.encode(Eg.Message.codec.decodeByteBuffer(msgBuf.nioBuffer()), pbos)
     assert(Arrays.equals(bb.array, msgBytes))
   }
 
   test("roundtrip encode/decode") {
-    val bb = ByteBuffer.allocate(msgBuf.length)
+    val bb = ByteBuffer.allocate(msgBuf.readableBytes())
     val pbos = CodedOutputStream.newInstance(bb.duplicate())
     Eg.Message.codec.encode(expectedMsg, pbos)
-    val msg = Eg.Message.codec.decodeBuf(Buf.ByteBuffer.Owned(bb))
+    val msg = Eg.Message.codec.decodeByteBuffer(bb)
     assert(msg == expectedMsg)
   }
 }

@@ -21,6 +21,7 @@ These organizations are publicly using Linkerd in production:
 - [Strava](https://www.strava.com/)
 - [Taboola](https://www.taboola.com/)
 - [UserZoom](https://www.userzoom.com/)
+- [WePay](https://www.wepay.com/)
 - [Zooz](https://www.zooz.com/)
 
 If you're using Linkerd and aren't on this list, feel free to

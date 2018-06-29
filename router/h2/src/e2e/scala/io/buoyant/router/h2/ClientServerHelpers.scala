@@ -2,15 +2,16 @@ package io.buoyant.router
 package h2
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle.{Status => _, param => fparam, _}
+import com.twitter.finagle.{param => fparam, Status => _, _}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.io.Buf
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import io.buoyant.test.h2.StreamTestUtils._
+import io.netty.buffer.{ByteBuf, Unpooled}
 import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
 import org.scalatest.BeforeAndAfter
 import scala.collection.JavaConverters._
 
@@ -27,8 +28,8 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
     statsReceiver.clear()
   }
 
-  def mkBuf(sz: Int): Buf =
-    Buf.ByteArray.Owned(Array.fill[Byte](sz)(1.toByte))
+  def mkByteBuf(sz: Int): ByteBuf =
+    Unpooled.wrappedBuffer(Array.fill[Byte](sz)(1.toByte))
 
   def withClient(srv: Request => Response)(f: Upstream => Unit): Unit = {
     val server = Downstream.mk("srv")(srv)
@@ -73,7 +74,7 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
     def const(name: String, value: String): Downstream =
       mk(name) { _ =>
         val q = new AsyncQueue[Frame]
-        q.offer(Frame.Data.eos(Buf.Utf8(value)))
+        q.offer(Frame.Data.eos(value))
         Response(Status.Ok, Stream(q))
       }
   }
@@ -88,7 +89,7 @@ trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
       assert(rsp.status == Status.Ok)
       val stream = rsp.stream.onFrame {
         case f: Frame.Data  =>
-          val Buf.Utf8(data) = f.buf
+          val data = f.buf.toString(StandardCharsets.UTF_8)
           val _ = assert(check(Some(data)))
         case f =>
       }
