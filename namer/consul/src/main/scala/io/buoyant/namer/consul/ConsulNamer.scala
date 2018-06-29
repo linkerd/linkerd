@@ -48,12 +48,12 @@ object ConsulNamer {
 
     def caching: LookupCache
 
-    def parse(path: Path): ConsulPath
+    def parse(path: Path): Option[PathScheme]
 
     def lookup(path: Path): Activity[NameTree[Name]] =
       parse(path) match {
-        case ConsulPath(raw, Some(PathScheme(dc, key, id, residual))) =>
-          caching(raw, dc, key, id, residual)
+        case Some(PathScheme(dc, key, id, residual)) =>
+          caching(path, dc, key, id, residual)
         case _ => Activity.value(NameTree.Neg)
       }
 
@@ -70,29 +70,25 @@ object ConsulNamer {
 
   private[this] class TaggedNamer(val caching: LookupCache, val prefix: Path) extends NamerWithHandlers {
 
-    override def parse(path: Path): ConsulPath = {
-      val scheme = path.take(3) match {
+    override def parse(path: Path): Option[PathScheme] =
+      path.take(3) match {
         case id@Path.Utf8(dc, tag, service) =>
           val k = SvcKey(service.toLowerCase, Some(tag.toLowerCase))
           Some(PathScheme(dc, k, prefix ++ id, path.drop(3)))
         case _ => None
       }
-      ConsulPath(path, scheme)
-    }
 
   }
 
   private[this] class UntaggedNamer(val caching: LookupCache, val prefix: Path) extends NamerWithHandlers {
 
-    override def parse(path: Path): ConsulPath = {
-      val scheme = path.take(2) match {
+    override def parse(path: Path): Option[PathScheme] =
+      path.take(2) match {
         case id@Path.Utf8(dc, service) =>
           val k = SvcKey(service.toLowerCase, None)
           Some(PathScheme(dc, k, prefix ++ id, path.drop(2)))
         case _ => None
       }
-      ConsulPath(path, scheme)
-    }
 
   }
 

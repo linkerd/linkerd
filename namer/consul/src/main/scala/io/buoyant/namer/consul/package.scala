@@ -9,12 +9,6 @@ package object consul {
   private[consul]type ActUp[T] = VarUp[Activity.State[T]]
   val log = Logger.get("io.buoyant.namer.consul")
 
-  /** wraps a path and keeps additional consul-specific structure */
-  private[consul] case class ConsulPath(
-    raw: Path,
-    scheme: Option[PathScheme] = None
-  )
-
   /** path-extracted schema to make consul api calls */
   private[consul] case class PathScheme(
     dc: String,
