@@ -47,10 +47,23 @@ object Linker {
     telemetry: Seq[TelemeterInitializer] = Nil,
     announcer: Seq[AnnouncerInitializer] = Nil,
     failureAccrual: Seq[FailureAccrualInitializer] = Nil,
-    loggers: Seq[RequestAuthorizerInitializer] = Nil
+    requestAuthorizer: Seq[RequestAuthorizerInitializer] = Nil,
+    tracePropagator: Seq[TracePropagatorInitializer] = Nil
   ) {
     def iter: Iterable[Seq[ConfigInitializer]] =
-      Seq(protocol, namer, interpreter, identifier, transformer, classifier, telemetry, announcer, failureAccrual, loggers)
+      Seq(
+        protocol,
+        namer,
+        interpreter,
+        identifier,
+        transformer,
+        classifier,
+        telemetry,
+        announcer,
+        failureAccrual,
+        requestAuthorizer,
+        tracePropagator
+      )
 
     def all: Seq[ConfigInitializer] = iter.flatten.toSeq
 
@@ -71,7 +84,8 @@ object Linker {
     LoadService[TelemeterInitializer],
     LoadService[AnnouncerInitializer],
     LoadService[FailureAccrualInitializer],
-    LoadService[RequestAuthorizerInitializer]
+    LoadService[RequestAuthorizerInitializer],
+    LoadService[TracePropagatorInitializer]
   )
 
   def parse(

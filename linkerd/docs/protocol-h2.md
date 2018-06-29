@@ -65,6 +65,8 @@ h2AccessLogAppend | true | Append to an existing logfile, or truncate it?
 h2AccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers. See [H2-specific identifiers](#http-2-identifiers).
 requestAuthorizers | none | A list of request authorizers.  See [H2-specific request authorizers](#http-2-request-authorizers).
+tracePropagator | `io.l5d.default` | A trace propagator.  See [H2-specific trace propagator](#http-2-trace-propagators).
+
 
 When TLS is configured, h2 routers negotiate to communicate over
 HTTP/2 via ALPN.
@@ -378,6 +380,36 @@ Key | Default Value | Description
 --- | ------------- | -----------
 mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
 mixerPort | `9091` | Port of the Mixer server.
+
+<a name="http-2-trace-propagators"></a>
+## HTTP/2 Trace Propagators
+
+Trace propagators are responsible for propagating distributed tracing data from requests that
+Linkerd receives to requests that Linkerd sends.  The trace propagator reads trace context from
+a received request (usually from request headers) and stores it in a request local context.  The
+trace propagator is also responsible for writing this trace context into requests that Linkerd sends
+(usually into request headers).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | One of [`io.l5d.default`](#default-trace-propagator).
+
+<a name="default-trace-propagator"></a>
+### Default Trace Propagator
+
+kind: `io.l5d.default`.
+
+The default trace propagator stores the trace id in the `l5d-ctx-trace` request header.  It also
+reads the `l5d-sample` and, if present, uses this value as the sample rate for this request.
+
+#### Trace Propagator Configuration:
+
+> Configuration example
+
+```yaml
+tracePropagator:
+- kind: io.l5d.default
+```
 
 ## HTTP/2 Headers
 
