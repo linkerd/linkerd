@@ -111,16 +111,10 @@ private[consul] class LookupCache(
   private[this] val compute: (Path, String, SvcKey, Path, Path) => Activity[NameTree[Name]] =
     untupled(Memoize[(Path, String, SvcKey, Path, Path), Activity[NameTree[Name]]] {
       case (raw, dc, key, id, residual) => {
-        val cached = Option(lookupStatus.get(raw))
-        val address = cached match {
-          case Some(InstrumentedAddr(addr, _)) =>
-            Future(addr)
-          case None =>
-            log.debug("consul lookup: %s %s", dc, id.show)
-            lookupCounter.incr()
-            lookupAddress(raw, dc, key)
-        }
-        convertToName(address, id, residual)
+        log.debug("consul lookup: %s %s", dc, id.show)
+        lookupCounter.incr()
+        val addrF = lookupAddress(raw, dc, key)
+        convertToName(addrF, id, residual)
       }
     })
 
