@@ -26,7 +26,7 @@ class PollState[Req, Rep] {
         response = Some(r)
         error = None
       case Throw(e) =>
-        error = Some(e)
+        error = Some(e.getMessage)
         response = None
     }
   }
@@ -36,7 +36,7 @@ class PollState[Req, Rep] {
   protected var lastRequestAt: Option[String] = None
   protected var response: Option[Rep] = None
   protected var lastResponseAt: Option[String] = None
-  protected var error: Option[Throwable] = None
+  protected var error: Option[String] = None
 }
 
 private[consul] object InstrumentedApiCall {
