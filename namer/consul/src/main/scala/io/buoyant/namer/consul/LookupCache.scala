@@ -69,16 +69,13 @@ private[consul] class LookupCache(
       //if the lookup succeeded we want to cache the result, double checking for race conditions
       addrFuture.map {
         addr =>
-          val cachedAddr = Var(addr)
           lookupStatusMu.synchronized {
-            if (lookupStatus.containsKey(raw)) {
-              cachedAddr() = lookupStatus.get(raw).addr
-            } else {
+            if (!lookupStatus.containsKey(raw)) {
               lookupStatus.put(raw, InstrumentedAddr(addr, pollState))
               cachedCounter.incr()
             }
+            lookupStatus.get(raw).addr
           }
-          cachedAddr()
       }
     }
 
