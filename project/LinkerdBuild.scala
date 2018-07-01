@@ -256,7 +256,6 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
-       |   -XX:+PerfDisableSharedMem                                     \
        |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
@@ -348,6 +347,7 @@ object LinkerdBuild extends Base {
       """|#!/bin/sh
          |
          |jars="$0"
+         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
          |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
          |  for jar in $NAMERD_HOME/plugins/*.jar ; do
          |    jars="$jars:$jar"
@@ -357,7 +357,7 @@ object LinkerdBuild extends Base {
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
          |     io.buoyant.namerd.Main "$@"
          |"""
       ).stripMargin
@@ -403,6 +403,7 @@ object LinkerdBuild extends Base {
       """|#!/bin/bash
          |
          |jars="$0"
+         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
          |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
          |  for jar in $NAMERD_HOME/plugins/*.jar ; do
          |    jars="$jars:$jar"
@@ -417,7 +418,7 @@ object LinkerdBuild extends Base {
          |
          |echo $CONFIG_INPUT | \
          |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
          |io.buoyant.namerd.DcosBootstrap "$@"
          |
          |echo $CONFIG_INPUT | \
@@ -607,6 +608,7 @@ object LinkerdBuild extends Base {
       """|#!/bin/sh
          |
          |jars="$0"
+         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
          |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
          |  for jar in $L5D_HOME/plugins/*.jar ; do
          |    jars="$jars:$jar"
@@ -616,7 +618,7 @@ object LinkerdBuild extends Base {
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
          |     io.buoyant.linkerd.Main "$@"
          |"""
       ).stripMargin
