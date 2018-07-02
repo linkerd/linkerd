@@ -148,7 +148,7 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
             }
           case Throw(e: DtabContainsInvalidDentriesException) =>
             val rep = Response(Status.BadRequest)
-            rep.contentString = s"${e.getMessage}"
+            rep.contentString = e.getMessage
             rep.contentLength(rep.contentString.size)
             Future.value(rep)
           // invalid dtab

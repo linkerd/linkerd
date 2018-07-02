@@ -39,7 +39,8 @@ object DtabCodec {
     def read(buf: Buf) = {
       Json.read[IndexedSeq[Dentry]](buf).map { dentries =>
         if (dentries.contains(null)) {
-          throw new DtabContainsInvalidDentriesException(dentries)
+          val Buf.Utf8(str) = buf
+          throw new DtabContainsInvalidDentriesException(str)
         } else Dtab(dentries)
       }
     }
