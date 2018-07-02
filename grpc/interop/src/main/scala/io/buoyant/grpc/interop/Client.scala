@@ -3,6 +3,7 @@ package io.buoyant.grpc.interop
 import com.twitter.app.App
 import com.twitter.finagle.{Failure, Path}
 import com.twitter.finagle.buoyant.H2
+import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.io.Buf
 import com.twitter.logging.Logging
 import com.twitter.util.{Await, Future, Return, Throw, Try}
@@ -219,7 +220,7 @@ class Client(
     rsps.recv().flatMap { r =>
       val Stream.Releasable(_, release) = r
       release().before {
-        reqs.reset(GrpcStatus.Canceled())
+        reqs.close(GrpcStatus.Canceled())
         rsps.recv().transform {
           case Throw(GrpcStatus.Canceled(_)) => Future.Unit
           case Throw(e) => Future.exception(e)

@@ -6,8 +6,19 @@ import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.util._
 
 trait Stream[+T] {
+  /**
+   * Consumers of a Stream should call recv() to poll messages off of the Stream.  Each message is
+   * wrapped in a Releasable which provides a release function.  Consumers must call the release
+   * function of each message once they are done with it.  If the stream has terminated gracefully,
+   * this will return a Future.Exception[GrpcStatus].
+   */
   def recv(): Future[Stream.Releasable[T]]
 
+  /**
+   * Reset the underlying H2 stream.  This should be called by the consumer of this stream when
+   * they no longer want to receive messages.  This uses an H2 stream reset to signal to the
+   * producer to stop producing.
+   */
   def reset(err: Reset): Unit
 }
 
@@ -117,9 +128,13 @@ object Stream {
 
       def reset(e: Reset): Unit = synchronized {
         streamRef match {
-          case Right(_) =>
+          case Right(Return(s)) => s.reset(e)
+          case Right(Throw(_)) => // Do nothing.
           case Left(f) =>
             f.raise(Failure(e, Failure.Interrupted))
+            // Interrupting a Future does not guarantee that it will fail.  If the stream future
+            // does succeed, we should reset that stream.
+            f.onSuccess(_.reset(e))
         }
         streamRef = Right(Throw(e))
       }

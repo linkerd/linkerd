@@ -2,6 +2,7 @@ package io.buoyant.grpc.runtime
 
 import com.twitter.concurrent.AsyncMutex
 import com.twitter.finagle.buoyant.h2
+import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.util.{Future, Return, Throw, Try}
 import io.netty.buffer.{ByteBuf, CompositeByteBuf, Unpooled}
 import java.nio.ByteBuffer
@@ -30,7 +31,7 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
    * This state holds a `Releaser`, which manages when HTTP/2 frames
    * are released (i.e. for flow control).
    */
-  private[this] var recvState: RecvState = RecvState.Empty
+  private[this] var buffer: Buffer = Buffer()
 
   /**
    * This holds all the bytes read from data frames.
@@ -43,9 +44,7 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
    */
   private[this] val recvMu = new AsyncMutex()
 
-  override def reset(e: GrpcStatus): Unit = synchronized {
-    recvState = RecvState.Reset(e)
-  }
+  override def reset(e: Reset): Unit = frames.cancel(e)
 
   /**
    * Obtain the next gRPC message from the underlying H2 stream.
@@ -56,7 +55,7 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       // completes. Start by trying to obtain a message directly from
       // the buffer. If a message isn't buffered, read() it from the
       // h2.Stream.
-      decode(recvState) match {
+      decode(buffer) match {
         case Decoded(s, Some(msg)) => _updateBuffer(s -> Return(msg))
         case Decoded(s, None) => read(s).flatMap(_updateBuffer)
       }
@@ -66,16 +65,16 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
    * Update the receive buffer before returning the result
    * (and i.e. releasing the mutex).
    */
-  private[this] val _updateBuffer: ((RecvState, Try[Releasable])) => Future[Releasable] = {
+  private[this] val _updateBuffer: ((Buffer, Try[Releasable])) => Future[Releasable] = {
     case (s, v) =>
-      recvState = s
+      buffer = s
       Future.const(v)
   }
 
   /**
    * Read from the h2 stream until the next message is fully buffered.
    */
-  private[this] def read(s0: RecvState): Future[(RecvState, Try[Stream.Releasable[T]])] = {
+  private[this] def read(s0: Buffer): Future[(Buffer, Try[Stream.Releasable[T]])] = {
     frames.read().transform {
       case Throw(rst: h2.Reset) => Future.exception(GrpcStatus.fromReset(rst))
       case Throw(e) => Future.exception(e)
@@ -102,19 +101,17 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
     }
 
   private case class Decoded(
-    state: RecvState,
+    state: Buffer,
     result: Option[Stream.Releasable[T]]
   )
 
   private[this] def decode(
-    s0: RecvState
+    s0: Buffer
   ): Decoded = s0 match {
-    case rst@RecvState.Reset(_) => Decoded(rst, None)
-
-    case RecvState.Buffer(Some(hdr), releaser) =>
+    case Buffer(Some(hdr), releaser) =>
       decodeMessage(hdr, releaser)
 
-    case RecvState.Buffer(None, releaser) =>
+    case Buffer(None, releaser) =>
       decodeHeader(buf) match {
         case None => Decoded(s0, None)
         case Some(hdr) =>
@@ -124,12 +121,11 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
   }
 
   private[this] def decodeFrame(
-    s0: RecvState,
+    s0: Buffer,
     frame: h2.Frame.Data
   ): Decoded = s0 match {
-    case rst@RecvState.Reset(_) => Decoded(rst, None)
 
-    case RecvState.Buffer(None, releaser0) =>
+    case Buffer(None, releaser0) =>
       // We don't want the composite buf to be able to release this buf component until the frame
       // has been released, so we call retain() here.  This component should be fully released once
       // both the frame has been released and when the composite buf has fully read and discarded
@@ -137,13 +133,13 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       buf.addComponent(true, frame.buf.retain())
       val releaser = releaser0.track(frame)
       decodeHeader(buf) match {
-        case None => Decoded(RecvState.Buffer(None, releaser), None)
+        case None => Decoded(Buffer(None, releaser), None)
         case Some(hdr) =>
           val r = releaser.consume(GrpcFrameHeaderSz)
           decodeMessage(hdr, r)
       }
 
-    case RecvState.Buffer(Some(hdr), releaser) =>
+    case Buffer(Some(hdr), releaser) =>
       // We've already decoded a header, but not its message. Try to
       // decode the message.
       buf.addComponent(true, frame.buf.retain())
@@ -165,8 +161,8 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       buf.skipBytes(hdr.size)
       buf.discardReadComponents()
 
-      Decoded(RecvState.Buffer(None, nextReleaser), Some(Stream.Releasable(msg, release)))
-    } else Decoded(RecvState.Buffer(Some(hdr), releaser), None)
+      Decoded(Buffer(None, nextReleaser), Some(Stream.Releasable(msg, release)))
+    } else Decoded(Buffer(Some(hdr), releaser), None)
 }
 
 object DecodingStream {
@@ -189,21 +185,14 @@ object DecodingStream {
     protected[this] val getStatus: h2.Frame.Trailers => GrpcStatus = GrpcStatus.fromHeaders(_)
   }
 
-  private sealed trait RecvState
+  private case class Buffer(
+    /** The current gRPC message header, if one has been parsed */
+    header: Option[Header] = None,
+    /** Tracks how many bytes are consumed and when the underling data may be released */
+    releaser: Releaser = Releaser.Nil
+  )
 
-  private object RecvState {
-
-    case class Buffer(
-      /** The current gRPC message header, if one has been parsed */
-      header: Option[Header] = None,
-      /** Tracks how many bytes are consumed and when the underling data may be released */
-      releaser: Releaser = Releaser.Nil
-    ) extends RecvState
-
-    case class Reset(error: GrpcStatus) extends RecvState
-
-    val Empty: RecvState = Buffer()
-  }
+  private case class Header(compressed: Boolean, size: Int)
 
   /**
    * Keeps track of when underlying h2 frames should be released.
@@ -353,8 +342,6 @@ object DecodingStream {
         FrameReleaser(SegmentLatch(f.release _), 0, f.buf.readableBytes(), Nil)
     }
   }
-
-  private case class Header(compressed: Boolean, size: Int)
 
   private val GrpcFrameHeaderSz = Codec.GrpcFrameHeaderSz
 }
