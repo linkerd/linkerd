@@ -6,6 +6,8 @@ import com.twitter.util.Future
 package object v1 {
   val versionString = "v1"
   type Client = Service[http.Request, http.Response]
+  type IndexedServiceNodes = Indexed[Seq[ServiceNode]]
+  type IndexedServiceMap = Indexed[Map[String, Seq[String]]]
 
   trait ConsulApiError extends Throwable {
     def rsp: http.Response
