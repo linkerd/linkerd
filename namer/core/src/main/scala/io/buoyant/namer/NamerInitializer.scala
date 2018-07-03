@@ -2,6 +2,7 @@ package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
 import com.twitter.finagle._
+import io.buoyant.admin.Admin
 import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
 
 /**
@@ -65,7 +66,18 @@ abstract class NamerConfig extends PolymorphicConfig {
         config.mk(Stack.Params.empty + stats)
       }
       .foldLeft(underlying) { (namer, transformer) =>
-        transformer.wrap(namer)
+
+        val res = transformer.wrap(namer)
+        println(s"wrapping $namer in $res")
+        namer match {
+          case w: Admin.WithHandlers => println(s"$namer has handlers: ${w.adminHandlers.size}")
+          case _ => println(s"$namer has no handlers")
+        }
+        res match {
+          case w: Admin.WithHandlers => println(s"$res has handlers: ${w.adminHandlers.size}")
+          case _ => println(s"$res has no handlers")
+        }
+        res
       }
   }
 }

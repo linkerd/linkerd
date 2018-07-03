@@ -19,12 +19,17 @@ trait NameTreeTransformer {
    * Create a new NameInterpreter by applying this transformer to the output of
    * an existing one.
    */
-  def wrap(underlying: NameInterpreter): NameInterpreter = new NameInterpreter {
+  def wrap(underlying: NameInterpreter): NameInterpreter = new NameInterpreter with Admin.WithHandlers {
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
       underlying.bind(dtab, path).flatMap(transform)
+
+    override def adminHandlers: Seq[Admin.Handler] = underlying match {
+      case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
+      case _ => Nil
+    }
   }
 
-  def wrap(underlying: Namer): Namer = new Namer {
+  def wrap(underlying: Namer): Namer = new Namer with Admin.WithHandlers {
     private[this] def isBound(tree: NameTree[Name]): Boolean = {
       tree match {
         case NameTree.Neg | NameTree.Empty | NameTree.Fail => true
@@ -42,6 +47,15 @@ trait NameTreeTransformer {
         else
           Activity.value(tree)
       }
+    }
+
+    override def adminHandlers: Seq[Admin.Handler] = underlying match {
+      case withHandlers: Admin.WithHandlers =>
+        println(s"$this gets underlying $underlying admin handlers (${withHandlers.adminHandlers.size}")
+        withHandlers.adminHandlers
+      case _ =>
+        println(s"$this gets no handlers from underlying $underlying")
+        Nil
     }
   }
 }
