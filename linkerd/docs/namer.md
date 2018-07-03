@@ -198,9 +198,6 @@ Linkerd provides support for service discovery via [Consul](https://www.consul.i
 The internal state of the Consul namer can be viewed at the
 admin endpoint: `/namer_state/<prefix>.json`.
 
-The internal store of the Consul dtabs can be viewed at the
-admin endpoint: `/storage/namerd/dtabs.json` by default.
-
 Key | Default Value | Description
 --- | ------------- | -----------
 prefix | `io.l5d.consul` | Resolves names with `/#/<prefix>`.
