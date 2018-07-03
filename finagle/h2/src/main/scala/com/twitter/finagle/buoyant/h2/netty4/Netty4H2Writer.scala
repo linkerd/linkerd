@@ -2,11 +2,10 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.finagle.WriteException
-import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.transport.Transport
-import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, Time}
+import io.netty.buffer.ByteBuf
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
 
@@ -31,9 +30,8 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     case tlrs: Frame.Trailers => write(stream, tlrs, eos = true)
   }
 
-  override def write(stream: H2FrameStream, buf: Buf, eos: Boolean): Future[Unit] = {
-    val bb = BufAsByteBuf(buf)
-    val nettyFrame = new DefaultHttp2DataFrame(bb, eos)
+  override def write(stream: H2FrameStream, buf: ByteBuf, eos: Boolean): Future[Unit] = {
+    val nettyFrame = new DefaultHttp2DataFrame(buf.duplicate, eos)
     if (stream.id >= 0) nettyFrame.stream(stream)
     write(nettyFrame.retain())
   }

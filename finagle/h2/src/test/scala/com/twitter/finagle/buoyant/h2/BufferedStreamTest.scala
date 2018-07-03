@@ -1,12 +1,13 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.io.Buf
 import io.buoyant.test.FunSuite
+import io.netty.buffer.Unpooled
+import java.nio.charset.StandardCharsets
 
 class BufferedStreamTest extends FunSuite {
 
-  val Hello = Buf.Utf8("hello")
+  val Hello = Unpooled.copiedBuffer("hello", StandardCharsets.UTF_8)
 
   test("fans out to multiple children") {
     val sourceQ = new AsyncQueue[Frame]()
@@ -115,7 +116,7 @@ class BufferedStreamTest extends FunSuite {
       val child = buffer.fork().get
       for (i <- 1 to 10) {
         val frame = await(child.read()).asInstanceOf[Frame.Data]
-        assert(frame.buf == Buf.Utf8(i.toString))
+        assert(frame.buf.toString(StandardCharsets.UTF_8) == i.toString)
         await(frame.release())
       }
       child
@@ -140,9 +141,9 @@ class BufferedStreamTest extends FunSuite {
     val buffer = new BufferedStream(source, bufferCapacity = 10)
 
     // send frames
-    sourceQ.offer(Frame.Data(Buf.ByteArray(0, 1, 2, 3, 4), eos = false))
-    sourceQ.offer(Frame.Data(Buf.ByteArray(5, 6, 7, 8, 9), eos = false))
-    sourceQ.offer(Frame.Data(Buf.ByteArray(10, 11, 12, 13, 14), eos = false))
+    sourceQ.offer(Frame.Data(Unpooled.wrappedBuffer(Array[Byte](0, 1, 2, 3, 4)), eos = false))
+    sourceQ.offer(Frame.Data(Unpooled.wrappedBuffer(Array[Byte](5, 6, 7, 8, 9)), eos = false))
+    sourceQ.offer(Frame.Data(Unpooled.wrappedBuffer(Array[Byte](10, 11, 12, 13, 14)), eos = false))
 
     val child = buffer.fork().get
 
@@ -158,13 +159,18 @@ class BufferedStreamTest extends FunSuite {
     assert(buffer.fork().isThrow)
 
     // even after buffer is discarded, frames should be fanned out to existing children
-    sourceQ.offer(Frame.Data(Buf.ByteArray(15, 16, 17, 18, 19), eos = true))
+    sourceQ.offer(Frame.Data(Unpooled.wrappedBuffer(Array[Byte](15, 16, 17, 18, 19)), eos = true))
     val frame4 = await(child.read()).asInstanceOf[Frame.Data]
 
-    assert(frame1.buf == Buf.ByteArray(0, 1, 2, 3, 4))
-    assert(frame2.buf == Buf.ByteArray(5, 6, 7, 8, 9))
-    assert(frame3.buf == Buf.ByteArray(10, 11, 12, 13, 14))
-    assert(frame4.buf == Buf.ByteArray(15, 16, 17, 18, 19))
+    val bytes = new Array[Byte](5)
+    frame1.buf.readBytes(bytes)
+    assert(bytes sameElements Array[Byte](0, 1, 2, 3, 4))
+    frame2.buf.readBytes(bytes)
+    assert(bytes sameElements Array[Byte](5, 6, 7, 8, 9))
+    frame3.buf.readBytes(bytes)
+    assert(bytes sameElements Array[Byte](10, 11, 12, 13, 14))
+    frame4.buf.readBytes(bytes)
+    assert(bytes sameElements Array[Byte](15, 16, 17, 18, 19))
 
     frame1.release()
     frame2.release()

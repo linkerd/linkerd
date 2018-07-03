@@ -105,7 +105,7 @@ class StreamStatsFilter(
           case Return(frame) =>
             frame match {
               case data: Frame.Data =>
-                val _ = streamFrameBytes.addAndGet(data.buf.length)
+                val _ = streamFrameBytes.addAndGet(data.buf.readableBytes)
               case _ =>
             }
             if (frame.isEnd) onFinalFrame(Some(Return(frame)))

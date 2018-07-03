@@ -44,9 +44,9 @@ class FlowControlEndToEndTest
     // be released until all of the data has been flushed.  This
     // cannot happen until the reader reads and releases some of the
     // data.
-    val frame0 = Frame.Data(mkBuf(WindowSize + 1024), false)
-    val frame1 = Frame.Data(mkBuf(WindowSize - 1024), false)
-    val frame2 = Frame.Data(mkBuf(WindowSize), true)
+    val frame0 = Frame.Data(mkByteBuf(WindowSize + 1024), false)
+    val frame1 = Frame.Data(mkByteBuf(WindowSize - 1024), false)
+    val frame2 = Frame.Data(mkByteBuf(WindowSize), true)
 
     log.debug("offering 2 frames with %d", 2 * WindowSize)
     val wrote0 = writer.write(frame0)
@@ -62,8 +62,8 @@ class FlowControlEndToEndTest
       await(reader.read()) match {
         case d: Frame.Data =>
           // frames += d
-          read += d.buf.length
-          log.debug("~~~ read %d = %d/%d", d.buf.length, read, WindowSize)
+          read += d.buf.readableBytes
+          log.debug("~~~ read %d = %d/%d", d.buf.readableBytes, read, WindowSize)
           await(d.release())
 
         case f => fail(s"unexpected frame: $f")
@@ -80,8 +80,8 @@ class FlowControlEndToEndTest
       if (read > WindowSize + 1024) assert(wrote0.isDefined)
       await(reader.read()) match {
         case d: Frame.Data =>
-          read += d.buf.length
-          log.debug("reader releasing %dB from 1 frame", d.buf.length)
+          read += d.buf.readableBytes
+          log.debug("reader releasing %dB from 1 frame", d.buf.readableBytes)
           await(d.release())
 
         case f => fail(s"unexpected frame: $f")
@@ -96,8 +96,8 @@ class FlowControlEndToEndTest
         read, 3 * WindowSize, wrote2.isDefined)
       await(reader.read()) match {
         case d: Frame.Data =>
-          read += d.buf.length
-          log.debug("reader releasing %dB from 1 frame", d.buf.length)
+          read += d.buf.readableBytes
+          log.debug("reader releasing %dB from 1 frame", d.buf.readableBytes)
           await(d.release())
           assert(d.isEnd == (read == 3 * WindowSize))
 

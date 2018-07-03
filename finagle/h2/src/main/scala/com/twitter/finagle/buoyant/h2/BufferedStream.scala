@@ -5,8 +5,8 @@ import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.buoyant.h2.BufferedStream.{RefCountedDataFrame, RefCountedFrame, RefCountedTrailersFrame, State}
 import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.util.AsyncLatch
-import com.twitter.io.Buf
 import com.twitter.util._
+import io.netty.buffer.ByteBuf
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
 
@@ -115,7 +115,7 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 16383) { buffere
       underlying.read().transform {
         case Return(f: Frame.Data) => synchronized {
           val refCounted = new RefCountedDataFrame(f)
-          handleFrame(refCounted, f.buf.length)
+          handleFrame(refCounted, f.buf.readableBytes)
           if (f.isEnd) _onEnd.setDone()
           Future.Unit
         }
@@ -217,7 +217,7 @@ object BufferedStream {
 
   class RefCountedDataFrame(val underlying: Frame.Data) extends Frame.Data with RefCountedFrame {
     override def isEnd: Boolean = underlying.isEnd
-    override def buf: Buf = underlying.buf
+    override def buf: ByteBuf = underlying.buf
   }
 
   class RefCountedTrailersFrame(val underlying: Frame.Trailers) extends Frame.Trailers with RefCountedFrame {

@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 
-import com.twitter.io.Buf
 import com.twitter.util.{Future, Time}
+import io.netty.buffer.ByteBuf
 import java.net.SocketAddress
 import io.netty.handler.codec.http2.H2FrameStream
 
@@ -18,7 +18,7 @@ object H2Transport {
     def remoteAddress: SocketAddress
 
     def write(frameStream: H2FrameStream, orig: Headers, eos: Boolean): Future[Unit]
-    def write(frameStream: H2FrameStream, buf: Buf, eos: Boolean): Future[Unit]
+    def write(frameStream: H2FrameStream, buf: ByteBuf, eos: Boolean): Future[Unit]
     def write(frameStream: H2FrameStream, frame: Frame): Future[Unit]
 
     /**
