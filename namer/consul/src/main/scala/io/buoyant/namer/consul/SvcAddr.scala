@@ -7,7 +7,8 @@ import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.{Metadata, InstrumentedVar}
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
+
 import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -178,7 +179,10 @@ private[consul] object SvcAddr {
       case Some(ws) => ws.max
     }
     val meta = Addr.Metadata((Metadata.endpointWeight, weight))
-    Try(Address.Inet(new InetSocketAddress(ip, port), meta)).toOption
+    Try(InetAddress.getAllByName(ip)
+      .toTraversable
+      .map(singleIP => Address.Inet(new InetSocketAddress(singleIP, port), meta)))
+      .getOrElse(Seq())
   }
 
   private[this] val NoIndexException =
