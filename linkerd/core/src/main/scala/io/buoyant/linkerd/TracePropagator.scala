@@ -25,7 +25,7 @@ trait TracePropagator[Req] {
 
 object TracePropagator {
 
-  def NilTracePropagagtor[Req] = new TracePropagator[Req] {
+  def NilTracePropagator[Req] = new TracePropagator[Req] {
     override def traceId(req: Req): Option[TraceId] = None
     override def sampler(req: Req): Option[Sampler] = None
     override def setContext(req: Req, traceId: TraceId): Unit = ()
