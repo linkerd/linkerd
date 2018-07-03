@@ -77,7 +77,10 @@ object Admin {
   val threadsJs = "<script src='files/js/threads.js'></script>"
 
   def appHandlers(app: TApp): Seq[Handler] = Seq(
-    Handler("/admin/server_info", new TextBlockView().andThen(new ServerInfoHandler(app))),
+    Handler("/admin/server_info", new TextBlockView().andThen(new ServerInfoHandler(app)))
+  )
+
+  def shutdownHandlers(app: TApp): Seq[Handler] = Seq(
     Handler("/admin/shutdown", new ShutdownHandler(app))
   )
 
@@ -117,7 +120,7 @@ object Admin {
   }
 }
 
-class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig], workers: Int, stats: StatsReceiver) {
+class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig], workers: Int, stats: StatsReceiver, shutdownEnabled: Boolean) {
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
@@ -134,7 +137,9 @@ class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig], wor
   val scheme: String = if (this.isTls) "https" else "http"
 
   def mkService(app: TApp, extHandlers: Seq[Handler]): Service[Request, Response] = {
-    val handlers = baseHandlers ++ appHandlers(app) ++ extHandlers
+    val handlers = baseHandlers ++ appHandlers(app) ++
+      (if (shutdownEnabled) shutdownHandlers(app) else Seq.empty) ++
+      extHandlers
     val muxer = (handlers ++ indexHandlers(handlers)).foldLeft(new HttpMuxer) {
       case (muxer, Handler(url, service, _)) =>
         log.debug("admin: %s => %s", url, service.getClass.getName)

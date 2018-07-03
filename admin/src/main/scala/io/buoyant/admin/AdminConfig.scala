@@ -9,6 +9,7 @@ case class AdminConfig(
   ip: Option[InetAddress] = None,
   port: Option[Port] = None,
   shutdownGraceMs: Option[Int] = None,
+  shutdownEnabled: Option[Boolean] = Some(true),
   tls: Option[TlsServerConfig] = None,
   httpIdentifierPort: Option[Port] = None,
   workerThreads: Option[Int] = None
@@ -18,6 +19,6 @@ case class AdminConfig(
     val adminIp = ip.getOrElse(defaultAddr.getAddress)
     val adminPort = port.map(_.port).getOrElse(defaultAddr.getPort)
     val addr = new InetSocketAddress(adminIp, adminPort)
-    new Admin(addr, tls, workerThreads.getOrElse(2), stats)
+    new Admin(addr, tls, workerThreads.getOrElse(2), stats, shutdownEnabled.getOrElse(true))
   }
 }
