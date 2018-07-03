@@ -2,9 +2,9 @@ package com.twitter.finagle.buoyant.h2
 
 import com.twitter.conversions.storage._
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.io.Buf
 import com.twitter.util.StdBenchAnnotations
 import io.buoyant.test.Awaits
+import io.netty.buffer.Unpooled
 import org.openjdk.jmh.annotations._
 
 trait StreamBase {
@@ -12,7 +12,7 @@ trait StreamBase {
   final val StreamLength = 8
   final val FrameSize = 1.kilobyte
   final val BufferCapacity = FrameSize * StreamLength
-  final val Data = Buf.ByteArray(Array.fill(FrameSize.bytes.toInt)(0.toByte): _*)
+  final val Data = Unpooled.wrappedBuffer(Array.fill(FrameSize.bytes.toInt)(0.toByte))
 }
 
 // ./sbt 'project finagle-benchmark' 'jmh:run -i 20 -prof gc .*StreamBaselineBenchmark.*'

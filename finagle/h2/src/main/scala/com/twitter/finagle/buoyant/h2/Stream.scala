@@ -1,8 +1,9 @@
 package com.twitter.finagle.buoyant.h2
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Return, Throw, Try}
+import io.netty.buffer.{ByteBuf, Unpooled}
+import java.nio.charset.{StandardCharsets => JChar}
 
 /**
  * A Stream represents a stream of Data frames, optionally
@@ -107,6 +108,28 @@ object Stream {
   }
 
   /**
+   * Read a [[Stream]] to the end, [[Frame.release release()]]ing each
+   * [[Frame]] before reading the next one.
+   *
+   * The value of each frame is discarded, but assertions can be made about
+   * their contents by attaching an [[Stream.onFrame onFrame()]] callback
+   * before calling `readAll()`.
+   *
+   * @param stream the [[Stream]] to read to the end
+   * @return a [[Future]] that will finish when the whole stream is read
+   */
+
+  def readToEnd(stream: Stream): Future[Unit] =
+    if (stream.isEmpty) Future.Unit
+    else
+      stream.read().flatMap { frame =>
+        val end = frame.isEnd
+        frame.release().before {
+          if (end) Future.Unit else readToEnd(stream)
+        }
+      }
+
+  /**
    * In order to create a stream, we need a mechanism to write to it.
    */
   trait Writer {
@@ -180,11 +203,13 @@ object Stream {
     apply(q)
   }
 
-  def const(buf: Buf): Stream =
+  def const(buf: ByteBuf): Stream =
     const(Frame.Data.eos(buf))
 
-  def const(s: String): Stream =
-    const(Buf.Utf8(s))
+  def const(s: String): Stream = {
+    val bytes = s.getBytes(JChar.UTF_8)
+    const(Unpooled.wrappedBuffer(bytes))
+  }
 
   def empty(): Stream = new Stream {
     override def isEmpty = true
@@ -218,13 +243,13 @@ object Frame {
    * `release()` MUST be called so that the producer may manage flow control.
    */
   trait Data extends Frame {
-    override def toString = s"Frame.Data(length=${buf.length}, isEnd=$isEnd)"
-    def buf: Buf
+    override def toString = s"Frame.Data(length=${buf.readableBytes()}, isEnd=$isEnd)"
+    def buf: ByteBuf
   }
 
   object Data {
 
-    def apply(buf0: Buf, eos: Boolean, release0: () => Future[Unit]): Data = new Data {
+    def apply(buf0: ByteBuf, eos: Boolean, release0: () => Future[Unit]): Data = new Data {
       def buf = buf0
       private[this] val releaseP = new Promise[Unit]
       def onRelease = releaseP
@@ -240,16 +265,20 @@ object Frame {
       override def apply(): Future[Unit] = Future.Unit
     }
 
-    def apply(buf: Buf, eos: Boolean): Data =
+    def apply(buf: ByteBuf, eos: Boolean): Data =
       apply(buf, eos, NoopRelease)
 
-    def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data =
-      apply(Buf.Utf8(s), eos, release)
+    def apply(s: String, eos: Boolean, release: () => Future[Unit]): Data = {
+      val bytes = s.getBytes(JChar.UTF_8)
+      apply(Unpooled.wrappedBuffer(bytes), eos, release)
+    }
 
-    def apply(s: String, eos: Boolean): Data =
-      apply(Buf.Utf8(s), eos)
+    def apply(s: String, eos: Boolean): Data = {
+      val bytes = s.getBytes(JChar.UTF_8)
+      apply(Unpooled.wrappedBuffer(bytes), eos)
+    }
 
-    def eos(buf: Buf): Data = apply(buf, true)
+    def eos(buf: ByteBuf): Data = apply(buf, true)
     def eos(s: String): Data = apply(s, true)
 
     def copy(frame: Data, eos: Boolean): Data = new Data {

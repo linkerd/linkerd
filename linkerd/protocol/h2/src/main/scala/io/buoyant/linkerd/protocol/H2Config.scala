@@ -67,8 +67,9 @@ class H2Initializer extends ProtocolInitializer.Simple {
   protected val defaultServer = {
     val stk = H2.server.stack
       .replace(TraceInitializerFilter.role, H2TracePropagatorConfig.serverModule)
-      .prepend(LinkerdHeaders.Ctx.serverModule)
+      //ErrorReseter must precede LinkerdHeaders in order to clear l5d context from responses.
       .prepend(h2.ErrorReseter.module)
+      .prepend(LinkerdHeaders.Ctx.serverModule)
       .insertBefore(H2AddForwardedHeader.module.role, AddForwardedHeaderConfig.module[Request, Response])
 
     H2.server.withStack(stk)

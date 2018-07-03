@@ -3,14 +3,14 @@ package netty4
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.{Status => SvcStatus}
-import com.twitter.finagle.netty4.BufAsByteBuf
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.transport.{LegacyContext, Transport, TransportContext}
-import com.twitter.io.Buf
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
+import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
+import java.nio.charset.StandardCharsets
 
 class Netty4ClientDispatcherTest extends FunSuite {
   setLogLevel(com.twitter.logging.Level.OFF)
@@ -102,8 +102,9 @@ class Netty4ClientDispatcherTest extends FunSuite {
     }
 
     assert(req0q.offer({
-      val buf = Buf.Utf8("how's it goin?")
-      Frame.Data(buf, false, () => releaser(buf.length))
+      val buf = Unpooled.copiedBuffer("how's it goin?", StandardCharsets.UTF_8)
+      val sz = buf.readableBytes()
+      Frame.Data(buf, false, () => releaser(sz))
     }))
 
     // We receive a response for req1 first:
@@ -130,13 +131,13 @@ class Netty4ClientDispatcherTest extends FunSuite {
     assert(rsp0.stream.nonEmpty)
 
     assert(recvq.offer({
-      val buf = Buf.Utf8("sup")
-      val dataFrame = new DefaultHttp2DataFrame(BufAsByteBuf(buf), true)
+      val buf = Unpooled.copiedBuffer("sup", StandardCharsets.UTF_8)
+      val dataFrame = new DefaultHttp2DataFrame(buf, true)
       dataFrame.stream(H2FrameStream(3, Http2Stream.State.OPEN))
     }))
     assert(recvq.offer({
-      val buf = Buf.Utf8("yo")
-      val headersFrame = new DefaultHttp2DataFrame(BufAsByteBuf(buf), true)
+      val buf = Unpooled.copiedBuffer("yo", StandardCharsets.UTF_8)
+      val headersFrame = new DefaultHttp2DataFrame(buf, true)
       headersFrame.stream(H2FrameStream(5, Http2Stream.State.OPEN))
     }))
 
@@ -148,7 +149,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
 
     await(d0f) match {
       case f: Frame.Data =>
-        assert(f.buf == Buf.Utf8("sup"))
+        assert(f.buf.toString(StandardCharsets.UTF_8) == "sup")
         assert(f.isEnd)
         await(f.release())
       case f =>
@@ -158,7 +159,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
 
     await(d1f) match {
       case f: Frame.Data =>
-        assert(f.buf == Buf.Utf8("yo"))
+        assert(f.buf.toString(StandardCharsets.UTF_8) == "yo")
         assert(f.isEnd)
         await(f.release())
       case f =>

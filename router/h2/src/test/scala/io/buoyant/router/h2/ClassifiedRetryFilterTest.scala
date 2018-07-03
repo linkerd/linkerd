@@ -7,10 +7,10 @@ import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepF
 import com.twitter.finagle.buoyant.h2.{Frame, Headers, Request, Response, Status, Stream}
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, StatsReceiver}
-import com.twitter.finagle.util.DefaultTimer
-import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.FunSuite
+import io.netty.buffer.{ByteBuf, Unpooled}
+import java.nio.charset.StandardCharsets
 import scala.{Stream => SStream}
 
 class ClassifiedRetryFilterTest extends FunSuite {
@@ -40,24 +40,35 @@ class ClassifiedRetryFilterTest extends FunSuite {
     RetryBudget.Infinite
   )
 
-  def read(stream: Stream): Future[(Buf, Option[Frame.Trailers])] = {
-    if (stream.isEmpty) Future.exception(new IllegalStateException("empty stream"))
-    else stream.read().flatMap {
-      case f: Frame.Data if f.isEnd =>
-        f.release()
-        Future.value((f.buf, None))
-      case f: Frame.Trailers =>
-        f.release()
-        Future.value((Buf.Empty, Some(f)))
-      case f: Frame.Data =>
-        f.release()
-        read(stream).map { case (next, trailers) => (f.buf.concat(next), trailers) }
+  def read(stream: Stream): Future[(ByteBuf, Option[Frame.Trailers])] = {
+
+    val acc = Unpooled.compositeBuffer()
+
+    def loop(): Future[Option[Frame.Trailers]] = {
+      stream.read().flatMap {
+        case f: Frame.Data if f.isEnd =>
+          acc.addComponent(true, f.buf.retain())
+          f.release()
+          Future.value(None)
+        case f: Frame.Trailers =>
+          f.release()
+          Future.value(Some(f))
+        case f: Frame.Data =>
+          acc.addComponent(true, f.buf.retain())
+          f.release()
+          loop()
+      }
+    }
+
+    if (stream.isEmpty) {
+      Future.exception(new IllegalStateException("empty stream"))
+    } else {
+      loop().map(acc -> _)
     }
   }
 
   def readStr(stream: Stream): Future[String] = read(stream).map {
-    case (buf, _) =>
-      Buf.Utf8.unapply(buf).get
+    case (buf, _) => buf.toString(StandardCharsets.UTF_8)
   }
 
   class TestService(tries: Int = 3) extends Service[Request, Response] {
@@ -92,7 +103,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     }
 
     val (buf, Some(trailers)) = await(read(rsp.stream))
-    assert(Buf.Utf8("goodbye") == buf)
+    assert(buf.toString(StandardCharsets.UTF_8) == "goodbye")
     assert(trailers.get("i") == Some("3"))
     assert(trailers.get("retry") == Some("false"))
 
@@ -119,7 +130,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     }
 
     val (buf, Some(trailers)) = await(read(rsp.stream))
-    assert(Buf.Utf8("goodbye") == buf)
+    assert(buf.toString(StandardCharsets.UTF_8) == "goodbye")
     assert(trailers.get("i") == Some("1"))
     assert(trailers.get("retry") == Some("false"))
 
@@ -150,7 +161,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val rsp = await(svc(req))
 
     val (buf, Some(trailers)) = await(read(rsp.stream))
-    assert(Buf.Utf8("goodbye") == buf)
+    assert(buf.toString(StandardCharsets.UTF_8) == "goodbye")
     assert(trailers.get("i") == Some("1"))
     assert(trailers.get("retry") == Some("true")) // response is retryable but req stream too long
 
@@ -181,7 +192,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val rsp = await(svc(req))
 
     val (buf, Some(trailers)) = await(read(rsp.stream))
-    assert(Buf.Utf8("goodbye") == buf)
+    assert(buf.toString(StandardCharsets.UTF_8) == "goodbye")
     assert(trailers.get("i") == Some("1"))
     assert(trailers.get("retry") == Some("true")) // response is retryable but response stream too long
 
@@ -209,7 +220,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
 
     rspQ.offer(Frame.Data("foo", eos = true))
     val frame = await(rsp.stream.read()).asInstanceOf[Frame.Data]
-    assert(frame.buf == Buf.Utf8("foo"))
+    assert(frame.buf.toString(StandardCharsets.UTF_8) == "foo")
     await(frame.release())
 
     assert(stats.counters.get(Seq("retries", "total")) == None)
@@ -247,7 +258,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
       val rsp = await(rspF)
       rspQ.offer(Frame.Data("foo", eos = true))
       val frame = await(rsp.stream.read()).asInstanceOf[Frame.Data]
-      assert(frame.buf == Buf.Utf8("foo"))
+      assert(frame.buf.toString(StandardCharsets.UTF_8) == "foo")
       frame.release()
     }
 

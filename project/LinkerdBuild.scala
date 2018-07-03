@@ -72,12 +72,12 @@ object LinkerdBuild extends Base {
 
   object Namer {
     val core = projectDir("namer/core")
-      .dependsOn(configCore)
+      .dependsOn(configCore, admin)
       .withLib(Deps.jacksonCore)
       .withTests()
 
     val consul = projectDir("namer/consul")
-      .dependsOn(LinkerdBuild.consul, core)
+      .dependsOn(LinkerdBuild.consul, core, admin)
       .withTests()
 
     val curator = projectDir("namer/curator")
@@ -347,6 +347,7 @@ object LinkerdBuild extends Base {
       """|#!/bin/sh
          |
          |jars="$0"
+         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
          |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
          |  for jar in $NAMERD_HOME/plugins/*.jar ; do
          |    jars="$jars:$jar"
@@ -356,7 +357,7 @@ object LinkerdBuild extends Base {
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
          |     io.buoyant.namerd.Main "$@"
          |"""
       ).stripMargin
@@ -402,6 +403,7 @@ object LinkerdBuild extends Base {
       """|#!/bin/bash
          |
          |jars="$0"
+         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
          |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
          |  for jar in $NAMERD_HOME/plugins/*.jar ; do
          |    jars="$jars:$jar"
@@ -416,7 +418,7 @@ object LinkerdBuild extends Base {
          |
          |echo $CONFIG_INPUT | \
          |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
          |io.buoyant.namerd.DcosBootstrap "$@"
          |
          |echo $CONFIG_INPUT | \
@@ -585,11 +587,12 @@ object LinkerdBuild extends Base {
       .dependsOn(Protocol.thrift % "test", Interpreter.perHost % "test")
 
     val main = projectDir("linkerd/main")
-      .dependsOn(admin, configCore, core)
+      .dependsOn(admin, configCore, core, Protocol.http % "e2e", Interpreter.namerd % "e2e", Interpreter.perHost % "e2e")
       .withTwitterLib(Deps.twitterServer)
       .withLibs(Deps.jacksonCore, Deps.jacksonDatabind, Deps.jacksonYaml)
       .withBuildProperties("io/buoyant/linkerd")
       .settings(coverageExcludedPackages := ".*")
+      .withE2e()
 
     /*
      * linkerd packaging configurations.
@@ -606,6 +609,7 @@ object LinkerdBuild extends Base {
       """|#!/bin/sh
          |
          |jars="$0"
+         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
          |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
          |  for jar in $L5D_HOME/plugins/*.jar ; do
          |    jars="$jars:$jar"
@@ -615,7 +619,7 @@ object LinkerdBuild extends Base {
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
          |     io.buoyant.linkerd.Main "$@"
          |"""
       ).stripMargin

@@ -2,9 +2,9 @@ package io.buoyant.grpc.runtime
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.buoyant.h2
-import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.test.FunSuite
+import io.netty.buffer.Unpooled
 
 class DecodingStreamTest extends FunSuite {
 
@@ -30,7 +30,7 @@ class DecodingStreamTest extends FunSuite {
         0, 0, 0, 0, 5, 1, 2, 3, 4 // one by short
       )
       val rel = () => { released0 = true; Future.Unit }
-      h2.Frame.Data(Buf.ByteArray.Owned(b), false, rel)
+      h2.Frame.Data(Unpooled.wrappedBuffer(b), false, rel)
     }
 
     @volatile var released1 = false
@@ -40,14 +40,14 @@ class DecodingStreamTest extends FunSuite {
         5, // finishes last message
         0, 0, 0, 0, 3, 1, 2, 3
       )
-      h2.Frame.Data(Buf.ByteArray.Owned(b), false, rel)
+      h2.Frame.Data(Unpooled.wrappedBuffer(b), false, rel)
     }
 
     @volatile var released2 = false
     val frame2 = {
       val rel = () => { released2 = true; Future.Unit }
       val b: Array[Byte] = Array(0, 0, 0, 0, 4, 1, 2, 3, 4)
-      h2.Frame.Data(Buf.ByteArray.Owned(b), false, rel)
+      h2.Frame.Data(Unpooled.wrappedBuffer(b), false, rel)
     }
 
     val status = GrpcStatus.Unknown("idk man")

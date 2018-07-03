@@ -33,6 +33,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
     Some(HealthStatus.Passing)
   )
 
+  val emptyRequest = http.Request()
+  def testCall[Rep](call: => Future[Rep]) = ApiCall(emptyRequest, _ => call)
+
   def assertOnAddrs(
     state: Activity.State[NameTree[Name]]
   )(f: (Set[Address], Addr.Metadata) => Unit) = state match {
@@ -60,7 +63,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = Future.never
+      ): ApiCall[IndexedServiceNodes] = testCall(Future.never)
     }
     val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(
@@ -90,7 +93,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = Future.exception(ChannelWriteException(None))
+      ): ApiCall[IndexedServiceNodes] = testCall(Future.exception(ChannelWriteException(None)))
     }
     val stats = new InMemoryStatsReceiver
     val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
@@ -116,9 +119,11 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None => Future.value(Indexed(Seq.empty, Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
+      ): ApiCall[IndexedServiceNodes] = testCall {
+          blockingIndex match {
+          case Some("0") | None => Future.value(Indexed(Seq.empty, Some("1")))
+          case _ => Future.never //don't respond to blocking index calls
+        }
       }
     }
 
@@ -148,13 +153,15 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          Future.value(Indexed(Seq.empty, Some("1")))
-        case Some("1") =>
-          val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888), None)
-          blockingCallResponder before Future.value(Indexed(Seq(node), Some("2")))
-        case _ => Future.never
+      ): ApiCall[IndexedServiceNodes] = testCall {
+          blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed(Seq.empty, Some("1")))
+          case Some("1") =>
+            val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888), None)
+            blockingCallResponder before Future.value(Indexed(Seq(node), Some("2")))
+          case _ => Future.never
+        }
       }
     }
 
@@ -184,11 +191,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = Map("consul" -> Seq(), "serviceNAME" -> Seq("master", "staging"))
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
+      ): ApiCall[IndexedServiceMap] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            val rsp = Map("consul" -> Seq(), "serviceNAME" -> Seq("master", "staging"))
+            Future.value(Indexed(rsp, Some("1")))
+          case _ => Future.never //don't respond to blocking index calls
+        }
       }
 
       override def serviceNodes(
@@ -198,10 +207,12 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case _ => Future.never // don't respond to blocking index calls
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case _ => Future.never // don't respond to blocking index calls
+        }
       }
     }
 
@@ -237,14 +248,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Map[String, Seq[String]]]] = blockingIndex match {
-        case Some("0") | None =>
-          val rsp = datacenter match {
-            case Some("dc1") => Map("servicename" -> Seq("master", "staging"))
-            case _ => Map.empty[String, Seq[String]]
-          }
-          Future.value(Indexed(rsp, Some("1")))
-        case _ => Future.never // don't respond to blocking index calls
+      ): ApiCall[IndexedServiceMap] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            val rsp = datacenter match {
+              case Some("dc1") => Map("servicename" -> Seq("master", "staging"))
+              case _ => Map.empty[String, Seq[String]]
+            }
+            Future.value(Indexed(rsp, Some("1")))
+          case _ => Future.never // don't respond to blocking index calls
+        }
       }
 
       override def serviceNodes(
@@ -254,10 +267,12 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case _ => Future.never // don't respond to blocking index calls
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case _ => Future.never // don't respond to blocking index calls
+        }
       }
     }
 
@@ -298,14 +313,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case Some("1") =>
-          scaleUp before Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("2")))
-        case Some("2") =>
-          scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
-        case _ => Future.never
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case Some("1") =>
+            scaleUp before Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("2")))
+          case Some("2") =>
+            scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
+          case _ => Future.never
+        }
       }
     }
 
@@ -357,14 +374,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          tag match {
-            case Some("master") =>
-              Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-            case _ => Future.value(Indexed(Nil, Some("1")))
-          }
-        case _ => new Promise // don't respond to blocking index calls
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            tag match {
+              case Some("master") =>
+                Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+              case _ => Future.value(Indexed(Nil, Some("1")))
+            }
+          case _ => new Promise // don't respond to blocking index calls
+        }
       }
     }
 
@@ -402,10 +421,12 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case _ => Future.never //don't respond to blocking index calls
+        }
       }
     }
 
@@ -442,14 +463,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          tag match {
-            case Some("master") =>
-              Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-            case _ => Future.value(Indexed(Nil, Some("1")))
-          }
-        case _ => Future.never //don't respond to blocking index calls
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            tag match {
+              case Some("master") =>
+                Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+              case _ => Future.value(Indexed(Nil, Some("1")))
+            }
+          case _ => Future.never //don't respond to blocking index calls
+        }
       }
     }
 
@@ -491,14 +514,16 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case _ if alreadyFailed => Future.never
-        case _ =>
-          alreadyFailed = true
-          Future.exception(new Exception("something is wrong"))
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case _ if alreadyFailed => Future.never
+          case _ =>
+            alreadyFailed = true
+            Future.exception(new Exception("something is wrong"))
 
+        }
       }
     }
 
@@ -528,7 +553,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String],
         consistency: Option[ConsistencyMode],
         retry: Boolean
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
+      ): ApiCall[IndexedServiceNodes] = testCall{
+        blockingIndex match {
         case Some("0") | None =>
           if (datacenterIsUp)
             datacenterIsAvailable before Future.value(
@@ -542,6 +568,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
           datacenterWillBeUnavailable before Future.exception(new Exception("datacenter was deleted"))
         case _ =>
           Future.never
+      }
       }
     }
 
@@ -595,23 +622,25 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case Some("1") =>
-          scaleUp before Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("2")))
-        case Some("2") =>
-          doFail before (
-            if (didFail)
-              scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
-            else {
-              didFail = true
-              Future.exception(new Exception("serviceNode failure"))
-            }
-          )
-        case _ =>
-          scenarioComplete.setDone()
-          Future.never
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case Some("1") =>
+            scaleUp before Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("2")))
+          case Some("2") =>
+            doFail before (
+              if (didFail)
+                scaleToEmpty before Future.value(Indexed[Seq[ServiceNode]](Seq.empty, Some("3")))
+              else {
+                didFail = true
+                Future.exception(new Exception("serviceNode failure"))
+              }
+            )
+          case _ =>
+            scenarioComplete.setDone()
+            Future.never
+        }
       }
     }
 
@@ -661,17 +690,19 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None if reqs == 0 =>
-          reqs += 1
-          Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
-        case Some(_) =>
-          reqs += 1
-          // when the activity is closed, we need to set the state of the future
-          // to the exception, the way a real future would (which Future.never would not do).
-          val promise = new Promise[Indexed[Seq[ServiceNode]]]()
-          promise.setInterruptHandler { case e => promise.setException(e) }
-          promise
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None if reqs == 0 =>
+            reqs += 1
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case Some(_) =>
+            reqs += 1
+            // when the activity is closed, we need to set the state of the future
+            // to the exception, the way a real future would (which Future.never would not do).
+            val promise = new Promise[Indexed[Seq[ServiceNode]]]()
+            promise.setInterruptHandler { case e => promise.setException(e) }
+            promise
+        }
       }
     }
 
@@ -703,11 +734,13 @@ class ConsulNamerTest extends FunSuite with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = blockingIndex match {
-        case Some("0") | None =>
-          val node = testServiceNode.copy(ServiceTags = Some(Seq("production", "primary")))
-          Future.value(Indexed[Seq[ServiceNode]](Seq(node), Some("1")))
-        case _ => Future.never //don't respond to blocking index calls
+      ): ApiCall[IndexedServiceNodes] = testCall {
+          blockingIndex match {
+          case Some("0") | None =>
+            val node = testServiceNode.copy(ServiceTags = Some(Seq("production", "primary")))
+            Future.value(Indexed[Seq[ServiceNode]](Seq(node), Some("1")))
+          case _ => Future.never //don't respond to blocking index calls
+        }
       }
     }
 

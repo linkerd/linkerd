@@ -6,8 +6,9 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1
-import io.buoyant.namer.Metadata
-import java.net.InetSocketAddress
+import io.buoyant.namer.{Metadata, InstrumentedVar}
+import java.net.{InetAddress, InetSocketAddress}
+
 import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -42,22 +43,26 @@ private[consul] object SvcAddr {
     consistency: Option[v1.ConsistencyMode] = None,
     preferServiceAddress: Option[Boolean] = None,
     tagWeights: Map[String, Double] = Map.empty,
-    stats: Stats
-  )(implicit timer: Timer = DefaultTimer): Var[Addr] = {
+    stats: Stats,
+    stateWatch: v1.PollState[String, v1.IndexedServiceNodes]
+  )(implicit timer: Timer = DefaultTimer): InstrumentedVar[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
-    def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] =
-      consulApi.serviceNodes(
+    def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] = {
+      val apiCall = consulApi.serviceNodes(
         key.name,
         datacenter = Some(datacenter),
         tag = key.tag,
         blockingIndex = index,
         consistency = consistency,
         retry = false
-      ).map(indexedToAddresses(preferServiceAddress, tagWeights))
+      )
+      v1.InstrumentedApiCall.execute(apiCall, stateWatch)
+        .map(indexedToAddresses(preferServiceAddress, tagWeights))
+    }
 
     // Start by fetching the service immediately, and then long-poll
     // for service updates.
-    Var.async[Addr](Addr.Pending) { state =>
+    InstrumentedVar[Addr](Addr.Pending) { state =>
       stats.opens.incr()
       @volatile var stopped: Boolean = false
       def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentValueToLog: Addr): Future[Unit] = {
@@ -117,11 +122,13 @@ private[consul] object SvcAddr {
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()
-        pending.raise(Failure("service observation released", ServiceRelease, Failure.Interrupted))
+        pending.raise(Failure(ServiceRelease.getMessage, ServiceRelease, Failure.Interrupted))
         pending
       }
     }
   }
+
+  def mkConsulPollState: v1.PollState[String, v1.Indexed[Seq[v1.ServiceNode]]] = new v1.PollState
 
   private[this] def mkMeta(key: SvcKey, dc: String, domain: Option[String]) =
     domain match {
@@ -134,7 +141,7 @@ private[consul] object SvcAddr {
         Addr.Metadata(Metadata.authority -> authority)
     }
 
-  private[this] def indexedToAddresses(preferServiceAddress: Option[Boolean], tagWeights: Map[String, Double]): v1.Indexed[Seq[v1.ServiceNode]] => v1.Indexed[Set[Address]] = {
+  private[this] def indexedToAddresses(preferServiceAddress: Option[Boolean], tagWeights: Map[String, Double]): v1.IndexedServiceNodes => v1.Indexed[Set[Address]] = {
     case v1.Indexed(nodes, idx) =>
       val addrs = preferServiceAddress match {
         case Some(false) => nodes.flatMap(serviceNodeToNodeAddr(_, tagWeights)).toSet
@@ -172,7 +179,10 @@ private[consul] object SvcAddr {
       case Some(ws) => ws.max
     }
     val meta = Addr.Metadata((Metadata.endpointWeight, weight))
-    Try(Address.Inet(new InetSocketAddress(ip, port), meta)).toOption
+    Try(InetAddress.getAllByName(ip)
+      .toTraversable
+      .map(singleIP => Address.Inet(new InetSocketAddress(singleIP, port), meta)))
+      .getOrElse(Seq())
   }
 
   private[this] val NoIndexException =
