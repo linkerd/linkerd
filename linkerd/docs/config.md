@@ -85,7 +85,8 @@ ip | loopback address | IP for the admin interface. A value like 0.0.0.0 configu
 port | `9990` | Port for the admin interface.
 httpIdentifierPort | none | Port for the http identifier debug endpoint.
 shutdownGraceMs | 10000 | maximum grace period before the Linkerd process exits
-tls | no tls | The admin interface will serve over TLS if this parameter is provided. see [TLS](#server-tls).
+tls | no tls | The admin interface will serve over TLS if this parameter is provided. See [TLS](#server-tls).
+security | no restrictions | The admin interface can block sensitive endpoints if configured. See [Admin Security](#admin-security)
 workerThreads | 2 | The number of worker threads used to serve the admin interface.
 
 #### Administrative endpoints
@@ -143,6 +144,46 @@ This administrative interface was originally based on
 [TwitterServer](https://twitter.github.io/twitter-server), more information may
 be found at
 [TwitterServer HTTP Admin interface](https://twitter.github.io/twitter-server/Admin.html).
+
+#### Admin security
+
+> Example to disable the endpoint `/admin/shutdown` exclusively
+
+```yaml
+admin:
+  ip: 127.0.0.1
+  port: 9990
+  security:
+    pathBlacklist:
+    - ^/admin/shutdown$
+```
+
+By default all administrative endpoints are accessible.
+This might not always be desired as this allows for example everybody to shutdown the process if the administrative port is not closed because metrics should be polled from Linkerd.
+The admin security configuration allows to whitelist or blacklist dedicated administrative endpoints.
+
+```yaml
+admin:
+  ip: 127.0.0.1
+  port: 9990
+  security:
+    uiEnabled: true
+    controlEnabled: false
+    pathWhitelist:
+    - ^/logging[.]json$
+```
+
+The security configuration supports these parameters allowing fine grained control over the administrative endpoints that are available.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+uiEnabled | true | Configures if all endpoints that belong to the category required to run the administrative ui are available
+controlEnabled | true | Configures if the endpoints that belong to the category to control Linkerd are available, i.e. `/admin/shutdown` and `/logging.json`
+diagnosticsEnabled | true | Configures if all other endpoints are available.
+pathWhitelist | empty list | Configures paths via regular expressions that should be available for disabled endpoint categories
+pathBlacklist | empty list | Configures additional paths via regular expressions that should not be available for enabled categories
+
+An administrative endpoint is available if its category is enabled and it is not on the blacklist or if its category is disabled and it is on the whitelist.
 
 ### Routers Intro
 

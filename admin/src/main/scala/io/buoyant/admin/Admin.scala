@@ -117,7 +117,7 @@ object Admin {
   }
 }
 
-class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig], workers: Int, stats: StatsReceiver) {
+class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig], workers: Int, stats: StatsReceiver, securityConfig: Option[AdminSecurityConfig]) {
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
@@ -140,7 +140,11 @@ class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig], wor
         log.debug("admin: %s => %s", url, service.getClass.getName)
         muxer.withHandler(url, service)
     }
-    HeadFilter andThen notFoundView andThen muxer
+    val adminService = HeadFilter andThen notFoundView andThen muxer
+    securityConfig match {
+      case Some(cfg) => cfg.mkFilter andThen adminService
+      case None => adminService
+    }
   }
 
   def serve(app: TApp, extHandlers: Seq[Handler]): ListeningServer =
