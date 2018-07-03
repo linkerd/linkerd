@@ -7,12 +7,12 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.config.Parser
-import io.buoyant.k8s.ObjectMeta
+import io.buoyant.k8s.{ObjectMeta, WatchState}
 import io.buoyant.namer.InstrumentedActivity
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
 import io.buoyant.namerd.storage.kubernetes._
-import io.buoyant.namerd.{DtabStore, Ns, VersionedDtab}
-import scala.collection.breakOut
+import io.buoyant.namerd.{DtabCodec, DtabStore, Ns, VersionedDtab}
+import scala.collection.{breakOut, mutable}
 
 /**
  * A DtabStore using the
@@ -41,6 +41,8 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   val api: NsApi = Api(client.newService(dst)).withNamespace(namespace)
   val watchApi: NsApi = Api(client.newService(dst)).withNamespace(namespace)
 
+  private[this] var instrumentedDtabStorage: mutable.Seq[InstrumentedDtabStorage] = mutable.Seq[InstrumentedDtabStorage]()
+
   private[this] def name(dtab: Dtab): String = {
     dtab.metadata.flatMap(_.name).getOrElse {
       throw new IllegalStateException("k8s API returned a dtab with no name: $dtab")
@@ -54,6 +56,9 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
     val versionedDtab = VersionedDtab(FDtab(dtab.dentries.toIndexedSeq), Buf.Utf8(vsn))
     (name(dtab), versionedDtab)
   }
+  private[this] case class InstrumentedDtabStorage(
+    act: InstrumentedActivity[NsMap],
+    watchState: WatchState[DtabList, DtabWatch])
 
   private[this]type NsMap = Map[String, VersionedDtab]
   private[this] val dtabListToNsMap: Option[DtabList] => NsMap = {
@@ -72,8 +77,9 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   // semantics. If those are required, we would probably need to implement a synchronized means of
   // reading `act` and using that value to feed to `witness`, rather than taking the `foldLeft`
   // approach as below.
-  private[this] val act: InstrumentedActivity[NsMap] =
-    watchApi.dtabs.activity(dtabListToNsMap) {
+  private[this] val act: Activity[NsMap] = {
+    val watchState = new WatchState[DtabList, DtabWatch]()
+    val act = watchApi.dtabs.activity(dtabListToNsMap, watchState = Some(watchState)) {
       (nsMap: NsMap, watchEvent) =>
         watchEvent match {
           case DtabAdded(a) => nsMap + toDtabMap(a)
@@ -84,9 +90,12 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
             nsMap
         }
     }
+    instrumentedDtabStorage = instrumentedDtabStorage :+ InstrumentedDtabStorage(act, watchState)
+    act.underlying
+  }
 
   /** List all Dtab namespaces */
-  def list(): Activity[Set[Ns]] = act.underlying.map(_.keySet)
+  def list(): Activity[Set[Ns]] = act.map(_.keySet)
 
   private[this] def namedDtab(ns: String, dtab: FDtab, version: Option[String] = None): Dtab = Dtab(
     dentries = dtab,
@@ -142,7 +151,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
 
   /** Watch a dtab and its version. */
   def observe(ns: String): Activity[Option[VersionedDtab]] =
-    act.underlying.map(_.get(ns))
+    act.map(_.get(ns))
 
   /**
    * Create a new dtab.  Returns a DtabNamespaceAlreadyExistsException if a
@@ -172,16 +181,22 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
 
   private[K8sDtabStore] class DtabStoreStateHandler extends Service[Request, Response] {
     private[this] val mapper = Parser.jsonObjectMapper(Nil)
+    mapper.registerModule(DtabCodec.module)
 
     override def apply(request: Request): Future[Response] = {
-      val state = act.stateSnapshot().map {
-        case Some(nsMap: NsMap) => nsMap.collect {
-          case (dtabName, dtab) => dtabName -> Map(
-            "version" -> DtabStore.versionString(dtab.version),
-            "dtab" -> dtab.dtab.show
-          )
-        }
-        case _ => Map.empty
+      val state = instrumentedDtabStorage.map { dtabWatch =>
+        Map(
+          "state" -> dtabWatch.act.stateSnapshot().map {
+            case Some(ns) => ns.collect {
+              case (dtabName, dtab) => dtabName -> Map(
+                "version" -> DtabStore.versionString(dtab.version),
+                "dtab" -> dtab.dtab.show
+              )
+            }
+            case _ => Map.empty
+          },
+          "watch" -> dtabWatch.watchState
+        )
       }
 
       val rep = Response(Status.Ok)
