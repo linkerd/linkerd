@@ -50,12 +50,8 @@ trait NameTreeTransformer {
     }
 
     override def adminHandlers: Seq[Admin.Handler] = underlying match {
-      case withHandlers: Admin.WithHandlers =>
-        println(s"$this gets underlying $underlying admin handlers (${withHandlers.adminHandlers.size}")
-        withHandlers.adminHandlers
-      case _ =>
-        println(s"$this gets no handlers from underlying $underlying")
-        Nil
+      case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
+      case _ => Nil
     }
   }
 }
