@@ -194,6 +194,7 @@ namers:
 ```
 
 Linkerd provides support for service discovery via [Consul](https://www.consul.io/). 
+
 The internal state of the Consul namer can be viewed at the
 admin endpoint: `/namer_state/<prefix>.json`.
 

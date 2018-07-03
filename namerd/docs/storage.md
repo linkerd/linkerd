@@ -173,6 +173,9 @@ kind: `io.l5d.consul`
 
 Stores the dtab in Consul KV storage.
 
+The current state of Consul stored dtabs can be viewed at the
+admin endpoint: `/storage/<pathPrefix>.json`.
+
 Key | Default Value | Description
 --- | ------------- | -----------
 host | `localhost` | The location of the consul API.

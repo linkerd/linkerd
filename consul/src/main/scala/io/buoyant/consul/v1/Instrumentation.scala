@@ -1,9 +1,8 @@
-package io.buoyant.namer.consul
+package io.buoyant.consul.v1
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http
 import com.twitter.util.{Return, Throw, Time, Try, Future}
-import io.buoyant.consul.v1
 import scala.collection.mutable
 
 /**
@@ -39,16 +38,19 @@ class PollState[Req, Rep] {
   protected var error: Option[String] = None
 }
 
-private[consul] object InstrumentedApiCall {
+object InstrumentedApiCall {
 
-  def execute[Rep](call: v1.ApiCall[Rep], pollWatch: PollState[String, Rep]): Future[Rep] = {
+  //specific for handling requests recorded as string
+  def mkPollState[Rep]: PollState[String, Rep] = new PollState
+
+  def execute[Rep](call: ApiCall[Rep], pollWatch: PollState[String, Rep]): Future[Rep] = {
     pollWatch.recordApiCall(capture(call.req))
     val f = call()
     f.respond(pollWatch.recordResponse)
     f
   }
 
-  def capture(req: http.Request): String =
+  private[this] def capture(req: http.Request): String =
     s"${req.method} ${req.uri}"
 
 }

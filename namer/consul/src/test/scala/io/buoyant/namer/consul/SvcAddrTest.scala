@@ -6,7 +6,7 @@ import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Addr, Address, Failure}
 import com.twitter.util.{Duration, Future, Promise, Timer, Var}
-import io.buoyant.consul.v1.{ApiCall, CatalogApi, ConsistencyMode, HealthStatus, Indexed, IndexedServiceNodes, ServiceNode}
+import io.buoyant.consul.v1._
 import io.buoyant.namer.consul.SvcAddr.Stats
 import io.buoyant.namer.InstrumentedVar
 import io.buoyant.test.Awaits
