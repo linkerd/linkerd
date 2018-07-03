@@ -43,7 +43,7 @@ private[consul] object SvcAddr {
     preferServiceAddress: Option[Boolean] = None,
     tagWeights: Map[String, Double] = Map.empty,
     stats: Stats,
-    stateWatch: PollState[String, v1.IndexedServiceNodes]
+    stateWatch: v1.PollState[String, v1.IndexedServiceNodes]
   )(implicit timer: Timer = DefaultTimer): InstrumentedVar[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
     def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] = {
@@ -55,7 +55,7 @@ private[consul] object SvcAddr {
         consistency = consistency,
         retry = false
       )
-      InstrumentedApiCall.execute(apiCall, stateWatch)
+      v1.InstrumentedApiCall.execute(apiCall, stateWatch)
         .map(indexedToAddresses(preferServiceAddress, tagWeights))
     }
 
@@ -127,7 +127,7 @@ private[consul] object SvcAddr {
     }
   }
 
-  def mkConsulPollState: PollState[String, v1.Indexed[Seq[v1.ServiceNode]]] = new PollState
+  def mkConsulPollState: v1.PollState[String, v1.Indexed[Seq[v1.ServiceNode]]] = new v1.PollState
 
   private[this] def mkMeta(key: SvcKey, dc: String, domain: Option[String]) =
     domain match {

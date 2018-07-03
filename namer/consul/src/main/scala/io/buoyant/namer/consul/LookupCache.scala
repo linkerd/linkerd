@@ -6,7 +6,7 @@ import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
-import io.buoyant.namer.{InstrumentedActivity, InstrumentedVar}
+import io.buoyant.namer.InstrumentedVar
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
 import scala.Function.untupled
@@ -129,5 +129,5 @@ private[consul] class LookupCache(
 /* collects the binding metrics to expose */
 private[consul] case class InstrumentedAddr(
   addr: InstrumentedVar[Addr],
-  poll: PollState[String, v1.IndexedServiceNodes]
+  poll: v1.PollState[String, v1.IndexedServiceNodes]
 )
