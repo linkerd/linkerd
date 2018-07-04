@@ -56,10 +56,6 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
     (name(dtab), versionedDtab)
   }
 
-  private[this] case class InstrumentedDtabStorage(
-    act: InstrumentedActivity[NsMap],
-    watchState: WatchState[DtabList, DtabWatch])
-
   private[this]type NsMap = Map[String, VersionedDtab]
   private[this] val dtabListToNsMap: Option[DtabList] => NsMap = {
     case Some(dtabs) => dtabs.items.map(toDtabMap)(breakOut)
@@ -188,9 +184,9 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
       val state = Map(
         "state" -> instrumentedDtabStorage.stateSnapshot().map {
           case Some(ns) => ns.map {
-            case (dtabName, dtab) => dtabName -> Map(
-              "version" -> DtabStore.versionString(dtab.version),
-              "dtab" -> dtab.dtab.show
+            case (dtabName, versionedDtab) => dtabName -> Map(
+              "version" -> DtabStore.versionString(versionedDtab.version),
+              "dtab" -> versionedDtab.dtab.show
             )
           }
           case _ => Map.empty
