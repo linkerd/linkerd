@@ -38,10 +38,9 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   // NOTE: we construct two clients, one for the streaming watch requests, one for everything else.
   // This is due to an as-yet-undetermined issue where the first non-watch request will hang if
   // using the same client.
-  val api: NsApi = Api(client.newService(dst)).withNamespace(namespace)
-  val watchApi: NsApi = Api(client.newService(dst)).withNamespace(namespace)
-
-  private[this] var instrumentedDtabStorage: mutable.Seq[InstrumentedDtabStorage] = mutable.Seq[InstrumentedDtabStorage]()
+  private[this] val api: NsApi = Api(client.newService(dst)).withNamespace(namespace)
+  private[this] val watchApi: NsApi = Api(client.newService(dst)).withNamespace(namespace)
+  private[this] val watchState = new WatchState[DtabList, DtabWatch]()
 
   private[this] def name(dtab: Dtab): String = {
     dtab.metadata.flatMap(_.name).getOrElse {
@@ -56,6 +55,7 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
     val versionedDtab = VersionedDtab(FDtab(dtab.dentries.toIndexedSeq), Buf.Utf8(vsn))
     (name(dtab), versionedDtab)
   }
+
   private[this] case class InstrumentedDtabStorage(
     act: InstrumentedActivity[NsMap],
     watchState: WatchState[DtabList, DtabWatch])
@@ -77,9 +77,8 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   // semantics. If those are required, we would probably need to implement a synchronized means of
   // reading `act` and using that value to feed to `witness`, rather than taking the `foldLeft`
   // approach as below.
-  private[this] val act: Activity[NsMap] = {
-    val watchState = new WatchState[DtabList, DtabWatch]()
-    val act = watchApi.dtabs.activity(dtabListToNsMap, watchState = Some(watchState)) {
+  private[this] val instrumentedDtabStorage = {
+    watchApi.dtabs.activity(dtabListToNsMap, watchState = Some(watchState)) {
       (nsMap: NsMap, watchEvent) =>
         watchEvent match {
           case DtabAdded(a) => nsMap + toDtabMap(a)
@@ -90,8 +89,10 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
             nsMap
         }
     }
-    instrumentedDtabStorage = instrumentedDtabStorage :+ InstrumentedDtabStorage(act, watchState)
-    act.underlying
+  }
+
+  private[this] val act: Activity[NsMap] = {
+    instrumentedDtabStorage.underlying
   }
 
   /** List all Dtab namespaces */
@@ -184,20 +185,18 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
     mapper.registerModule(DtabCodec.module)
 
     override def apply(request: Request): Future[Response] = {
-      val state = instrumentedDtabStorage.map { dtabWatch =>
-        Map(
-          "state" -> dtabWatch.act.stateSnapshot().map {
-            case Some(ns) => ns.collect {
-              case (dtabName, dtab) => dtabName -> Map(
-                "version" -> DtabStore.versionString(dtab.version),
-                "dtab" -> dtab.dtab.show
-              )
-            }
-            case _ => Map.empty
-          },
-          "watch" -> dtabWatch.watchState
-        )
-      }
+      val state = Map(
+        "state" -> instrumentedDtabStorage.stateSnapshot().map {
+          case Some(ns) => ns.map {
+            case (dtabName, dtab) => dtabName -> Map(
+              "version" -> DtabStore.versionString(dtab.version),
+              "dtab" -> dtab.dtab.show
+            )
+          }
+          case _ => Map.empty
+        },
+        "watch" -> watchState
+      )
 
       val rep = Response(Status.Ok)
       rep.contentString = mapper.writeValueAsString(state)
