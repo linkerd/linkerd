@@ -1,14 +1,18 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.param
+import java.net.{InetAddress, InetSocketAddress}
+
+import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.tracing._
+import com.twitter.finagle.{Service, param}
+import com.twitter.util.{Await, Future}
+import io.buoyant.admin.Admin.Handler
 import io.buoyant.config.{ConflictingLabels, ConflictingPorts, ConflictingSubtypes}
 import io.buoyant.namer.Param.Namers
 import io.buoyant.namer.{ConflictingNamerInitializer, NamerInitializer, TestNamer, TestNamerInitializer}
 import io.buoyant.telemetry._
 import io.buoyant.test.Exceptions
-import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FunSuite
 
 class LinkerTest extends FunSuite with Exceptions {
@@ -254,6 +258,36 @@ class LinkerTest extends FunSuite with Exceptions {
     assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "localhost")
     assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 9990)
   }
+
+  test("with admin security") {
+    val ok = new Service[Request, Response] {
+      override def apply(request: Request): Future[Response] = Future.value(Response(request))
+    }
+
+    val app = new com.twitter.app.App {}
+
+    val yaml =
+      """|admin:
+         |  ip: 0.0.0.0
+         |  port: 42000
+         |  security:
+         |    uiEnabled: true
+         |    pathWhitelist:
+         |    - /foo/bar
+         |routers:
+         |- protocol: plain
+         |  servers:
+         |  - port: 1
+         |""".stripMargin
+    val linker = parse(yaml)
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getHostString == "0.0.0.0")
+    assert(linker.admin.address.asInstanceOf[InetSocketAddress].getPort == 42000)
+    val svc = linker.admin.mkService(app, Seq(Handler("/", ok)))
+    assert(Await.result(svc(Request("/foo/bar"))).status == Status.Ok)
+    assert(Await.result(svc(Request("/metrics.json"))).status == Status.Ok)
+    assert(Await.result(svc(Request("/admin/threads"))).status == Status.NotFound)
+  }
+
 
   test("conflicting subtypes") {
     val yaml =
