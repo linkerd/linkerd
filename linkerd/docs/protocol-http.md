@@ -45,6 +45,7 @@ maxRequestKB | 5120 | The maximum size of a non-chunked HTTP request payload.
 maxResponseKB | 5120 | The maximum size of a non-chunked HTTP response payload.
 compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
 streamingEnabled | `true` | Streaming allows Linkerd to work with HTTP messages that have large (or infinite) content bodies using chunked encoding.  Disabling this is highly discouraged.
+tracePropagator | `io.l5d.default` | A trace propagator.  See [Http-specific trace propagator](#http-1-1-trace-propagators).
 
 <aside class="warning">
 These memory constraints are selected to allow reliable
@@ -515,6 +516,36 @@ Key | Default Value | Description
 --- | ------------- | -----------
 mixerHost | `istio-mixer` | Hostname of the Istio Mixer server.
 mixerPort | `9091` | Port of the Mixer server.
+
+<a name="http-1-1-trace-propagators"></a>
+## HTTP/1.1 Trace Propagators
+
+Trace propagators are responsible for propagating distributed tracing data from requests that
+Linkerd receives to requests that Linkerd sends.  The trace propagator reads trace context from
+a received request (usually from request headers) and stores it in a request local context.  The
+trace propagator is also responsible for writing this trace context into requests that Linkerd sends
+(usually into request headers).
+
+Key | Default Value | Description
+--- | ------------- | -----------
+kind | _required_ | One of [`io.l5d.default`](#default-trace-propagator).
+
+<a name="default-trace-propagator"></a>
+### Default Trace Propagator
+
+kind: `io.l5d.default`.
+
+The default trace propagator stores the trace id in the `l5d-ctx-trace` request header.  It also
+reads the `l5d-sample` and, if present, uses this value as the sample rate for this request.
+
+#### Trace Propagator Configuration:
+
+> Configuration example
+
+```yaml
+tracePropagator:
+- kind: io.l5d.default
+```
 
 <a name="http-headers"></a>
 ## HTTP Headers

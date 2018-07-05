@@ -15,6 +15,7 @@ import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stack.nilStack
+import com.twitter.finagle.tracing.TraceInitializerFilter
 import com.twitter.finagle.{ServiceFactory, Stack, param}
 import com.twitter.logging.Policy
 import com.twitter.util.Monitor
@@ -48,7 +49,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
 
     val clientStack = H2.router.clientStack
       .prepend(h2.H2AccessLogger.module)
-      .replace(H2TraceInitializer.role, H2TraceInitializer.clientModule)
+      .replace(TraceInitializerFilter.role, H2TracePropagatorConfig.clientModule)
       .insertAfter(StackClient.Role.prepConn, LinkerdHeaders.Ctx.clientModule)
       .insertAfter(DtabStatsFilter.role, H2RequestAuthorizerConfig.module)
       .insertAfter(H2FailureAccrualFactory.role, H2DiagnosticTracer.module)
@@ -65,7 +66,7 @@ class H2Initializer extends ProtocolInitializer.Simple {
 
   protected val defaultServer = {
     val stk = H2.server.stack
-      .replace(H2TraceInitializer.role, H2TraceInitializer.serverModule)
+      .replace(TraceInitializerFilter.role, H2TracePropagatorConfig.serverModule)
       //ErrorReseter must precede LinkerdHeaders in order to clear l5d context from responses.
       .prepend(h2.ErrorReseter.module)
       .prepend(LinkerdHeaders.Ctx.serverModule)
@@ -82,6 +83,10 @@ class H2Initializer extends ProtocolInitializer.Simple {
   }
 
   override def defaultServerPort: Int = 4142
+
+  override protected def configureServer(router: Router, server: Server): Server =
+    super.configureServer(router, server)
+      .configured(router.params[H2TracePropagatorConfig.Param])
 }
 
 object H2Initializer extends H2Initializer
@@ -91,7 +96,8 @@ case class H2Config(
   h2AccessLog: Option[String],
   h2AccessLogRollPolicy: Option[String],
   h2AccessLogAppend: Option[Boolean],
-  h2AccessLogRotateCount: Option[Int]
+  h2AccessLogRotateCount: Option[Int],
+  tracePropagator: Option[H2TracePropagatorConfig]
 ) extends RouterConfig {
 
   var client: Option[H2Client] = None
@@ -114,13 +120,17 @@ case class H2Config(
   }
 
   @JsonIgnore
-  override def routerParams: Stack.Params =
+  private[this] def routerParamsPartial: Stack.Params =
     (super.routerParams + identifierParam)
       .maybeWith(h2AccessLog.map(H2AccessLogger.param.File.apply))
       .maybeWith(h2AccessLogRollPolicy.map(Policy.parse _ andThen H2AccessLogger.param.RollPolicy.apply))
       .maybeWith(h2AccessLogAppend.map(H2AccessLogger.param.Append.apply))
       .maybeWith(h2AccessLogRotateCount.map(H2AccessLogger.param.RotateCount.apply))
       .maybeWith(loggerParam)
+
+  @JsonIgnore
+  override def routerParams: Stack.Params = routerParamsPartial
+    .maybeWith(tracePropagator.map(tp => H2TracePropagatorConfig.Param(tp.mk(routerParamsPartial))))
 
   private[this] def identifierParam: H2.Identifier = identifier match {
     case None => h2.HeaderTokenIdentifier.param
