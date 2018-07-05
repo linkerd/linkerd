@@ -1,11 +1,11 @@
 package io.buoyant.namerd.iface
 
-import com.twitter.finagle.Service
+import com.twitter.finagle.{Dtab, Service}
 import com.twitter.finagle.http._
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.namer.RichActivity
-import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
+import io.buoyant.namerd.DtabStore._
 import io.buoyant.namerd.{DtabStore, Ns, VersionedDtab}
 
 object DtabUri {
@@ -144,8 +144,13 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
                 Future.value(Response(Status.Conflict))
               case Throw(_) =>
                 Future.value(Response(Status.InternalServerError))
-            }
 
+            }
+          case Throw(e: DtabContainsInvalidDentriesException) =>
+            val rep = Response(Status.BadRequest)
+            rep.contentString = e.getMessage
+            rep.contentLength(rep.contentString.size)
+            Future.value(rep)
           // invalid dtab
           case Throw(_) => Future.value(Response(Status.BadRequest))
         }

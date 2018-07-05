@@ -7,6 +7,7 @@ import com.twitter.finagle.http._
 import com.twitter.finagle.{Status => _, _}
 import com.twitter.io.Buf
 import com.twitter.util._
+import io.buoyant.namerd.DtabStore.DtabContainsInvalidDentriesException
 import io.buoyant.namerd.{DtabCodec => DtabModule}
 
 object Json {
@@ -35,8 +36,14 @@ object DtabCodec {
   object JsonCodec extends DtabCodec {
     val mediaTypes = Set(MediaType.Json)
     def write(dtab: Dtab) = Json.write(dtab)
-    def read(buf: Buf) =
-      Json.read[IndexedSeq[Dentry]](buf).map(Dtab(_))
+    def read(buf: Buf) = {
+      Json.read[IndexedSeq[Dentry]](buf).map { dentries =>
+        if (dentries.contains(null)) {
+          val Buf.Utf8(str) = buf
+          throw new DtabContainsInvalidDentriesException(str)
+        } else Dtab(dentries)
+      }
+    }
   }
 
   object TextCodec extends DtabCodec {
