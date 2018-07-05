@@ -73,7 +73,7 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
         case Some(dtab) =>
           val rsp = Response()
           rsp.contentType = mediaType
-          rsp.headerMap.add(Fields.Etag, DtabHandler.versionString(dtab.version))
+          rsp.headerMap.add(Fields.Etag, DtabStore.versionString(dtab.version))
           rsp.content = codec.write(dtab.dtab).concat(newline)
           rsp
 
@@ -86,7 +86,7 @@ class DtabHandler(storage: DtabStore) extends Service[Request, Response] {
     storage.observe(ns).toFuture.map {
       case Some(dtab) =>
         val rsp = Response()
-        rsp.headerMap.add(Fields.Etag, DtabHandler.versionString(dtab.version))
+        rsp.headerMap.add(Fields.Etag, DtabStore.versionString(dtab.version))
         rsp
 
       case None => Response(Status.NotFound)

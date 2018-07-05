@@ -1,15 +1,18 @@
 package io.buoyant.namerd.storage
 
-import com.twitter.finagle.{Http, Dtab => FDtab}
+import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.{Http, Service, Dtab => FDtab}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.k8s.ObjectMeta
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
+import io.buoyant.k8s.{ObjectMeta, WatchState}
+import io.buoyant.namer.InstrumentedActivity
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException}
 import io.buoyant.namerd.storage.kubernetes._
-import io.buoyant.namerd.{Ns, DtabStore, VersionedDtab}
-import java.util.concurrent.atomic.AtomicReference
-import scala.collection.breakOut
+import io.buoyant.namerd.{DtabCodec, DtabStore, Ns, VersionedDtab}
+import scala.collection.{breakOut, mutable}
 
 /**
  * A DtabStore using the
@@ -29,14 +32,15 @@ import scala.collection.breakOut
  *                  differs from Dtab namespaces)
  */
 class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
-  extends DtabStore {
+  extends DtabStore with Admin.WithHandlers {
   private[this] val log = Logger()
 
   // NOTE: we construct two clients, one for the streaming watch requests, one for everything else.
   // This is due to an as-yet-undetermined issue where the first non-watch request will hang if
   // using the same client.
-  val api: NsApi = Api(client.newService(dst)).withNamespace(namespace)
-  val watchApi: NsApi = Api(client.newService(dst)).withNamespace(namespace)
+  private[this] val api: NsApi = Api(client.newService(dst)).withNamespace(namespace)
+  private[this] val watchApi: NsApi = Api(client.newService(dst)).withNamespace(namespace)
+  private[this] val watchState = new WatchState[DtabList, DtabWatch]()
 
   private[this] def name(dtab: Dtab): String = {
     dtab.metadata.flatMap(_.name).getOrElse {
@@ -69,8 +73,8 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   // semantics. If those are required, we would probably need to implement a synchronized means of
   // reading `act` and using that value to feed to `witness`, rather than taking the `foldLeft`
   // approach as below.
-  private[this] val act: Activity[NsMap] =
-    watchApi.dtabs.activity(dtabListToNsMap) {
+  private[this] val instrumentedDtabStorage = {
+    watchApi.dtabs.activity(dtabListToNsMap, watchState = Some(watchState)) {
       (nsMap: NsMap, watchEvent) =>
         watchEvent match {
           case DtabAdded(a) => nsMap + toDtabMap(a)
@@ -80,7 +84,12 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
             log.error("k8s watch error: %s", e)
             nsMap
         }
-    }.underlying
+    }
+  }
+
+  private[this] val act: Activity[NsMap] = {
+    instrumentedDtabStorage.underlying
+  }
 
   /** List all Dtab namespaces */
   def list(): Activity[Set[Ns]] = act.map(_.keySet)
@@ -160,6 +169,34 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
     api.dtabs.named(ns).delete.unit.rescue {
       case io.buoyant.k8s.Api.NotFound(_) =>
         Future.exception(new DtabNamespaceDoesNotExistException(ns))
+    }
+  }
+
+  override def adminHandlers: Seq[Admin.Handler] = {
+    Seq(Admin.Handler(s"storage/dtabs.json", new DtabStoreStateHandler))
+  }
+
+  private[K8sDtabStore] class DtabStoreStateHandler extends Service[Request, Response] {
+    private[this] val mapper = Parser.jsonObjectMapper(Nil)
+    mapper.registerModule(DtabCodec.module)
+
+    override def apply(request: Request): Future[Response] = {
+      val state = Map(
+        "state" -> instrumentedDtabStorage.stateSnapshot().map {
+          case Some(ns) => ns.map {
+            case (dtabName, versionedDtab) => dtabName -> Map(
+              "version" -> DtabStore.versionString(versionedDtab.version),
+              "dtab" -> versionedDtab.dtab.show
+            )
+          }
+          case _ => Map.empty
+        },
+        "watch" -> watchState
+      )
+
+      val rep = Response(Status.Ok)
+      rep.contentString = mapper.writeValueAsString(state)
+      Future.value(rep)
     }
   }
 }
