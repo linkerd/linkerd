@@ -63,7 +63,7 @@ kind: `aperture`
 Key | Default Value | Description
 --- | ------------- | -----------
 maxEffort | `5` | The number of times a load balancer can retry if the previously picked node was marked unavailable.
-smoothWin | 5 seconds |  The window of concurrent load observation.
+smoothWindowMs | 5 seconds |  The window of concurrent load observation.
 lowLoad | `0.5` | The lower bound of the load band used to adjust an aperture.
 highLoad | `2` | The upper bound of the load band used to adjust an aperture.
 minAperture | `1` | The minimum size of the aperture.
