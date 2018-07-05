@@ -115,11 +115,12 @@ object LinkerdAdmin {
 
     val adminHandler = new AdminHandler(uniqBy(navItems)(_.name))
 
-    val extHandlers = Admin.extractHandlers(
+    val extHandlers = (Admin.extractHandlers(
       linker.namers.map(_._2) ++
         linker.routers ++
         linker.telemeters
-    ) ++ extractInterpreterHandlers(linker.routers).map {
+    ) ++ extractInterpreterHandlers(linker.routers))
+      .map {
         case Handler(url, service, css) =>
           val adminFilter = new AdminFilter(adminHandler, css)
           Handler(url, adminFilter.andThen(service), css)
