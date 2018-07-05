@@ -2,7 +2,7 @@ package io.buoyant.namerd
 
 import com.twitter.finagle.Dtab
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Base64StringEncoder, Future, Base64StringEncoder}
+import com.twitter.util.{Activity, Base64StringEncoder, Future}
 
 case class VersionedDtab(dtab: Dtab, version: DtabStore.Version)
 
