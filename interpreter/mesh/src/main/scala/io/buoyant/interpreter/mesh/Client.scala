@@ -5,7 +5,7 @@ import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.io.Buf
-import com.twitter.util.{NonFatal => _, _}
+import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.config.Parser
 import io.buoyant.grpc.runtime.Stream

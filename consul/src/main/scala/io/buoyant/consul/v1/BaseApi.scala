@@ -11,7 +11,7 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{ConnectionFailedException, Failure, Filter, http}
 import com.twitter.io.Buf
-import com.twitter.util.{NonFatal => _, _}
+import com.twitter.util._
 import io.buoyant.consul.log
 import scala.util.control.NonFatal
 

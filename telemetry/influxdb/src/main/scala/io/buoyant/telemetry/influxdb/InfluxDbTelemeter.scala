@@ -3,10 +3,11 @@ package io.buoyant.telemetry.influxdb
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.stats.NullStatsReceiver
+import com.twitter.finagle.stats.buoyant.Metric
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Awaitable, Closable, Future}
 import io.buoyant.admin.Admin
-import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
+import io.buoyant.telemetry.{MetricsTree, Telemeter}
 
 /**
  * This telemeter exposes metrics data in the InfluxDb LINE format, served on

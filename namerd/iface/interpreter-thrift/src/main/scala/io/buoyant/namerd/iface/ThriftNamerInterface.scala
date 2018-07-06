@@ -7,7 +7,7 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util.{NonFatal => _, _}
+import com.twitter.util._
 import io.buoyant.namer.{DelegateTree, Delegator, Metadata, Paths}
 import io.buoyant.namerd.Ns
 import io.buoyant.namerd.iface.ThriftNamerInterface.Capacity

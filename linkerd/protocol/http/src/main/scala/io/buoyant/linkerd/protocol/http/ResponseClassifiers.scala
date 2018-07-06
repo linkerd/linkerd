@@ -6,7 +6,7 @@ import com.twitter.finagle.service.RetryPolicy.{TimeoutAndWriteExceptionsOnly, C
 import com.twitter.finagle.http.{Method, Request, Response, Status}
 import com.twitter.finagle.http.service.HttpResponseClassifier
 import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
-import com.twitter.util.{NonFatal, Return, Throw, Try}
+import com.twitter.util.{Return, Throw, Try}
 import io.buoyant.config.ConfigInitializer
 import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer}
 import io.buoyant.router.ClassifiedRetries

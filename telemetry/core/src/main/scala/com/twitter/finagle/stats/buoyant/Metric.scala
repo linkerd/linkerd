@@ -1,7 +1,6 @@
-package io.buoyant.telemetry
+package com.twitter.finagle.stats.buoyant
 
-import com.twitter.finagle.stats.{Counter => FCounter, Stat => FStat, BucketAndCount}
-import com.twitter.finagle.stats.buoyant.BucketedHistogram
+import com.twitter.finagle.stats.{BucketAndCount, BucketedHistogram, Counter => FCounter, Stat => FStat}
 import com.twitter.util.{Duration, Time}
 import java.util.concurrent.atomic.AtomicLong
 
