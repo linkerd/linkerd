@@ -1,3 +1,61 @@
+## 1.4.4 2018-07-06
+
+Linkerd 1.4.4 continues our focus on diagnostics, performance, and stability. This release features 
+several performance and diagnostics improvements, including better handling of HTTP/2 edge cases, 
+new watch state introspection for the Consul namer, and better isolation of admin page serving from 
+the primary data path. It also features a new, pluggable trace propagation module that allows for 
+easier integration with tracing systems like OpenTracing.
+
+This release features contributions from Salesforce, Walmart, WePay, Comcast, ScalaConsultants, 
+OfferUp, Buoyant, and more. A big thank you to:
+
+* [Chris Goffinet](https://github.com/chrisgoffinet)
+* [Dan Vulpe](https://github.com/dvulpe)
+* [Ivano Pagano](https://github.com/ivanopagano)
+* [Leo Liang](https://github.com/leozc)
+* [Mantas Stoškus](https://github.com/mstoskus)
+* [Mohsen Rezaei](https://github.com/mrezaei00) 
+* [Nick K](https://github.com/utrack)
+* [Priyasmita Bagchi](https://github.com/pbagchi)
+* [Robert Panzer](https://github.com/robertpanzer)
+* [Ryan Michela](https://github.com/rmichela)
+ 
+Full release notes:
+
+* Distributed Tracing
+  * Refactor Linkerd's trace propagation module to be pluggable. This allows better integration with
+   tracing systems like OpenTracing and allows users to write Linkerd trace propagation plugins for 
+   arbitrary tracing systems.
+* TLS
+  * Deprecate the  `trustCerts` config field in the client TLS section in favor of 
+  `trustCertsBundle`. This allows you to use multiple trust certs in one file and avoids the need 
+  for Linkerd to create temporary files.
+* HTTP, HTTP/2
+  * Fix an issue where Linkerd sometimes interprets HTTP/1.0 response with no Content-Length as a 
+  chunked response.
+  * Improve error messages by adding contextual routing information to a `ConnectionFailed` 
+  exception sent back to a client via Linkerd.
+  * Add a gRPC standard-compliant response classifier.
+  * Fix an issue where Linkerd doesn't add an `l5d-err` header in an HTTP/2 response.
+  * Fix an issue where Linkerd does not handle HTTP/2 requests with invalid HTTP status codes 
+  correctly.
+* Consul
+  * Add new watch state instrumentation feature to the `io.l5d.consul` namer.
+  * Fix an issue where the `io.l5d.consul` namer sometimes does not retry `ConnectionRefused` 
+  exception.
+  * Fix an issue where the `io.l5d.consul` namer returns a single IP for a service node instead of
+   multiple IP addresses for a service node.
+* Admin
+  * Fix an issue where Linkerd may slow down data plane requests when the admin server is under 
+  heavy load.
+  * Improve performance of the Prometheus telemeter when serving metrics for a high cardinality 
+  of services.
+  * Fix an issue where the `intepreter_state` endpoint was not available for interpreters that 
+  contained a transformer.
+  * Fix the `namer_state` endpoint to expose namers that use transformers.
+* Namerd
+  * Fix an issue where null values were accepted by the Dtab HTTP API.
+
 ## 1.4.3 2018-06-12
 
 This is a follow up release that includes diagnostic tracing for H2 requests.
