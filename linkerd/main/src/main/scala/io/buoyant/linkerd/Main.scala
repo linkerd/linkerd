@@ -72,7 +72,7 @@ object Main extends App {
     Linker.parse(configText)
   }
 
-  private def initAdmin(
+  private[linkerd] def initAdmin(
     config: Linker.LinkerConfig,
     linker: Linker
   ): Seq[Closable with Awaitable[Unit]] = {

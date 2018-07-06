@@ -3,8 +3,10 @@ package io.buoyant.consul.v1
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.twitter.finagle.http.Request
+import com.twitter.finagle.buoyant.RetryFilter
 import com.twitter.finagle.param.HighResTimer
-import com.twitter.finagle.service.{RetryBudget, RetryFilter, RetryPolicy}
+import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{ConnectionFailedException, Failure, Filter, http}
@@ -12,6 +14,11 @@ import com.twitter.io.Buf
 import com.twitter.util.{NonFatal => _, _}
 import io.buoyant.consul.log
 import scala.util.control.NonFatal
+
+// a thunked version of the api call such that we can peek at the request before making the call
+case class ApiCall[Rep] private[v1] (req: Request, call: Request => Future[Rep]) extends Function0[Future[Rep]] {
+  override def apply(): Future[Rep] = call(req)
+}
 
 trait BaseApi extends Closable {
   def client: Client
@@ -42,7 +49,8 @@ trait BaseApi extends Closable {
     },
     HighResTimer.Default,
     stats,
-    RetryBudget.Infinite
+    RetryBudget.Infinite,
+    _.reader.discard()
   )
 
   def getClient(retry: Boolean) = {

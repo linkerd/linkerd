@@ -28,8 +28,8 @@ class KvApi(
     separator: Option[String] = Some("/"),
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[Seq[String]]] = {
-    val req = mkreq(
+  ): ApiCall[Indexed[Seq[String]]] = ApiCall(
+    req = mkreq(
       http.Method.Get,
       s"$kvPrefix$path",
       consistency,
@@ -37,9 +37,9 @@ class KvApi(
       "separator" -> separator,
       "index" -> blockingIndex,
       "dc" -> datacenter
-    )
-    executeJson[Seq[String]](req, retry)
-  }
+    ),
+    call = req => executeJson[Seq[String]](req, retry)
+  )
 
   /**
    * Get the key value
@@ -54,17 +54,17 @@ class KvApi(
     blockingIndex: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[String]] = {
-    val req = mkreq(
+  ): ApiCall[Indexed[String]] = ApiCall(
+    req = mkreq(
       http.Method.Get,
       s"$kvPrefix$path",
       consistency,
       "raw" -> Some(true.toString),
       "index" -> blockingIndex,
       "dc" -> datacenter
-    )
-    executeRaw(req, retry)
-  }
+    ),
+    call = req => executeRaw(req, retry)
+  )
 
   /**
    * Get key(s)
@@ -80,17 +80,17 @@ class KvApi(
     recurse: Option[Boolean] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Indexed[Seq[Key]]] = {
-    val req = mkreq(
+  ): ApiCall[Indexed[Seq[Key]]] = ApiCall(
+    req = mkreq(
       http.Method.Get,
       s"$kvPrefix$path",
       consistency,
       "index" -> blockingIndex,
       "dc" -> datacenter,
       "recurse" -> recurse.map(_.toString)
-    )
-    executeJson[Seq[Key]](req, retry)
-  }
+    ),
+    call = req => executeJson[Seq[Key]](req, retry)
+  )
 
   /**
    * Store the key value
@@ -106,17 +106,19 @@ class KvApi(
     cas: Option[String] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Boolean] = {
-    val req = mkreq(
+  ): ApiCall[Boolean] = ApiCall(
+    req = mkreq(
       http.Method.Put,
       s"$kvPrefix$path",
       consistency,
       "cas" -> cas,
       "dc" -> datacenter
-    )
-    req.setContentString(value)
-    executeJson[Boolean](req, retry).map(_.value)
-  }
+    ),
+    call = req => {
+      req.setContentString(value)
+      executeJson[Boolean](req, retry).map(_.value)
+    }
+  )
 
   /**
    * Delete the key
@@ -132,17 +134,17 @@ class KvApi(
     recurse: Option[Boolean] = None,
     consistency: Option[ConsistencyMode] = None,
     retry: Boolean = false
-  ): Future[Boolean] = {
-    val req = mkreq(
+  ): ApiCall[Boolean] = ApiCall(
+    req = mkreq(
       http.Method.Delete,
       s"$kvPrefix$path",
       consistency,
       "cas" -> cas,
       "recurse" -> recurse.map(_.toString),
       "dc" -> datacenter
-    )
-    executeJson[Boolean](req, retry).map(_.value)
-  }
+    ),
+    call = req => executeJson[Boolean](req, retry).map(_.value)
+  )
 }
 
 object Key {

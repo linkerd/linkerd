@@ -40,7 +40,7 @@ interpreter uses Namerd's long-poll thrift interface
 uses to talk to Namerd is unrelated to the protocols of Linkerd's routers.
 
 The internal state of the Namerd interpreter can be viewed at the
-admin endpoint: `/interpreter_state/io.l5d.namerd/<namespace>.json`.
+admin endpoint: `/<router>/interpreter_state/io.l5d.namerd/<namespace>.json`.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -105,7 +105,7 @@ protocol that the interpreter uses to talk to Namerd is unrelated to the
 protocols of Linkerd's routers.
 
 The internal state of the Namerd interpreter can be viewed at the admin endpoint:
-`/interpreter_state/io.l5d.mesh/<root>.json`.
+`/<router>/interpreter_state/io.l5d.mesh/<root>.json`.
 
 Key | Default Value | Description
 --- | ------------- | -----------

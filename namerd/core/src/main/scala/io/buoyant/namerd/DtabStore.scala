@@ -1,8 +1,8 @@
 package io.buoyant.namerd
 
-import com.twitter.finagle.Dtab
+import com.twitter.finagle.{Dentry, Dtab}
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Future}
+import com.twitter.util.{Activity, Base64StringEncoder, Future}
 
 case class VersionedDtab(dtab: Dtab, version: DtabStore.Version)
 
@@ -54,6 +54,8 @@ object DtabStore {
 
   class DtabNamespaceInvalidException(ns: Ns)
     extends Exception(s"invalid dtab namespace $ns: namespace must contain only letter, number or '-' characters")
+  class DtabContainsInvalidDentriesException(invalidDentries: String)
+    extends Exception(s"The dtab contains invalid dentries: $invalidDentries")
 
   object Forbidden extends Exception("You do not have sufficient permissions")
 
@@ -82,4 +84,9 @@ object DtabStore {
       validate(ns, dtab) before self.put(ns, dtab)
   }
 
+  def versionString(buf: Buf): String = {
+    val versionBytes = new Array[Byte](buf.length)
+    buf.write(versionBytes, 0)
+    Base64StringEncoder.encode(versionBytes)
+  }
 }

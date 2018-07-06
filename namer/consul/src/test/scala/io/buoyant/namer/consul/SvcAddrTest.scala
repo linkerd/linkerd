@@ -1,12 +1,14 @@
 package io.buoyant.namer.consul
 
 import com.twitter.conversions.time._
+import com.twitter.finagle.http.Request
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Addr, Address, Failure}
 import com.twitter.util.{Duration, Future, Promise, Timer, Var}
-import io.buoyant.consul.v1.{CatalogApi, ConsistencyMode, HealthStatus, Indexed, ServiceNode}
+import io.buoyant.consul.v1._
 import io.buoyant.namer.consul.SvcAddr.Stats
+import io.buoyant.namer.InstrumentedVar
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
@@ -17,6 +19,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
   implicit val timer: Timer = DefaultTimer
 
   val hangForLongBackoff = Stream.continually(Duration.Top)
+  val emptyRequest = Request()
 
   def service(host: String = "8.8.8.8", port: Int = 53): (ServiceNode, InetSocketAddress) =
     (
@@ -33,7 +36,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         new InetSocketAddress(host, port)
     )
 
-  def apiStub(stubFn: (String, Option[String], Option[String], Option[String], Option[ConsistencyMode], Boolean) => Future[Indexed[Seq[ServiceNode]]]) =
+  def apiStub(stubFn: (String, Option[String], Option[String], Option[String], Option[ConsistencyMode], Boolean) => Future[IndexedServiceNodes]) =
     new CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -42,7 +45,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         blockingIndex: Option[String] = None,
         consistency: Option[ConsistencyMode] = None,
         retry: Boolean = false
-      ): Future[Indexed[Seq[ServiceNode]]] = stubFn(serviceName, datacenter, tag, blockingIndex, consistency, retry)
+      ): ApiCall[IndexedServiceNodes] = ApiCall(emptyRequest, _ => stubFn(serviceName, datacenter, tag, blockingIndex, consistency, retry))
     }
 
   test("should keep last known Addr.Bound value on error") {
@@ -64,11 +67,15 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     }
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
 
     // then
-    await(addr.changes.toFuture)
-    addr.sample() match {
+    await(addr.underlying.changes.toFuture)
+    addr.running shouldBe false
+    addr.lastStartedAt shouldBe 'defined
+    addr.lastStoppedAt shouldBe 'defined
+    addr.lastUpdatedAt shouldBe 'defined
+    addr.underlying.sample() match {
       case Addr.Bound(addrSet, _) =>
         addrSet should have size 1
         addrSet.head should matchPattern { case Address.Inet(addr, _) if addr == serviceAddr => }
@@ -89,8 +96,8 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     val backoffs: Stream[Duration] = Stream.fill(numOfAttempts)(10.millis) #::: hang #:: Stream.empty
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
-    addr.changes.respond(_ => ())
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    addr.underlying.changes.respond(_ => ())
 
     // then
     await(retried)
@@ -129,10 +136,14 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     }
 
     // when
-    val addr: Var[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver))
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
 
     // then
-    await(addr.changes.toFuture)
-    addr.sample() should matchPattern { case Addr.Neg => }
+    await(addr.underlying.changes.toFuture)
+    addr.running shouldBe false
+    addr.lastStartedAt shouldBe 'defined
+    addr.lastStoppedAt shouldBe 'defined
+    addr.lastUpdatedAt shouldBe 'defined
+    addr.underlying.sample() should matchPattern { case Addr.Neg => }
   }
 }

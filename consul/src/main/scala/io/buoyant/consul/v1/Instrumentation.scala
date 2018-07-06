@@ -1,8 +1,14 @@
-package io.buoyant.namerd.iface
+package io.buoyant.consul.v1
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.util.{Return, Throw, Time, Try}
+import com.twitter.finagle.http
+import com.twitter.util.{Return, Throw, Time, Try, Future}
+import scala.collection.mutable
 
+/**
+ * PollState holds metadata about the calls on consul api.
+ * This class is intended to be serialized.
+ */
 class PollState[Req, Rep] {
 
   @JsonIgnore
@@ -30,4 +36,21 @@ class PollState[Req, Rep] {
   protected var response: Option[Rep] = None
   protected var lastResponseAt: Option[String] = None
   protected var error: Option[String] = None
+}
+
+object InstrumentedApiCall {
+
+  //specific for handling requests recorded as string
+  def mkPollState[Rep]: PollState[String, Rep] = new PollState
+
+  def execute[Rep](call: ApiCall[Rep], pollWatch: PollState[String, Rep]): Future[Rep] = {
+    pollWatch.recordApiCall(capture(call.req))
+    val f = call()
+    f.respond(pollWatch.recordResponse)
+    f
+  }
+
+  private[this] def capture(req: http.Request): String =
+    s"${req.method} ${req.uri}"
+
 }

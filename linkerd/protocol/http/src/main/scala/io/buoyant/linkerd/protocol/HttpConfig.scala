@@ -6,8 +6,8 @@ import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
 import com.twitter.conversions.storage._
+import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers}
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
-import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers, HttpTraceInitializer}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter, StatsFilter}
@@ -15,13 +15,12 @@ import com.twitter.finagle.http.{Request, Response, param => hparam}
 import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
-import com.twitter.finagle.{Path, ServiceFactory, Stack, param => fparam}
+import com.twitter.finagle.tracing.TraceInitializerFilter
+import com.twitter.finagle.{ServiceFactory, Stack, param => fparam}
 import com.twitter.logging.Policy
-import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.http._
-import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
-import io.buoyant.router.RoutingFactory.{IdentifiedRequest, RequestIdentification, UnidentifiedRequest}
 import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter, TimestampHeaderFilter}
+import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import scala.collection.JavaConverters._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
@@ -39,7 +38,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .prepend(Headers.Dst.BoundFilter.module)
     val clientStack = Http.router.clientStack
       .prepend(http.AccessLogger.module)
-      .replace(HttpTraceInitializer.role, HttpTraceInitializer.clientModule)
+      .replace(TraceInitializerFilter.role, HttpTracePropagatorConfig.clientModule)
       .replace(Headers.Ctx.clientModule.role, Headers.Ctx.clientModule)
       .insertAfter(DtabStatsFilter.role, HttpRequestAuthorizerConfig.module)
       .insertAfter(Retries.Role, http.StatusCodeStatsFilter.module)
@@ -68,13 +67,17 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .configured(router.params[hparam.MaxResponseSize])
       .configured(router.params[hparam.Streaming])
       .configured(router.params[hparam.CompressionLevel])
+      .configured(router.params[HttpTracePropagatorConfig.Param])
 
   protected val defaultServer = {
     val stk = Http.server.stack
-      .replace(HttpTraceInitializer.role, HttpTraceInitializer.serverModule)
-      .replace(Headers.Ctx.serverModule.role, Headers.Ctx.serverModule)
+      .replace(TraceInitializerFilter.role, HttpTracePropagatorConfig.serverModule)
+      .remove(Headers.Ctx.serverModule.role)
       .prepend(http.ErrorResponder.module)
       .prepend(http.StatusCodeStatsFilter.module)
+      // Headers.Ctx.serverModule needs to be before the ErrorResponder module
+      // so that errors responses from the ErrorResponder will be cleared when clearContext is set
+      .prepend(Headers.Ctx.serverModule)
       // ensure the server-stack framing filter is placed below the stats filter
       // so that any malframed requests it fails are counted as errors
       .insertAfter(StatsFilter.role, FramingFilter.serverModule)
@@ -87,7 +90,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
   override def clearServerContext(stk: ServerStack): ServerStack = {
     // Does NOT use the ClearContext module that forcibly clears the
     // context. Instead, we just strip out headers on inbound requests.
-    stk.remove(HttpTraceInitializer.role)
+    stk.remove(TraceInitializerFilter.role)
       .replace(Headers.Ctx.serverModule.role, Headers.Ctx.clearServerModule)
   }
 
@@ -203,7 +206,8 @@ case class HttpConfig(
   maxRequestKB: Option[Int],
   maxResponseKB: Option[Int],
   streamingEnabled: Option[Boolean],
-  compressionLevel: Option[Int]
+  compressionLevel: Option[Int],
+  tracePropagator: Option[HttpTracePropagatorConfig]
 ) extends RouterConfig {
 
   var client: Option[HttpClient] = None
@@ -255,5 +259,7 @@ case class HttpConfig(
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
 
   @JsonIgnore
-  override def routerParams = routerParamsPartial.maybeWith(combinedIdentifier(routerParamsPartial))
+  override def routerParams = routerParamsPartial
+    .maybeWith(combinedIdentifier(routerParamsPartial))
+    .maybeWith(tracePropagator.map(tp => HttpTracePropagatorConfig.Param(tp.mk(routerParamsPartial))))
 }

@@ -8,26 +8,6 @@ import io.netty.handler.codec.http2._
 import java.nio.charset.StandardCharsets
 
 object StreamTestUtils {
-  /**
-   * Read a [[Stream]] to the end, [[Frame.release release()]]ing each
-   * [[Frame]] before reading the next one.
-   *
-   * The value of each frame is discarded, but assertions can be made about
-   * their contents by attaching an [[Stream.onFrame onFrame()]] callback
-   * before calling `readAll()`.
-   *
-   * @param stream the [[Stream]] to read to the end
-   * @return a [[Future]] that will finish when the whole stream is read
-   */
-  final def readToEnd(stream: Stream): Future[Unit] =
-    if (stream.isEmpty) Future.Unit
-    else
-      stream.read().flatMap { frame =>
-        val end = frame.isEnd
-        frame.release().before {
-          if (end) Future.Unit else readToEnd(stream)
-        }
-      }
 
   def readDataStream(stream: Stream): Future[ByteBuf] = {
     stream.read().flatMap {
@@ -59,7 +39,7 @@ object StreamTestUtils {
    * @param stream the underlying [[Stream]]
    */
   implicit class ReadAllStream(val stream: Stream) extends AnyVal {
-    @inline def readToEnd: Future[Unit] = StreamTestUtils.readToEnd(stream)
+    @inline def readToEnd: Future[Unit] = Stream.readToEnd(stream)
     @inline def readDataString: Future[String] = StreamTestUtils.readDataString(stream)
   }
 
