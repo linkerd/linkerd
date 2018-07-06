@@ -273,7 +273,9 @@ class LinkerTest extends FunSuite with Exceptions {
          |  security:
          |    uiEnabled: true
          |    pathWhitelist:
-         |    - /foo/bar
+         |    - ^/foo/bar$
+         |    pathBlacklist:
+         |    - ^/logging$
          |routers:
          |- protocol: plain
          |  servers:
@@ -286,6 +288,8 @@ class LinkerTest extends FunSuite with Exceptions {
     assert(Await.result(svc(Request("/foo/bar"))).status == Status.Ok)
     assert(Await.result(svc(Request("/metrics.json"))).status == Status.Ok)
     assert(Await.result(svc(Request("/admin/threads"))).status == Status.NotFound)
+    assert(Await.result(svc(Request("/logging"))).status == Status.NotFound)
+    assert(Await.result(svc(Request("/logging.json"))).status == Status.Ok)
   }
 
 

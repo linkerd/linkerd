@@ -95,4 +95,41 @@ class SecurityFilterTest extends FlatSpec with Matchers {
     }
   }
 
+  it should "not pass control requests if permitted" in {
+    val service = SecurityFilter()
+      .withControlEndpoints() andThen ok
+
+    val params = Table(
+      ("uri", "response status"),
+      ("/admin/shutdown", Status.Ok),
+      ("/logging.json", Status.Ok),
+      ("/sth/else", Status.NotFound)
+    )
+
+    forAll(params) { (uri, status) =>
+      val req = Request(Version.Http11, Method.Get, uri)
+      val rep = Await.result(service(req))
+      assert(rep.status == status)
+    }
+  }
+
+  it should "block blacklisted URLs" in {
+    val service = SecurityFilter()
+      .withUiEndpoints()
+      .withBlacklistedElement("^/help$") andThen ok
+
+    val params = Table(
+      ("uri", "response status"),
+      ("/files/css/lib/bootstrap.min.css", Status.Ok),
+      ("/files/css/lib/fonts.css", Status.Ok),
+      ("/help", Status.NotFound)
+    )
+
+    forAll(params) { (uri, status) =>
+      val req = Request(Version.Http11, Method.Get, uri)
+      val rep = Await.result(service(req))
+      assert(rep.status == status)
+    }
+  }
+
 }

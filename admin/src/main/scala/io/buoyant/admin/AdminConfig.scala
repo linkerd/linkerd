@@ -32,14 +32,27 @@ object AdminSecurityConfig {
 
 case class AdminSecurityConfig(
   uiEnabled: Option[Boolean] = Some(true),
-  pathWhitelist: Option[List[String]] = None
+  controlEnabled: Option[Boolean] = Some(true),
+  diagnosticsEnabled: Option[Boolean] = Some(true),
+  pathWhitelist: Option[List[String]] = None,
+  pathBlacklist: Option[List[String]] = None
 ) {
 
   def mkFilter(): SecurityFilter = {
     var securityFilter = SecurityFilter()
+    diagnosticsEnabled match {
+      case Some(true) | None =>
+        securityFilter = securityFilter.withDiagnosticsEndpoints()
+      case Some(false) =>
+    }
     uiEnabled match {
       case Some(true) | None =>
         securityFilter = securityFilter.withUiEndpoints()
+      case Some(false) =>
+    }
+    controlEnabled match {
+      case Some(true) | None =>
+        securityFilter = securityFilter.withControlEndpoints()
       case Some(false) =>
     }
     securityFilter = pathWhitelist match {
@@ -48,7 +61,13 @@ case class AdminSecurityConfig(
       case None =>
         securityFilter
     }
-    AdminSecurityConfig.log.debug("admin whitelist filter with request paths: %s", securityFilter.whitelist)
+    securityFilter = pathBlacklist match {
+      case Some(elems) =>
+        elems.foldLeft(securityFilter) { (f, elem) => f.withBlacklistedElement(elem) }
+      case None =>
+        securityFilter
+    }
+    AdminSecurityConfig.log.debug("admin whitelist filter with whitelisted request paths: %s and blacklisted request paths: %s", securityFilter.whitelist, securityFilter.blacklist)
     securityFilter
   }
 }
