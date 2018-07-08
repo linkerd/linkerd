@@ -62,7 +62,7 @@ object Headers {
      * by the `l5d-dtab` header.
      *
      * Note that trace configuration is handled by
-     * [[HttpTraceInitializer.serverModule]].
+     * HttpTraceInitializer.serverModule.
      */
     val serverModule: Stackable[ServiceFactory[Request, Response]] =
       new Stack.Module1[hparam.MaxHeaderSize, ServiceFactory[Request, Response]] {
@@ -98,7 +98,7 @@ object Headers {
      *   - Dtab
      *
      * Note that trace configuration is handled by
-     * [[HttpTraceInitializer.clientModule]].
+     * HttpTraceInitializer.clientModule.
      */
     val clientModule: Stackable[ServiceFactory[Request, Response]] =
       new Stack.Module0[ServiceFactory[Request, Response]] {
