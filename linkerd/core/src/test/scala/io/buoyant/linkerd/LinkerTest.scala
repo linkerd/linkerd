@@ -271,7 +271,7 @@ class LinkerTest extends FunSuite with Exceptions {
          |  ip: 0.0.0.0
          |  port: 42000
          |  security:
-         |    uiEnabled: true
+         |    diagnosticsEnabled: false
          |    pathWhitelist:
          |    - ^/foo/bar$
          |    pathBlacklist:

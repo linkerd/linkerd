@@ -147,6 +147,17 @@ be found at
 
 #### Admin security
 
+> Example to disable the endpoint `/admin/shutdown` exclusively
+
+```yaml
+admin:
+  ip: 127.0.0.1
+  port: 9990
+  security:
+    pathBlacklist:
+    - ^/admin/shutdown$
+```
+
 By default all administrative endpoints are accessible.
 This might not always be desired as this allows for example everybody to shutdown the process if the administrative port is not closed because metrics should be polled from Linkerd.
 The admin security configuration allows to whitelist or blacklist dedicated administrative endpoints.
@@ -166,14 +177,13 @@ The security configuration supports these parameters allowing fine grained contr
 
 Key | Default Value | Description
 --- | ------------- | -----------
-uiEnabled | true | Configures if all endpoints required to run the administrative ui are available
-controlEnabled | true | Configures if the endpoints to control Linkerd are available, i.e. `/admin/shutdown` and `/logging.json`
-diagnosticsEnabled | true | Configures if all endpoints are available.
-pathWhitelist | empty list | Configures additional paths via regular expressions that should be available
-pathBlacklist | empty list | Configures additional paths via regular expressions that should not be available
+uiEnabled | true | Configures if all endpoints that belong to the category required to run the administrative ui are available
+controlEnabled | true | Configures if the endpoints that belong to the category to control Linkerd are available, i.e. `/admin/shutdown` and `/logging.json`
+diagnosticsEnabled | true | Configures if all other endpoints are available.
+pathWhitelist | empty list | Configures paths via regular expressions that should be available for disabled endpoint categories
+pathBlacklist | empty list | Configures additional paths via regular expressions that should not be available for enabled categories
 
-An administrative endpoint is available if it is both on the whitelist and not on the blacklist.
-The parameters `uiEnabled`, `controlEnabled` and `diagnosticsEnabled` add to the whitelist.
+An administrative endpoint is available if its category is enabled and it is not on the blacklist or if its category is disabled and it is on the whitelist.
 
 ### Routers Intro
 

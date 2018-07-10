@@ -6,16 +6,13 @@ import com.twitter.util.{Await, Future}
 import org.scalatest.prop.TableDrivenPropertyChecks._
 import org.scalatest.{FlatSpec, Matchers, Status => _}
 
-
 class SecurityFilterTest extends FlatSpec with Matchers {
 
-  val ok = new Service[Request, Response] {
-    override def apply(request: Request): Future[Response] = Future.value(Response(request))
-  }
+  private[this] val ok = Service.mk[Request, Response] { request => Future.value(Response(request)) }
 
   it should "let pass ui requests" in {
 
-    val service = SecurityFilter().withUiEndpoints() andThen ok
+    val service = SecurityFilter().withUiEndpoints().withControlEndpoints(false).withDiagnosticsEndpoints(false) andThen ok
 
     val params = Table(
       ("uri", "response status"),
@@ -45,6 +42,8 @@ class SecurityFilterTest extends FlatSpec with Matchers {
   it should "let pass configured requests" in {
 
     val service = SecurityFilter()
+      .withControlEndpoints(false)
+      .withDiagnosticsEndpoints(false)
       .withWhitelistedElement("^/fooba[rz]$")
       .withWhitelistedElement("^/abc/def/.*$")
       .withUiEndpoints() andThen ok
@@ -72,6 +71,9 @@ class SecurityFilterTest extends FlatSpec with Matchers {
 
   it should "not let pass ui requests if not permitted" in {
     val service = SecurityFilter()
+      .withUiEndpoints(false)
+      .withControlEndpoints(false)
+      .withDiagnosticsEndpoints(false)
       .withWhitelistedElement("^/fooba[rz]$")
       .withWhitelistedElement("^/abc/def/.*$") andThen ok
 
@@ -95,9 +97,10 @@ class SecurityFilterTest extends FlatSpec with Matchers {
     }
   }
 
-  it should "not pass control requests if permitted" in {
+  it should "let pass control requests if permitted" in {
     val service = SecurityFilter()
-      .withControlEndpoints() andThen ok
+      .withControlEndpoints()
+      .withDiagnosticsEndpoints(false) andThen ok
 
     val params = Table(
       ("uri", "response status"),

@@ -2,9 +2,8 @@ package io.buoyant.admin
 
 import com.twitter.finagle.buoyant.TlsServerConfig
 import com.twitter.finagle.stats.StatsReceiver
-import java.net.{InetAddress, InetSocketAddress}
-
 import com.twitter.logging.Logger
+import java.net.{InetAddress, InetSocketAddress}
 import io.buoyant.config.types.Port
 
 case class AdminConfig(
@@ -27,7 +26,6 @@ case class AdminConfig(
 
 object AdminSecurityConfig {
   private val log = Logger.get(Admin.label)
-
 }
 
 case class AdminSecurityConfig(
@@ -40,21 +38,10 @@ case class AdminSecurityConfig(
 
   def mkFilter(): SecurityFilter = {
     var securityFilter = SecurityFilter()
-    diagnosticsEnabled match {
-      case Some(true) | None =>
-        securityFilter = securityFilter.withDiagnosticsEndpoints()
-      case Some(false) =>
-    }
-    uiEnabled match {
-      case Some(true) | None =>
-        securityFilter = securityFilter.withUiEndpoints()
-      case Some(false) =>
-    }
-    controlEnabled match {
-      case Some(true) | None =>
-        securityFilter = securityFilter.withControlEndpoints()
-      case Some(false) =>
-    }
+      .withUiEndpoints(uiEnabled.getOrElse(true))
+      .withControlEndpoints(controlEnabled.getOrElse(true))
+      .withDiagnosticsEndpoints(diagnosticsEnabled.getOrElse(true))
+
     securityFilter = pathWhitelist match {
       case Some(elems) =>
         elems.foldLeft(securityFilter) { (f, elem) => f.withWhitelistedElement(elem) }
@@ -67,7 +54,7 @@ case class AdminSecurityConfig(
       case None =>
         securityFilter
     }
-    AdminSecurityConfig.log.debug("admin whitelist filter with whitelisted request paths: %s and blacklisted request paths: %s", securityFilter.whitelist, securityFilter.blacklist)
+    AdminSecurityConfig.log.debug("Created admin security filter %s", securityFilter)
     securityFilter
   }
 }
