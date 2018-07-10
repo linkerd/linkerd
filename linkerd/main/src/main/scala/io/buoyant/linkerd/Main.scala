@@ -36,6 +36,7 @@ object Main extends App {
     args match {
       case Array(path) =>
         val config = loadLinker(path)
+        shutdownGracePeriod = config.admin.flatMap(_.shutdownGraceMs)
         if (validate())
           return
 
@@ -45,7 +46,6 @@ object Main extends App {
         val routers = linker.routers.map(initRouter(_))
 
         log.info("initialized")
-        shutdownGracePeriod = config.admin.flatMap(_.shutdownGraceMs)
         registerTerminationSignalHandler(shutdownGracePeriod)
         closeOnExit(Closable.sequence(
           Closable.all(routers: _*),
