@@ -8,8 +8,7 @@ import com.twitter.util.Return
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.protocol.h2.grpc.GrpcClassifiers.{AlwaysRetryable, NeverRetryable, RetryableStatusCodes}
 import io.buoyant.grpc.runtime.GrpcStatus
-import io.buoyant.linkerd.RouterConfig
-import io.buoyant.linkerd.protocol.h2.H2ClassifierInitializer
+import io.buoyant.linkerd.{ResponseClassifierInitializer, RouterConfig}
 import io.buoyant.linkerd.protocol.{H2DefaultSvc, H2Initializer}
 import org.scalacheck.Arbitrary
 import org.scalatest.FunSuite
@@ -92,7 +91,7 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
   } {
 
     test(s"loads $kind") {
-      assert(LoadService[H2ClassifierInitializer]().exists(_.configId == kind))
+      assert(LoadService[ResponseClassifierInitializer]().exists(_.configId == kind))
     }
 
     test(s"parse router with $kind") {
@@ -114,7 +113,7 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
   }
 
   test("loads io.l5d.h2.grpc.retryableStatusCodes") {
-    assert(LoadService[H2ClassifierInitializer]().exists(_.configId == "io.l5d.h2.grpc.retryableStatusCodes"))
+    assert(LoadService[ResponseClassifierInitializer]().exists(_.configId == "io.l5d.h2.grpc.retryableStatusCodes"))
   }
 
   test("parse router with io.l5d.h2.grpc.retryableStatusCodes") {
