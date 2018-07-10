@@ -152,7 +152,7 @@ trait RouterConfig {
   def disabled = protocol.experimentalRequired && !_experimentalEnabled.contains(true)
 
   @JsonIgnore
-  def routerParams = (Stack.Params.empty +
+  def routerParams(params: Stack.Params) = (params +
     param.ResponseClassifier(defaultResponseClassifier) +
     FailureAccrualConfig.default)
     .maybeWith(dtab.map(dtab => RoutingFactory.BaseDtab(() => dtab)))
@@ -167,7 +167,7 @@ trait RouterConfig {
 
   @JsonIgnore
   def router(params: Stack.Params): Router = {
-    val prms = params ++ routerParams
+    val prms = params ++ routerParams(params)
     val param.Label(label) = prms[param.Label]
     val announcers = _announcers.toSeq.flatten.map { announcer =>
       announcer.prefix -> announcer.mk(params)

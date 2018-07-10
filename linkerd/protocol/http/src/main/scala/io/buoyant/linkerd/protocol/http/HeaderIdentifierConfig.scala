@@ -28,10 +28,14 @@ case class HeaderIdentifierConfig(
     prefix: Path,
     baseDtab: () => Dtab = () => Dtab.base,
     routerParams: Stack.Params = Stack.Params.empty
-  ) = HeaderIdentifier(
-    prefix,
-    header.getOrElse(HeaderIdentifierConfig.defaultHeader),
-    headerPath = true,
-    baseDtab
-  )
+  ) = {
+    println("HEYYYYOOOO")
+    println(routerParams[com.twitter.finagle.param.Stats].statsReceiver)
+    HeaderIdentifier(
+      prefix,
+      header.getOrElse(HeaderIdentifierConfig.defaultHeader),
+      headerPath = true,
+      baseDtab
+    )
+  }
 }

@@ -28,7 +28,7 @@ class RouterTest extends FunSuite with Exceptions {
   ): Router = {
     val mapper = Parser.objectMapper(yaml, Iterable(protos, interpreters, announcers))
     val cfg = mapper.readValue[RouterConfig](yaml)
-    val interpreter = cfg.interpreter.interpreter(cfg.routerParams)
+    val interpreter = cfg.interpreter.interpreter(cfg.routerParams(Stack.Params.empty))
     cfg.router(params + DstBindingFactory.Namer(interpreter))
   }
 
@@ -163,7 +163,7 @@ servers:
          |  trees: 999
          |  bounds: 998
          |""".stripMargin
-    val capacity = parseConfig(yaml).routerParams[DstBindingFactory.Capacity]
+    val capacity = parseConfig(yaml).routerParams(Stack.Params.empty)[DstBindingFactory.Capacity]
     assert(capacity.paths == 1000)
     assert(capacity.trees == 999)
     assert(capacity.bounds == 998)
@@ -175,7 +175,7 @@ servers:
       """|protocol: plain
          |originator: true
          |""".stripMargin
-    val originator = parseConfig(yaml).routerParams[Originator.Param]
+    val originator = parseConfig(yaml).routerParams(Stack.Params.empty)[Originator.Param]
     assert(originator.originator)
   }
 }

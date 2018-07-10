@@ -1,7 +1,7 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.http.{Method, Request}
-import com.twitter.finagle.{Dtab, Path}
+import com.twitter.finagle.{Dtab, Path, Stack}
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.RouterConfig
 import io.buoyant.linkerd.protocol.{HttpConfig, HttpInitializer}
@@ -54,7 +54,7 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |- port: 5000
       """.stripMargin
     val config = parse(yaml)
-    val identifier = config.routerParams[Http.param.HttpIdentifier]
+    val identifier = config.routerParams(Stack.Params.empty)[Http.param.HttpIdentifier]
       .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
@@ -73,7 +73,7 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |- port: 5000
       """.stripMargin
     val config = parse(yaml)
-    val identifier = config.routerParams[Http.param.HttpIdentifier]
+    val identifier = config.routerParams(Stack.Params.empty)[Http.param.HttpIdentifier]
       .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
@@ -93,7 +93,7 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |- port: 5000
       """.stripMargin
     val config = parse(yaml)
-    val identifier = config.routerParams[Http.param.HttpIdentifier]
+    val identifier = config.routerParams(Stack.Params.empty)[Http.param.HttpIdentifier]
       .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     req.host = "host.com"
@@ -113,7 +113,7 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |- port: 5000
       """.stripMargin
     val config = parse(yaml)
-    val identifier = config.routerParams[Http.param.HttpIdentifier]
+    val identifier = config.routerParams(Stack.Params.empty)[Http.param.HttpIdentifier]
       .id(Path.read("/svc"), () => Dtab.empty)
     val req = Request(Method.Get, "/one/two/three")
     assert(
