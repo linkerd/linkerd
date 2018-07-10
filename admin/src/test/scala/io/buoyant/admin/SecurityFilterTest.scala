@@ -12,7 +12,10 @@ class SecurityFilterTest extends FlatSpec with Matchers {
 
   it should "let pass ui requests" in {
 
-    val service = SecurityFilter().withUiEndpoints().withControlEndpoints(false).withDiagnosticsEndpoints(false) andThen ok
+    val service = SecurityFilter(
+      controlEnabled = false,
+      diagnosticsEnabled = false
+    ) andThen ok
 
     val params = Table(
       ("uri", "response status"),
@@ -41,12 +44,14 @@ class SecurityFilterTest extends FlatSpec with Matchers {
 
   it should "let pass configured requests" in {
 
-    val service = SecurityFilter()
-      .withControlEndpoints(false)
-      .withDiagnosticsEndpoints(false)
-      .withWhitelistedElement("^/fooba[rz]$")
-      .withWhitelistedElement("^/abc/def/.*$")
-      .withUiEndpoints() andThen ok
+    val service = SecurityFilter(
+      controlEnabled = false,
+      diagnosticsEnabled = false,
+      whitelist = Seq(
+        "^/fooba[rz]$".r,
+        "^/abc/def/.*$".r
+      )
+    ) andThen ok
 
     val params = Table(
       ("uri", "response status"),
@@ -70,12 +75,15 @@ class SecurityFilterTest extends FlatSpec with Matchers {
   }
 
   it should "not let pass ui requests if not permitted" in {
-    val service = SecurityFilter()
-      .withUiEndpoints(false)
-      .withControlEndpoints(false)
-      .withDiagnosticsEndpoints(false)
-      .withWhitelistedElement("^/fooba[rz]$")
-      .withWhitelistedElement("^/abc/def/.*$") andThen ok
+    val service = SecurityFilter(
+      uiEnabled = false,
+      controlEnabled = false,
+      diagnosticsEnabled = false,
+      whitelist = Seq(
+        "^/fooba[rz]$".r,
+        "^/abc/def/.*$".r
+      )
+    ) andThen ok
 
     val params = Table(
       ("uri", "response status"),
@@ -98,9 +106,9 @@ class SecurityFilterTest extends FlatSpec with Matchers {
   }
 
   it should "let pass control requests if permitted" in {
-    val service = SecurityFilter()
-      .withControlEndpoints()
-      .withDiagnosticsEndpoints(false) andThen ok
+    val service = SecurityFilter(
+      diagnosticsEnabled = false
+    ) andThen ok
 
     val params = Table(
       ("uri", "response status"),
@@ -117,9 +125,9 @@ class SecurityFilterTest extends FlatSpec with Matchers {
   }
 
   it should "block blacklisted URLs" in {
-    val service = SecurityFilter()
-      .withUiEndpoints()
-      .withBlacklistedElement("^/help$") andThen ok
+    val service = SecurityFilter(
+      blacklist = Seq("^/help$".r)
+    ) andThen ok
 
     val params = Table(
       ("uri", "response status"),
@@ -135,4 +143,22 @@ class SecurityFilterTest extends FlatSpec with Matchers {
     }
   }
 
+  it should "blacklist overrides whitelist" in {
+    val service = SecurityFilter(
+      whitelist = Seq("^/help$".r),
+      blacklist = Seq("^/help$".r)
+    ) andThen ok
+
+    val params = Table(
+      ("uri", "response status"),
+      ("/files/css/lib/bootstrap.min.css", Status.Ok),
+      ("/help", Status.NotFound)
+    )
+
+    forAll(params) { (uri, status) =>
+      val req = Request(Version.Http11, Method.Get, uri)
+      val rep = Await.result(service(req))
+      assert(rep.status == status)
+    }
+  }
 }

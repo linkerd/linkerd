@@ -7,6 +7,14 @@ admin:
   ip: 0.0.0.0
   port: 9990
   workerThreads: 3
+  security:
+    uiEnabled: true
+    controlEnabled: false
+    diagnosticsEnabled: false
+    pathWhitelist:
+    - "/admin/threads"
+    pathBlacklist:
+    - "/help"
 
 telemetry:
 - kind: io.l5d.recentRequests

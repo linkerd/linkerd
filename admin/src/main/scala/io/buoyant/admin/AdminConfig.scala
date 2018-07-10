@@ -29,31 +29,22 @@ object AdminSecurityConfig {
 }
 
 case class AdminSecurityConfig(
-  uiEnabled: Option[Boolean] = Some(true),
-  controlEnabled: Option[Boolean] = Some(true),
-  diagnosticsEnabled: Option[Boolean] = Some(true),
+  uiEnabled: Option[Boolean] = None,
+  controlEnabled: Option[Boolean] = None,
+  diagnosticsEnabled: Option[Boolean] = None,
   pathWhitelist: Option[List[String]] = None,
   pathBlacklist: Option[List[String]] = None
 ) {
 
   def mkFilter(): SecurityFilter = {
-    var securityFilter = SecurityFilter()
-      .withUiEndpoints(uiEnabled.getOrElse(true))
-      .withControlEndpoints(controlEnabled.getOrElse(true))
-      .withDiagnosticsEndpoints(diagnosticsEnabled.getOrElse(true))
+    val securityFilter = SecurityFilter(
+      uiEnabled = uiEnabled.getOrElse(true),
+      controlEnabled = controlEnabled.getOrElse(true),
+      diagnosticsEnabled = diagnosticsEnabled.getOrElse(true),
+      whitelist = pathWhitelist.getOrElse(Nil).map(_.r),
+      blacklist = pathBlacklist.getOrElse(Nil).map(_.r)
+    )
 
-    securityFilter = pathWhitelist match {
-      case Some(elems) =>
-        elems.foldLeft(securityFilter) { (f, elem) => f.withWhitelistedElement(elem) }
-      case None =>
-        securityFilter
-    }
-    securityFilter = pathBlacklist match {
-      case Some(elems) =>
-        elems.foldLeft(securityFilter) { (f, elem) => f.withBlacklistedElement(elem) }
-      case None =>
-        securityFilter
-    }
     AdminSecurityConfig.log.debug("Created admin security filter %s", securityFilter)
     securityFilter
   }
