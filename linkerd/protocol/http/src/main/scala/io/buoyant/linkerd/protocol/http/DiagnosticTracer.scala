@@ -59,6 +59,7 @@ class DiagnosticTracer(
     routerCtxF.map { ctx =>
       if (resp.isChunked) {
         resp.setChunked(false)
+        resp.reader.discard()
         resp.contentString = ChunkedResponsePlaceholderMsg(resp.headerMap, resp.status)
       }
       val content = s"${resp.contentString.trim}\n\n$ctx"
