@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 package protocol
 
+import com.twitter.concurrent.AsyncStream
 import com.twitter.conversions.time._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
@@ -10,6 +11,7 @@ import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
+import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
@@ -901,6 +903,38 @@ class HttpEndToEndTest
           |  /srv/dog (/svc=>/srv)
           |  /$$/inet/127.1/${downstream.port}/dog (/srv=>/$$/inet/127.1/${downstream.port})
           |""".stripMargin))
+  }
+
+  test("discards content from chunked server response during diagnostic trace"){
+    val responseDiscardedMsg = "Diagnostic trace encountered chunked response. Response content discarded."
+    val downstream = Downstream.mk("dog") { req =>
+      val chunkedWriter = Reader.writable()
+      AsyncStream[Buf](
+        Seq("Chunked", "Response")
+        .map(Buf.Utf8(_)): _*)
+        .foreachF(chunkedWriter.write)
+        .before(chunkedWriter.close())
+     Response(req.version, Status.Ok, chunkedWriter)
+    }
+
+    val dtab = Dtab.read(s"""
+      /srv => /$$/inet/127.1/${downstream.port};
+      /svc => /srv;
+    """)
+
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.host = "dog"
+    req.method = Method.Trace
+    req.headerMap.add("Max-Forwards", "5")
+    req.headerMap.add("l5d-add-context", "true")
+    val resp = await(client(req))
+
+    assert(resp.contentString.contains(responseDiscardedMsg))
   }
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
