@@ -35,6 +35,15 @@ class DiagnosticTracer(
   routerLabel: String
 ) extends SimpleFilter[Request, Response] {
   private[this] val AddRouterContextHeader = "l5d-add-context"
+
+  private[this] def ChunkedResponsePlaceholderMsg(headers: HeaderMap, status: Status) = {
+    val headerStr = headers.map {
+      case (headerKey, headerValue) => s"$headerKey: $headerValue"
+    }.mkString("\n")
+
+    s"$headerStr\nHTTP ${status.code} - ${status.reason}\nDiagnostic trace encountered chunked response. Response content discarded."
+  }
+
   private[this] def getRequestTraceResponse(resp: Response, stopwatch: Stopwatch.Elapsed) = {
 
     val routerCtxF = RouterContextFormatter.formatCtx(
@@ -48,6 +57,11 @@ class DiagnosticTracer(
     )
 
     routerCtxF.map { ctx =>
+      if (resp.isChunked) {
+        resp.reader.discard()
+        resp.setChunked(false)
+        resp.contentString = ChunkedResponsePlaceholderMsg(resp.headerMap, resp.status)
+      }
       val content = s"${resp.contentString.trim}\n\n$ctx"
       resp.contentString = content
       //We set the content length of the response in order to view the content string in the response
