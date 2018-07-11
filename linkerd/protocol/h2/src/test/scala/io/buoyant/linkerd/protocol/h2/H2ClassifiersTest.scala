@@ -7,7 +7,7 @@ import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{ChannelClosedException, RequestTimeoutException}
 import com.twitter.util._
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.RouterConfig
+import io.buoyant.linkerd.{ResponseClassifierInitializer, RouterConfig}
 import io.buoyant.linkerd.protocol.{H2DefaultSvc, H2Initializer}
 import org.scalatest.FunSuite
 
@@ -204,7 +204,7 @@ class H2ClassifiersTest extends FunSuite {
     val kind = init.configId
 
     test(s"loads $kind") {
-      assert(LoadService[H2ClassifierInitializer]().exists(_.configId == kind))
+      assert(LoadService[ResponseClassifierInitializer]().exists(_.configId == kind))
     }
 
     test(s"parse router with $kind") {
