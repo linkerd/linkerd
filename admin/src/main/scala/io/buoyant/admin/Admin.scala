@@ -117,7 +117,13 @@ object Admin {
   }
 }
 
-class Admin(val address: InetSocketAddress, tlsCfg: Option[TlsServerConfig], workers: Int, stats: StatsReceiver, securityConfig: Option[AdminSecurityConfig]) {
+class Admin(
+  val address: InetSocketAddress,
+  tlsCfg: Option[TlsServerConfig],
+  workers: Int,
+  stats: StatsReceiver,
+  securityConfig: Option[AdminSecurityConfig]) {
+  
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
