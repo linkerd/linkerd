@@ -3,7 +3,7 @@ package io.buoyant.marathon.v2
 import com.twitter.finagle._
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.util.{NonFatal => _, _}
+import com.twitter.util._
 import scala.util.control.NonFatal
 
 object AppIdNamer {

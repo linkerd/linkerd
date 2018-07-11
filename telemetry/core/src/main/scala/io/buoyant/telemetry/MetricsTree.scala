@@ -2,6 +2,7 @@ package io.buoyant.telemetry
 
 import com.twitter.finagle.Stack
 import com.twitter.finagle.stats.Verbosity
+import com.twitter.finagle.stats.buoyant.Metric
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec

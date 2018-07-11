@@ -1,7 +1,8 @@
 package io.buoyant.telemetry.prometheus
 
 import com.twitter.finagle.http.Request
-import io.buoyant.telemetry.{Metric, MetricsTree, MetricsTreeStatsReceiver}
+import com.twitter.finagle.stats.buoyant.Metric
+import io.buoyant.telemetry.{MetricsTree, MetricsTreeStatsReceiver}
 import io.buoyant.test.FunSuite
 
 class PrometheusTelemeterTest extends FunSuite {

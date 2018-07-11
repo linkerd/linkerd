@@ -11,7 +11,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
-import com.twitter.util.{NonFatal => _, _}
+import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.namer.{InterpreterInitializer, NamespacedInterpreterConfig}

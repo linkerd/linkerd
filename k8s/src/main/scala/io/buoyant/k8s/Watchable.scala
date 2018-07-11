@@ -13,7 +13,7 @@ import com.twitter.finagle.{Failure, Filter, http}
 import com.twitter.io.Reader
 import com.twitter.io.Reader.ReaderDiscarded
 import com.twitter.util.TimeConversions._
-import com.twitter.util.{NonFatal => _, _}
+import com.twitter.util._
 import io.buoyant.namer.InstrumentedActivity
 import scala.util.control.NonFatal
 

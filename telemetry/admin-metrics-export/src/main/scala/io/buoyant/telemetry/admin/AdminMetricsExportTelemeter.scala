@@ -8,10 +8,11 @@ import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.Service
+import com.twitter.finagle.stats.buoyant.Metric
 import com.twitter.util._
 import io.buoyant.admin.Admin
-import io.buoyant.telemetry.Metric.{Counter, Gauge, HistogramSummary, Stat}
-import io.buoyant.telemetry.{Metric, MetricsTree, Telemeter}
+import com.twitter.finagle.stats.buoyant.Metric.{Counter, Gauge, HistogramSummary, Stat}
+import io.buoyant.telemetry.{MetricsTree, Telemeter}
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
