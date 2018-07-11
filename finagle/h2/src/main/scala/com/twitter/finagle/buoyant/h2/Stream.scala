@@ -57,25 +57,25 @@ trait Stream {
   def onCancel: Future[Reset]
 
   /**
-   * Wraps this [[Stream]] with a [[StreamOnFrame]] that calls the
+   * Wraps this Stream with a StreamOnFrame that calls the
    * provided function on each frame after [[Stream.read read()]]
    *
    * @param onFrame the function to call on each frame.
-   * @return a [[StreamOnFrame]] [[StreamProxy]] wrapping this [[Stream]]
+   * @return a StreamOnFrame StreamProxy wrapping this Stream
    */
   def onFrame(onFrame: Try[Frame] => Unit): Stream = new StreamOnFrame(this, onFrame)
 
   /**
-   * Wraps this [[Stream]]  with a function `f` that is called on each frame in
-   * the stream. The sequence of [[Frame]]s yielded by `f` will be inserted into
+   * Wraps this Stream  with a function `f` that is called on each frame in
+   * the stream. The sequence of Frames yielded by `f` will be inserted into
    * the stream in order at the current position.
    *
    * @note that in order to avoid violating flow control, `f` must either take
    *       ownership over the frame and release it, or return it in the returned
    *       sequence of frames.
-   * @see [[StreamFlatMap]]
-   * @param f the function called on each [[Stream]]
-   * @return a [[StreamFlatMap]] [[StreamProxy]] wrapping this [[Stream]]
+   * @see StreamFlatMap
+   * @param f the function called on each Stream
+   * @return a StreamFlatMap StreamProxy wrapping this Stream
    */
   def flatMap(f: Frame => Seq[Frame]): Stream = new StreamFlatMap(this, f)
 
@@ -108,15 +108,15 @@ object Stream {
   }
 
   /**
-   * Read a [[Stream]] to the end, [[Frame.release release()]]ing each
-   * [[Frame]] before reading the next one.
+   * Read a Stream to the end, Frame.release release()ing each
+   * Frame before reading the next one.
    *
    * The value of each frame is discarded, but assertions can be made about
-   * their contents by attaching an [[Stream.onFrame onFrame()]] callback
+   * their contents by attaching an Stream.onFrame onFrame() callback
    * before calling `readAll()`.
    *
-   * @param stream the [[Stream]] to read to the end
-   * @return a [[Future]] that will finish when the whole stream is read
+   * @param stream the Stream to read to the end
+   * @return a Future that will finish when the whole stream is read
    */
 
   def readToEnd(stream: Stream): Future[Unit] =
