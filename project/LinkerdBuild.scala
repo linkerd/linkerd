@@ -396,8 +396,8 @@ object LinkerdBuild extends Base {
 
     val OpenJ9Settings = BundleSettings ++ Seq(
       dockerJavaImage := s"adoptopenjdk/openjdk8-openj9:${openJ9Version}",
-      dockerTag := s"${version.value}-openj9",
-      assemblyJarName in assembly := s"${name.value}-${version.value}-openj9"
+      dockerTag := s"${version.value}-openj9-experimental",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-openj9-experimental"
     )
 
     /**
@@ -667,8 +667,8 @@ object LinkerdBuild extends Base {
 
     val OpenJ9Settings = BundleSettings ++ Seq(
       dockerJavaImage := s"adoptopenjdk/openjdk8-openj9:${openJ9Version}",
-      dockerTag := s"${version.value}-openj9",
-      assemblyJarName in assembly := s"${name.value}-${version.value}-openj9"
+      dockerTag := s"${version.value}-openj9-experimental",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-openj9-experimental"
     )
 
     val all = aggregateDir("linkerd",
