@@ -14,6 +14,7 @@ object LinkerdBuild extends Base {
   val Dcos = config("dcos") extend Bundle
   val Jdk = config("jdk") extend Bundle
   val LowMem = config("lowmem") extend Bundle
+  val OpenJ9 = config("openj9") extend Bundle
 
   val configCore = projectDir("config")
     .dependsOn(Finagle.buoyantCore)
@@ -393,6 +394,12 @@ object LinkerdBuild extends Base {
       assemblyJarName in assembly := s"${name.value}-${version.value}-32b-exec"
     )
 
+    val OpenJ9Settings = BundleSettings ++ Seq(
+      dockerJavaImage := s"adoptopenjdk/openjdk8-openj9:${openJ9Version}",
+      dockerTag := s"${version.value}-openj9",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-openj9"
+    )
+
     /**
      * A DCOS-specific assembly-running script that:
      * 1) adds the namerd plugin directory to the classpath if it exists
@@ -441,7 +448,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("namerd",
         core, dcosBootstrap, main, Storage.all, Interpreter.all, Iface.all)
-      .configs(Bundle, Dcos, Jdk, LowMem)
+      .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9)
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -449,6 +456,8 @@ object LinkerdBuild extends Base {
       .settings(inConfig(Jdk)(JdkSettings))
       .configDependsOn(LowMem)(BundleProjects: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
+      .configDependsOn(OpenJ9)(BundleProjects: _*)
+      .settings(inConfig(OpenJ9)(OpenJ9Settings))
       .configDependsOn(Dcos)(dcosBootstrap)
       .settings(inConfig(Dcos)(DcosSettings))
       .settings(
@@ -656,10 +665,16 @@ object LinkerdBuild extends Base {
       assemblyJarName in assembly := s"${name.value}-${version.value}-jdk-exec"
     )
 
+    val OpenJ9Settings = BundleSettings ++ Seq(
+      dockerJavaImage := s"adoptopenjdk/openjdk8-openj9:${openJ9Version}",
+      dockerTag := s"${version.value}-openj9",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-openj9"
+    )
+
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
         Announcer.all, Namer.all, Protocol.all)
-      .configs(Bundle, Jdk, LowMem)
+      .configs(Bundle, Jdk, LowMem, OpenJ9)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -667,6 +682,8 @@ object LinkerdBuild extends Base {
       .settings(inConfig(Jdk)(JdkSettings))
       .configDependsOn(LowMem)(BundleProjects: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
+      .configDependsOn(OpenJ9)(BundleProjects: _*)
+      .settings(inConfig(OpenJ9)(OpenJ9Settings))
       .settings(
         assembly := (assembly in Bundle).value,
         docker := (docker in Bundle).value,
