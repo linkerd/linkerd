@@ -2,6 +2,7 @@ package io.buoyant.interpreter.mesh
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2
+import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.io.Buf
@@ -250,11 +251,13 @@ object Client {
     // importantly (2) later integrate with netty's reference counted
     // bueffers.
     @volatile var closed = false
+    @volatile var currentStream: Stream[S] = null
     def loop(
       rsps: Stream[S],
       backoffs: scala.Stream[Duration],
       releasePrior: () => Future[Unit]
-    ): Future[Unit] =
+    ): Future[Unit] = {
+      currentStream = rsps
       if (closed) releasePrior().rescue(_rescueUnit)
       else rsps.recv().respond { rep =>
         streamState.recordResponse(rep.map(_.value))
@@ -284,12 +287,15 @@ object Client {
               releasePrior().before(loop(rsps, backoffs0, release))
           }
       }
+    }
 
     val f = loop(open(), backoffs0, _releaseNop)
     Closable.make { _ =>
       closed = true
+      if (currentStream != null) {
+        currentStream.reset(Reset.Cancel)
+      }
       streamState.recordStreamEnd()
-      f.raise(Failure("closed", Failure.Interrupted))
       f
     }
   }

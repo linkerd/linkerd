@@ -120,17 +120,8 @@ object ServerDispatcher {
 
       // If the client cancels the response, proactively reset the
       // server's stream.
-      frames.onEnd.respond {
-        case Return(_) =>
-          loopF.raise(Failure(GrpcStatus.Ok(), Failure.Interrupted))
-
-        case Throw(e) =>
-          val status = e match {
-            case s: GrpcStatus => s
-            case _ => GrpcStatus.Internal()
-          }
-          msgs.reset(status)
-          loopF.raise(Failure(status, Failure.Interrupted))
+      frames.onCancel.onSuccess { rst =>
+        msgs.reset(rst)
       }
 
       h2.Response(h2.Status.Ok, frames)

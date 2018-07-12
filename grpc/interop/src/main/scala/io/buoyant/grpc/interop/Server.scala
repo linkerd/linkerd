@@ -3,11 +3,12 @@ package io.buoyant.grpc.interop
 import com.twitter.io.Buf
 import com.twitter.app.App
 import com.twitter.finagle.Failure
+import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.finagle.buoyant.{H2, h2}
 import com.twitter.server.TwitterServer
 import com.twitter.util.{Await, Future, Promise, Return, Throw, Try}
 import grpc.{testing => pb}
-import io.buoyant.grpc.runtime.{GrpcStatus, Stream, ServerDispatcher}
+import io.buoyant.grpc.runtime.{GrpcStatus, ServerDispatcher, Stream}
 import java.net.InetSocketAddress
 
 /**
@@ -51,13 +52,13 @@ class Server extends pb.TestService {
             case s: GrpcStatus => s
             case e => GrpcStatus.Internal(e.getMessage)
           }
-          rsps.reset(s)
+          rsps.close(s)
           Future.exception(s)
 
         case Return(Stream.Releasable(req, release)) =>
           getStatus(req.responseStatus) match {
             case Some(status) =>
-              rsps.reset(status)
+              rsps.close(status)
               release().before(Future.exception(status))
 
             case None =>
@@ -87,12 +88,8 @@ class Server extends pb.TestService {
     val p = new Promise[pb.StreamingInputCallResponse] with Promise.InterruptHandler {
       override protected def onInterrupt(t: Throwable): Unit =
         t match {
-          case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
-            val status = cause match {
-              case Some(s: GrpcStatus) => s
-              case _ => GrpcStatus.Canceled()
-            }
-            reqs.reset(status)
+          case e: Failure if e.isFlagged(Failure.Interrupted) =>
+            reqs.reset(Reset.Cancel)
             f.raise(e)
           case e =>
             f.raise(e)
@@ -109,6 +106,7 @@ class Server extends pb.TestService {
     reqs.recv().transform {
       case Throw(GrpcStatus.Ok(_)) => Future.value(processed)
       case Throw(s: GrpcStatus) => Future.exception(s)
+      case Throw(rst: Reset) => Future.exception(GrpcStatus.Canceled())
       case Throw(e) => Future.exception(GrpcStatus.Internal(e.getMessage))
       case Return(Stream.Releasable(req, release)) =>
         val sz = req.payload.flatMap(_.body).map(_.length).getOrElse(0)

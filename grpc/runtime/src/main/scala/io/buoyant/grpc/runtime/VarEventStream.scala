@@ -1,6 +1,6 @@
 package io.buoyant.grpc.runtime
 
-import com.twitter.finagle.Failure
+import com.twitter.finagle.buoyant.h2
 import com.twitter.util._
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
@@ -40,7 +40,7 @@ object VarEventStream {
     case class Updated[T](value: Ev[T]) extends State[T]
 
     /** The consumer of the stream reset it. */
-    case class Reset(rst: GrpcStatus) extends State[Nothing]
+    case class Reset(rst: h2.Reset) extends State[Nothing]
 
     /** The event is no longer being observed and no further values will be produced. */
     object Closed extends State[Nothing]
@@ -94,15 +94,15 @@ class VarEventStream[+T](events: Event[VarEventStream.Ev[T]]) extends Stream[T] 
     events.respond(updateState(_))
   }
 
-  override def reset(rst: GrpcStatus): Unit = _reset(rst)
+  override def reset(rst: h2.Reset): Unit = _reset(rst)
 
   @tailrec
-  private[this] def _reset(rst: GrpcStatus): Unit = stateRef.get match {
+  private[this] def _reset(rst: h2.Reset): Unit = stateRef.get match {
     case State.Closed | State.Reset(_) =>
 
     case s@State.Recving(p) =>
       if (stateRef.compareAndSet(s, State.Reset(rst))) {
-        p.raise(Failure(rst, Failure.Interrupted))
+        p.setException(rst)
         val _ = updater.close()
       } else _reset(rst)
 

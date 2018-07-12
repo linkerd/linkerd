@@ -37,17 +37,8 @@ object ClientDispatcher {
       }
 
     loop()
-    frames.onEnd.respond {
-      case Return(_) =>
-        msgs.reset(GrpcStatus.Ok())
-
-      case Throw(e) =>
-        val status = e match {
-          case s: GrpcStatus => s
-          case rst: h2.Reset => GrpcStatus.fromReset(rst)
-          case e => GrpcStatus.Unknown(e.getMessage)
-        }
-        msgs.reset(status)
+    frames.onCancel.onSuccess { rst =>
+      msgs.reset(rst)
     }
 
     h2.Request("http", h2.Method.Post, "", path, frames)
