@@ -1,6 +1,8 @@
 package io.buoyant.namerd.iface
 
+import com.twitter.conversions.time._
 import com.twitter.finagle._
+import com.twitter.finagle.mux.ClientDiscardedRequestException
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
@@ -16,7 +18,6 @@ import java.nio.ByteBuffer
 import java.util.Random
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.control.NonFatal
-import com.twitter.conversions.time._
 
 object ThriftNamerInterface {
 
@@ -422,7 +423,7 @@ class ThriftNamerInterface(
             val (root, nodes, _) = mkTree(nameTree)
             Future.value(thrift.Bound(tstamp, thrift.BoundTree(root, nodes), ns))
 
-          case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
+          case Throw(e: ClientDiscardedRequestException) =>
             // Don't log interruptions.
             val failure = thrift.BindFailure(e.getMessage, 0, ref, ns)
             Future.exception(failure)
@@ -508,7 +509,7 @@ class ThriftNamerInterface(
             )
             Future.value(addr)
 
-          case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
+          case Throw(e: ClientDiscardedRequestException) =>
             // Don't log interruptions.
             val failure = thrift.AddrFailure(e.getMessage, 0, ref)
             Future.exception(failure)
