@@ -1,7 +1,6 @@
 package io.buoyant.namerd.iface
 
 import com.twitter.finagle._
-import com.twitter.finagle.mux.ClientDiscardedRequestException
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
@@ -423,7 +422,7 @@ class ThriftNamerInterface(
             val (root, nodes, _) = mkTree(nameTree)
             Future.value(thrift.Bound(tstamp, thrift.BoundTree(root, nodes), ns))
 
-          case Throw(e@ClientDiscardedRequestException(_)) =>
+          case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
             // Don't log interruptions.
             val failure = thrift.BindFailure(e.getMessage, 0, ref, ns)
             Future.exception(failure)
@@ -509,7 +508,7 @@ class ThriftNamerInterface(
             )
             Future.value(addr)
 
-          case Throw(e@ClientDiscardedRequestException(_)) =>
+          case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
             // Don't log interruptions.
             val failure = thrift.AddrFailure(e.getMessage, 0, ref)
             Future.exception(failure)
