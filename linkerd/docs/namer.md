@@ -845,6 +845,30 @@ Key    | Required | Description
 prefix | yes      | Tells Linkerd to resolve the request path using the rewrite namer.
 name   | yes      | Attempt to match this name against the pattern and replace it with the configured name.
 
+## Built-In Namers
+
+The following namers are always available to be used in dtabs. They are prefixed with `/$/` instead
+of `/#/`, and can be used without explicitly adding them to the
+[`namers`](#namers-and-service-discovery) section of the config.
+
+### inet
+
+The inet namer does a DNS lookup for the given hostname and uses the given port.
+
+```
+/$/inet/<hostname>/<port>
+```
+
+### io.buoyant.rinet
+
+The rinet namer is like the inet namer but takes the hostname and port arguments in the reverse
+order.  This is often easier to work with than the inet namer because dtabs can only make prefix
+substitutions and we often wish to use a fixed port while varying the hostname.
+
+```
+/$/io.buoyant.rinet/<port>/<hostname>
+```
+
 <a name="rewritingNamers"></a>
 ## Rewriting Namers
 
