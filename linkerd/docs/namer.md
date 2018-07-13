@@ -862,7 +862,8 @@ The inet namer does a DNS lookup for the given hostname and uses the given port.
 ### io.buoyant.rinet
 
 The rinet namer is like the inet namer but takes the hostname and port arguments in the reverse
-order.
+order.  This is often easier to work with than the inet namer because dtabs can only make prefix
+substitutions and we often wish to use a fixed port while varying the hostname.
 
 ```
 /$/io.buoyant.rinet/<port>/<hostname>
