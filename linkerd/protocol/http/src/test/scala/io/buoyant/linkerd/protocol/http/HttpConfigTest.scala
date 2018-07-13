@@ -1,12 +1,14 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.{Method, Request}
 import com.twitter.finagle.{Dtab, Path, Stack}
+import com.twitter.util.Future
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.RouterConfig
-import io.buoyant.linkerd.protocol.{HttpConfig, HttpInitializer}
+import io.buoyant.linkerd.{IdentifierInitializer, RouterConfig}
+import io.buoyant.linkerd.protocol.{HttpConfig, HttpIdentifierConfig, HttpInitializer}
 import io.buoyant.router.Http
-import io.buoyant.router.RoutingFactory.IdentifiedRequest
+import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier}
 import io.buoyant.router.http.TimestampHeaderFilter
 import io.buoyant.test.Awaits
 import io.buoyant.test.FunSuite
@@ -122,6 +124,31 @@ class HttpConfigTest extends FunSuite with Awaits {
     )
   }
 
+  test("identifier gets router params") {
+    import TestIdentifierInitializer._
+
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.test
+                  |servers:
+                  |- port: 5000
+      """.stripMargin
+
+    val mapper = Parser.objectMapper(yaml, Iterable(Seq(HttpInitializer), Seq(TestIdentifierInitializer)))
+    val config = mapper.readValue[RouterConfig](yaml).asInstanceOf[HttpConfig]
+
+    // Scala doesn't automatically pick up this implicit for some reason.
+    // val params = Stack.Params.empty + Test("foo")
+    val params = Stack.Params.empty.+(Test("foo"))(param)
+    val identifier = config.routerParams(params)[Http.param.HttpIdentifier]
+      .id(Path.read("/svc"), () => Dtab.empty)
+    assert(
+      await(identifier(Request())).asInstanceOf[IdentifiedRequest[Request]].dst.path ==
+        Path.read("/foo")
+    )
+  }
+
   test("timestamp header") {
     val yaml = s"""
                   |protocol: http
@@ -137,5 +164,31 @@ class HttpConfigTest extends FunSuite with Awaits {
       .serverParams[TimestampHeaderFilter.Param]
     assert(timestamper.header.contains("x-request-start"))
 
+  }
+}
+
+class TestIdentifierInitializer extends IdentifierInitializer {
+  override def configClass = classOf[TestIdentifierConfig]
+  override val configId = "io.l5d.test"
+}
+object TestIdentifierInitializer extends TestIdentifierInitializer {
+  case class Test(value: String)
+  implicit val param = new Stack.Param[Test] {
+    override def default = Test("default")
+  }
+}
+
+case class TestIdentifierConfig() extends HttpIdentifierConfig {
+  import TestIdentifierInitializer._
+
+  override def newIdentifier(
+    prefix: Path,
+    baseDtab: () => Dtab,
+    routerParams: Stack.Params
+  ): Identifier[Request] = {
+    println("PARAMS")
+    routerParams.foreach(println)
+    val value = routerParams[Test].value
+    req => Future.value(new IdentifiedRequest(Dst.Path(Path.read(s"/$value")), req))
   }
 }
