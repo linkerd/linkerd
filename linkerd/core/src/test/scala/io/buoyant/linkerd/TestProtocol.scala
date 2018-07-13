@@ -132,7 +132,7 @@ case class Fancy(fancy: Option[Boolean]) extends RouterConfig {
   override def protocol: ProtocolInitializer = TestProtocol.Fancy
 
   @JsonIgnore
-  override def routerParams: Params = super.routerParams
+  override def routerParams(params: Params): Params = super.routerParams(params)
     .maybeWith(fancy.map(FancyParam(_)))
 }
 

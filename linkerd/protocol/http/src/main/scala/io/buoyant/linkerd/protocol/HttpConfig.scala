@@ -244,7 +244,7 @@ case class HttpConfig(
   }
 
   @JsonIgnore
-  private[this] def routerParamsPartial: Stack.Params = super.routerParams
+  override def routerParams(params: Stack.Params): Stack.Params = super.routerParams(params)
     .maybeWith(httpAccessLog.map(AccessLogger.param.File.apply))
     .maybeWith(httpAccessLogRollPolicy.map(Policy.parse _ andThen AccessLogger.param.RollPolicy.apply))
     .maybeWith(httpAccessLogAppend.map(AccessLogger.param.Append.apply))
@@ -257,9 +257,6 @@ case class HttpConfig(
     .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
     .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
-
-  @JsonIgnore
-  override def routerParams = routerParamsPartial
-    .maybeWith(combinedIdentifier(routerParamsPartial))
-    .maybeWith(tracePropagator.map(tp => HttpTracePropagatorConfig.Param(tp.mk(routerParamsPartial))))
+    .maybeWith(combinedIdentifier(params))
+    .maybeWith(tracePropagator.map(tp => HttpTracePropagatorConfig.Param(tp.mk(params))))
 }

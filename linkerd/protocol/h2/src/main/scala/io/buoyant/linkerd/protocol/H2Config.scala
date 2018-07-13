@@ -120,17 +120,14 @@ case class H2Config(
   }
 
   @JsonIgnore
-  private[this] def routerParamsPartial: Stack.Params =
-    (super.routerParams + identifierParam)
+  override def routerParams(params: Stack.Params): Stack.Params =
+    (super.routerParams(params) + identifierParam)
       .maybeWith(h2AccessLog.map(H2AccessLogger.param.File.apply))
       .maybeWith(h2AccessLogRollPolicy.map(Policy.parse _ andThen H2AccessLogger.param.RollPolicy.apply))
       .maybeWith(h2AccessLogAppend.map(H2AccessLogger.param.Append.apply))
       .maybeWith(h2AccessLogRotateCount.map(H2AccessLogger.param.RotateCount.apply))
       .maybeWith(loggerParam)
-
-  @JsonIgnore
-  override def routerParams: Stack.Params = routerParamsPartial
-    .maybeWith(tracePropagator.map(tp => H2TracePropagatorConfig.Param(tp.mk(routerParamsPartial))))
+      .maybeWith(tracePropagator.map(tp => H2TracePropagatorConfig.Param(tp.mk(params))))
 
   private[this] def identifierParam: H2.Identifier = identifier match {
     case None => h2.HeaderTokenIdentifier.param

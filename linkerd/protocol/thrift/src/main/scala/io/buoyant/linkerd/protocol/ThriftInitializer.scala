@@ -2,9 +2,10 @@ package io.buoyant.linkerd
 package protocol
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty, JsonSubTypes, JsonTypeInfo}
+import com.twitter.finagle.Stack
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.Thrift.param
-import com.twitter.finagle.buoyant.{PathMatcher, ParamsMaybeWith}
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.buoyant.linkerd.{ThriftClientPrep, ThriftServerPrep, ThriftTraceInitializer}
 import io.buoyant.config.types.ThriftProtocol
 import io.buoyant.router.Thrift
@@ -59,7 +60,7 @@ case class ThriftConfig(
   @JsonIgnore
   override def protocol = ThriftInitializer
 
-  override def routerParams = super.routerParams
+  override def routerParams(params: Stack.Params) = super.routerParams(params)
     .maybeWith(thriftMethodInDst.map(Thrift.param.MethodInDst(_)))
     .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
 }

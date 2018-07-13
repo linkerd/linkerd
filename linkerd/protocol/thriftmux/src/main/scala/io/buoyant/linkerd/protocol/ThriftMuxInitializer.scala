@@ -60,7 +60,7 @@ case class ThriftMuxConfig(
   @JsonIgnore
   override def protocol = ThriftMuxInitializer
 
-  override def routerParams = super.routerParams
+  override def routerParams(params: Stack.Params) = super.routerParams(params)
     .maybeWith(thriftMethodInDst.map(Thrift.param.MethodInDst(_)))
     .maybeWith(thriftProtocol.map(proto => param.ProtocolFactory(proto.factory)))
 }
