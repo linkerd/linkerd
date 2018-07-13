@@ -1,3 +1,29 @@
+## 1.4.5 2018-07-13
+
+Linkerd 1.4.5 contains some minor bugfixes and introduces two much-requested features. First, it is
+now possible to selectively disable Linkerd's admin endpoints, e.g., keep the UI functional but to
+disable the shutdown endpoint. A huge thanks to [Robert Panzer](https://github.com/robertpanzer) for
+all his hard work on this.
+
+Second, we've added experimental support for the [OpenJ9](https://www.eclipse.org/openj9/) JVM.
+Preliminary tests with OpenJ9 exhibit a 3x reduction in startup time, a 40% reduction in memory
+footprint, and a 3x reduction in p99 latency. You can find a Linkerd+OpenJ9 Docker image at
+`buoyantio/linkerd:1.4.5-openj9-experimental` on
+[Docker Hub](https://hub.docker.com/r/buoyantio/linkerd/tags/).
+
+Full release notes:
+
+* Add an OpenJ9 configuration for building a Docker image with the OpenJ9 JVM
+* Fix a NullPointerException when using the -validate flag
+* Fix an error where diagnostic tracing did not work when receiving a chunk encoded response
+* Admin
+  * Add a `security` section to the admin config that controls which admin endpoints are enabled
+* HTTP/2
+  * Fix a memory leak when there are a large number of reset streams
+  * Allow HTTP/2 response classifiers to be loaded as plugins
+* Namerd
+  * Fix a memory leak in the the io.l5d.mesh interpreter when idle services are reaped
+
 ## 1.4.4 2018-07-06
 
 Linkerd 1.4.4 continues our focus on diagnostics, performance, and stability. This release features 
