@@ -15,6 +15,18 @@ class RetryableIdempotent5XXInitializer extends ResponseClassifierInitializer {
 
 object RetryableIdempotent5XXInitializer extends RetryableIdempotent5XXInitializer
 
+class RetryableAll5XXConfig extends H2ClassifierConfig {
+  def mk: H2Classifier =
+    H2Classifiers.RetryableAllFailures
+}
+
+class RetryableAll5XXInitializer extends ResponseClassifierInitializer {
+  val configClass = classOf[RetryableAll5XXConfig]
+  override val configId = "io.l5d.h2.retryableAll5XX"
+}
+
+object RetryableAll5XXInitializer extends RetryableAll5XXInitializer
+
 class RetryableRead5XXConfig extends H2ClassifierConfig {
   def mk: H2Classifier =
     H2Classifiers.RetryableReadFailures

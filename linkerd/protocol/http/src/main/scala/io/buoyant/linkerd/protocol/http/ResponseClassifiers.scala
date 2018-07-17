@@ -1,15 +1,15 @@
 package io.buoyant.linkerd.protocol.http
 
 import com.twitter.finagle.buoyant.linkerd.Headers
-import com.twitter.finagle.service.ResponseClassifier
-import com.twitter.finagle.service.RetryPolicy.{TimeoutAndWriteExceptionsOnly, ChannelClosedExceptionsOnly}
-import com.twitter.finagle.http.{Method, Request, Response, Status}
 import com.twitter.finagle.http.service.HttpResponseClassifier
-import com.twitter.finagle.service.{ResponseClass, ReqRep, ResponseClassifier}
+import com.twitter.finagle.http.{Method, Request, Response, Status}
+import com.twitter.finagle.service.RetryPolicy.{ChannelClosedExceptionsOnly, TimeoutAndWriteExceptionsOnly}
+import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier}
 import com.twitter.util.{Return, Throw, Try}
-import io.buoyant.config.ConfigInitializer
 import io.buoyant.linkerd.{ResponseClassifierConfig, ResponseClassifierInitializer}
 import io.buoyant.router.ClassifiedRetries
+
+import scala.collection.Set
 
 object ResponseClassifiers {
 
@@ -44,6 +44,12 @@ object ResponseClassifiers {
     val Idempotent = ReadOnly.withMethods(Set(
       Method.Put,
       Method.Delete
+    ))
+
+    /** Matches all Http Methods **/
+    val All = Idempotent.withMethods(Set(
+      Method.Patch,
+      Method.Post
     ))
   }
 
@@ -90,6 +96,15 @@ object ResponseClassifiers {
   val RetryableIdempotentFailures: ResponseClassifier =
     ResponseClassifier.named("RetryableIdempotentFailures") {
       case ReqRep(Requests.Idempotent(), RetryableResult()) => ResponseClass.RetryableFailure
+    }
+
+  /**
+   * Classifies 5XX responses as failures. All Http Methods
+   * are classified as retryable.
+   */
+  val RetryableAllFailures: ResponseClassifier =
+    ResponseClassifier.named("RetryableAllFailures") {
+      case ReqRep(Requests.All(), RetryableResult()) => ResponseClass.RetryableFailure
     }
 
   /**
@@ -144,6 +159,17 @@ class RetryableIdempotent5XXInitializer extends ResponseClassifierInitializer {
 }
 
 object RetryableIdempotent5XXInitializer extends RetryableIdempotent5XXInitializer
+
+class RetryableAll5XXConfig extends ResponseClassifierConfig {
+  def mk: ResponseClassifier = ResponseClassifiers.RetryableAllFailures
+}
+
+class RetryableAll5XXInitializer extends ResponseClassifierInitializer {
+  val configClass = classOf[RetryableAll5XXConfig]
+  override val configId = "io.l5d.http.retryableAll5XX"
+}
+
+object RetryableAll5XXInitializer extends RetryableAll5XXInitializer
 
 class RetryableRead5XXConfig extends ResponseClassifierConfig {
   def mk: ResponseClassifier = ResponseClassifiers.RetryableReadFailures

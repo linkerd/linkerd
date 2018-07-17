@@ -165,6 +165,50 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     }
   }
 
+  test("retryable all failure") {
+    @volatile var i = 0
+    val downstream = Downstream("ds", Service.mk { req =>
+      if (i == 0) {
+        i += 1
+        val rsp = Response(Status.InternalServerError, Stream.empty)
+        Future.value(rsp)
+      } else {
+        i += 1
+        Future.value(Response(Status.Ok, Stream.empty))
+      }
+    })
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  experimental: true
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.h2.retryableAll5XX
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request("http", Method.Post, "foo", "/", Stream.empty())
+    val rsp = await(client(req))
+    await(rsp.stream.readToEnd)
+
+    assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
+    assert(stats.counters(Seq("rt", "h2", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
+    assert(stats
+      .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
+    assert(stats
+      .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
+  }
+
   ignore("retryable failure") {
     // disabled b/c retries isn't done yet
     @volatile var i = 0

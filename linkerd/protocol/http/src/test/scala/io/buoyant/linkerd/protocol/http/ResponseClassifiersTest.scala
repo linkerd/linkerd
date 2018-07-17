@@ -42,6 +42,8 @@ class ResponseClassifiersTest extends FunSuite {
 
   for (
     (classifier, retryMethods) <- Map(
+      ResponseClassifiers.RetryableAllFailures ->
+        Set(Method.Get, Method.Head, Method.Put, Method.Delete, Method.Options, Method.Trace, Method.Post, Method.Patch),
       ResponseClassifiers.RetryableIdempotentFailures ->
         Set(Method.Get, Method.Head, Method.Put, Method.Delete, Method.Options, Method.Trace),
       ResponseClassifiers.RetryableReadFailures ->
@@ -138,7 +140,8 @@ class ResponseClassifiersTest extends FunSuite {
     init <- Seq(
       NonRetryable5XXInitializer,
       RetryableIdempotent5XXInitializer,
-      RetryableRead5XXInitializer
+      RetryableRead5XXInitializer,
+      RetryableAll5XXInitializer
     )
   ) {
     val kind = init.configId
