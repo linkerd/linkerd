@@ -166,6 +166,7 @@ experimental | _required_ | Because this storage is still considered experimenta
 host | `localhost` | The location of the etcd API.
 port | `2379` | The port used to connect to the etcd API.
 pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.
+tls | no tls | Use TLS encryption for connections to Etcd. See [Namer TLS](#namer-tls).
 
 ## Consul
 
@@ -187,17 +188,16 @@ readConsistencyMode | `default` | Select between [Consul API consistency modes](
 writeConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for writes.
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 backoff |  exponential backoff from 1ms to 1min | Object that determines which backoff algorithm should be used. See [retry backoff](https://linkerd.io/config/head/linkerd#retry-backoff-parameters)
-tls | no tls | Use TLS during connection with Consul. see [Consul Encryption](https://www.consul.io/docs/agent/encryption.html) and [TLS](#consul-tls).
+tls | no tls | Use TLS during connection with Consul. see [Consul Encryption](https://www.consul.io/docs/agent/encryption.html) and [Namer TLS](#namer-tls).
 
-### Consul TLS
+### Namer TLS
 
->Linkerd supports encrypted communication via TLS to Consul.
+> Linkerd supports encrypted communication via TLS to `io.l5d.consul` and `io.l5d.etcd` namer backends.
 
 ```yaml
 namers:
-- kind: io.l5d.consul
-  host: localhost
-  port: 8500
+- kind: ...
+  host: ...
   tls:
     disableValidation: false
     commonName: consul.io

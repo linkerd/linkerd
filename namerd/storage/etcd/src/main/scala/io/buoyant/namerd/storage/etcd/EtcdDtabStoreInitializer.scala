@@ -23,7 +23,7 @@ case class EtcdConfig(
   override def mkDtabStore(params: Stack.Params): DtabStore = {
     val tlsParams = tls match {
       case Some(tlsConfig) => tlsConfig.params
-      case _ => Stack.Params.empty
+      case None => Stack.Params.empty
     }
     new EtcdDtabStore(new Key(
       pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
