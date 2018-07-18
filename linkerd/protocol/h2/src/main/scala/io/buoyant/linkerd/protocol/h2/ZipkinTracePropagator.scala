@@ -5,6 +5,7 @@ import java.util.Base64
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.Sampler
 import com.twitter.finagle.buoyant.h2.{Headers, LinkerdHeaders, Request}
+import com.twitter.finagle.http.util.StringUtil
 import com.twitter.finagle.tracing.{Flags, SpanId, TraceId}
 import com.twitter.util.Try
 import io.buoyant.linkerd.{TracePropagator, TracePropagatorInitializer}
@@ -18,18 +19,13 @@ case class ZipkinTracePropagatorConfig() extends H2TracePropagatorConfig {
   override def mk(params: Stack.Params): TracePropagator[Request] = new ZipkinTracePropagator
 }
 
-class ZipkinTracePropagator extends LinkerdTracePropagator {
+class ZipkinTracePropagator extends TracePropagator[Request] {
   /**
    * Read the trace id from the request, if it has one.
    */
   override def traceId(req: Request): Option[TraceId] = {
     var traceId = ZipkinTrace.get(req.headers)
-    // retro compatible.
-    if (traceId.isEmpty) {
-      traceId = super.traceId(req)
-    } else {
-      LinkerdHeaders.Ctx.Trace.clear(req.headers)
-    }
+    LinkerdHeaders.Ctx.Trace.clear(req.headers)
     traceId
   }
 
@@ -40,12 +36,7 @@ class ZipkinTracePropagator extends LinkerdTracePropagator {
    */
   override def sampler(req: Request): Option[Sampler] = {
     var sampler = ZipkinTrace.getSampler(req.headers).map(Sampler(_))
-    // retro compatible
-    if (sampler.isEmpty) {
-      sampler = super.sampler(req)
-    } else {
-      LinkerdHeaders.Sample.clear(req.headers)
-    }
+    LinkerdHeaders.Sample.clear(req.headers)
     sampler
   }
 
@@ -56,8 +47,6 @@ class ZipkinTracePropagator extends LinkerdTracePropagator {
     req: Request,
     traceId: TraceId
   ): Unit = {
-    super.setContext(req, traceId)
-    //always set header from here on
     ZipkinTrace.set(req.headers, traceId)
   }
 }
@@ -70,13 +59,26 @@ object ZipkinTrace {
   val ZipkinSampleHeader = "x-b3-sampled"
   val ZipkinFlagsHeader = "x-b3-flags"
 
-  def get(headers: Headers): Option[TraceId] =
-    Try(TraceId.apply(SpanId.fromString(headers.get(ZipkinTraceHeader).get), SpanId.fromString(headers.get(ZipkinParentHeader).get), SpanId.fromString(headers.get(ZipkinSpanHeader).get).get, Some(if (headers.get(ZipkinSampleHeader).get.toInt == 1) true else false), Flags.apply(headers.get(ZipkinFlagsHeader).get.toInt))).toOption
+  def get(headers: Headers): Option[TraceId] = {
+    val trace = caseInsensitiveGet(headers, ZipkinTraceHeader).flatMap(SpanId.fromString)
+    val parent = caseInsensitiveGet(headers, ZipkinParentHeader).flatMap(SpanId.fromString)
+    val span = caseInsensitiveGet(headers, ZipkinSpanHeader).flatMap(SpanId.fromString)
+    val sample = caseInsensitiveGet(headers, ZipkinSampleHeader).map(StringUtil.toBoolean)
+    val flags = caseInsensitiveGet(headers, ZipkinFlagsHeader).map(StringUtil.toSomeLong) match {
+      case Some(f) => Flags(f)
+      case None => Flags()
+    }
+    span.map { s =>
+      TraceId(trace, parent, s, sample, flags)
+    }
+  }
 
   def set(headers: Headers, id: TraceId): Unit = {
     val _ = headers.set(ZipkinSpanHeader, id.spanId.toString)
     val __ = headers.set(ZipkinTraceHeader, id.traceId.toString)
     val ___ = headers.set(ZipkinParentHeader, id.parentId.toString)
+    val ____ = headers.set(ZipkinSampleHeader, id.sampled.toString)
+    val _____ = headers.set(ZipkinFlagsHeader, id.flags.toString)
   }
 
   def getSampler(headers: Headers): Option[Float] =
@@ -88,4 +90,6 @@ object ZipkinTrace {
       }
     }
 
+  private def caseInsensitiveGet(headers: Headers, key: String): Option[String] =
+    headers.toSeq.iterator.collectFirst { case (k, v) if key.equalsIgnoreCase(k) => v }
 }
