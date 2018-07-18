@@ -158,7 +158,7 @@ perms | _required_ | A subset of the string "crwda" representing the permissions
 
 kind: `io.l5d.etcd`
 
-Stores the dtab in Etcd.
+Stores the dtab in etcd.
 
 Key | Default Value | Description
 --- | ------------- | -----------
@@ -166,7 +166,7 @@ experimental | _required_ | Because this storage is still considered experimenta
 host | `localhost` | The location of the etcd API.
 port | `2379` | The port used to connect to the etcd API.
 pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.
-tls | no tls | Use TLS encryption for connections to Etcd. See [Namer TLS](#namer-tls).
+tls | no tls | Use TLS encryption for connections to etcd. See [Namer TLS](#namer-tls).
 
 ## Consul
 
