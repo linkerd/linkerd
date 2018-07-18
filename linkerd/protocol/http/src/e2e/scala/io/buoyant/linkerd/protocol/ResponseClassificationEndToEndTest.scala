@@ -136,6 +136,49 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
   }
 
+  test("retryable Post failure") {
+    @volatile var i = 0
+    val downstream = Downstream("ds", Service.mk { req =>
+      if (i == 0) {
+        i += 1
+        val rsp = Response()
+        rsp.statusCode = 500
+        Future.value(rsp)
+      } else {
+        i += 1
+        Future.value(Response())
+      }
+    })
+    val config =
+      s"""|routers:
+          |- protocol: http
+          |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
+          |  service:
+          |    responseClassifier:
+          |      kind: io.l5d.http.retryableAll5XX
+          |  servers:
+          |  - port: 0
+          |""".stripMargin
+
+    val stats = new InMemoryStatsReceiver
+    val linker = Linker.load(config).configured(param.Stats(stats))
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = upstream(server)
+
+    val req = Request()
+    req.method = Method.Post
+    req.host = "foo"
+    await(client(req))
+
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")).isEmpty)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "failures")).isEmpty)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
+  }
+
   test("per service classification") {
     @volatile var i = 0
     val downstream = Downstream("ds", Service.mk { req =>

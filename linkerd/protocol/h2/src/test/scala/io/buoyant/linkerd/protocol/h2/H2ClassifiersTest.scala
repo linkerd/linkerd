@@ -42,6 +42,8 @@ class H2ClassifiersTest extends FunSuite {
 
   for (
     (classifier, retryMethods) <- Map(
+      new RetryableAll5XXConfig().mk ->
+        Set(Method.Get, Method.Head, Method.Put, Method.Delete, Method.Options, Method.Trace, Method.Post, Method.Patch),
       new RetryableIdempotent5XXConfig().mk ->
         Set(Method.Get, Method.Head, Method.Put, Method.Delete, Method.Options, Method.Trace),
       new RetryableRead5XXConfig().mk ->
@@ -198,6 +200,7 @@ class H2ClassifiersTest extends FunSuite {
     init <- Seq(
       NonRetryable5XXInitializer,
       RetryableIdempotent5XXInitializer,
+      RetryableAll5XXInitializer,
       RetryableRead5XXInitializer
     )
   ) {

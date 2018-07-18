@@ -38,6 +38,12 @@ object H2Classifiers {
       Method.Put,
       Method.Delete
     ))
+
+    /** Matches all Http Methods **/
+    val All: ByMethod = Idempotent.withMethods(Set(
+      Method.Post,
+      Method.Patch
+    ))
   }
 
   object Responses {
@@ -89,6 +95,30 @@ object H2Classifiers {
       case H2ReqRepFrame(Requests.Idempotent(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
         ResponseClass.RetryableFailure
       case H2ReqRepFrame(Requests.Idempotent(), Return((_, Some(Throw(e))))) if RetryableResult.retryableThrow(Throw(e)) =>
+        ResponseClass.RetryableFailure
+      case H2ReqRepFrame(_, Throw(_)) =>
+        ResponseClass.NonRetryableFailure
+      case H2ReqRepFrame(_, Return((_, Some(Throw(_))))) =>
+        ResponseClass.NonRetryableFailure
+      case _ =>
+        ResponseClass.Success
+    }
+  }
+
+  /**
+   * Classifies 5XX responses as failures. All Http Methods
+   * are classified as retryable.
+   */
+  case object RetryableAllFailures extends H2Classifier {
+    override val responseClassifier: PartialFunction[H2ReqRep, ResponseClass] = {
+      case H2ReqRep(Requests.All(), RetryableResult()) => ResponseClass.RetryableFailure
+      case H2ReqRep(_, Return(Responses.Failure())) => ResponseClass.NonRetryableFailure
+      case H2ReqRep(_, Throw(_)) => ResponseClass.NonRetryableFailure
+    }
+    override val streamClassifier: PartialFunction[H2ReqRepFrame, ResponseClass] = {
+      case H2ReqRepFrame(Requests.All(), Throw(e)) if RetryableResult.retryableThrow(Throw(e)) =>
+        ResponseClass.RetryableFailure
+      case H2ReqRepFrame(Requests.All(), Return((_, Some(Throw(e))))) if RetryableResult.retryableThrow(Throw(e)) =>
         ResponseClass.RetryableFailure
       case H2ReqRepFrame(_, Throw(_)) =>
         ResponseClass.NonRetryableFailure

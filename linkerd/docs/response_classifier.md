@@ -19,7 +19,7 @@ These parameters are available to the classifier regardless of kind. Classifiers
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `io.l5d.http.nonRetryable5XX` | Either [`io.l5d.http.nonRetryable5XX`](#non-retryable-5xx), [`io.l5d.h2.nonRetryable5XX`](#non-retryable-5xx), [`io.l5d.http.retryableRead5XX`](#retryable-read-5xx), [`io.l5d.h2.retryableRead5XX`](#retryable-read-5xx), [`io.l5d.http.retryableIdempotent5XX`](#retryable-idempotent-5xx), or [`io.l5d.h2.retryableIdempotent5XX`](#retryable-idempotent-5xx).
+kind | `io.l5d.http.nonRetryable5XX` | Either [`io.l5d.http.nonRetryable5XX`](#non-retryable-5xx), [`io.l5d.h2.nonRetryable5XX`](#non-retryable-5xx), [`io.l5d.http.retryableRead5XX`](#retryable-read-5xx), [`io.l5d.h2.retryableRead5XX`](#retryable-read-5xx), [`io.l5d.http.retryableIdempotent5XX`](#retryable-idempotent-5xx), [`io.l5d.h2.retryableIdempotent5XX`](#retryable-idempotent-5xx), [`io.l5d.http.retryableAll5XX`](#retryable-all-5xx), or [`io.l5d.h2.retryableAll5XX`](#retryable-all-5xx).
 
 
 ## Non-Retryable 5XX
@@ -52,6 +52,19 @@ kind: `io.l5d.h2.retryableIdempotent5XX`
 
 Like _io.l5d.http.retryableRead5XX_/_io.l5d.h2.retryableRead5XX_, but `PUT` and
 `DELETE` requests may also be retried.
+
+<aside class="warning">
+Requests with chunked bodies are NEVER considered to be retryable.
+</aside>
+
+## Retryable All 5XX
+
+kind: `io.l5d.http.retryableAll5XX`
+
+kind: `io.l5d.h2.retryableAll5XX`
+
+Like _io.l5d.http.retryableIdempotent5XX_/_io.l5d.h2.retryableIdempotent5XX_, but `POST` and
+`PATCH` requests may also be retried.
 
 <aside class="warning">
 Requests with chunked bodies are NEVER considered to be retryable.
