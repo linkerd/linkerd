@@ -7,6 +7,7 @@ import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{ChannelClosedException, RequestTimeoutException}
 import com.twitter.util._
 import io.buoyant.config.Parser
+import io.buoyant.linkerd.protocol.h2.grpc.DefaultInitializer
 import io.buoyant.linkerd.{ResponseClassifierInitializer, RouterConfig}
 import io.buoyant.linkerd.protocol.{H2DefaultSvc, H2Initializer}
 import org.scalatest.FunSuite
@@ -201,7 +202,8 @@ class H2ClassifiersTest extends FunSuite {
       NonRetryable5XXInitializer,
       RetryableIdempotent5XXInitializer,
       RetryableAll5XXInitializer,
-      RetryableRead5XXInitializer
+      RetryableRead5XXInitializer,
+      DefaultInitializer
     )
   ) {
     val kind = init.configId
