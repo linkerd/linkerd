@@ -79,8 +79,8 @@ object ZipkinTrace {
     val _ = headers.set(ZipkinSpanHeader, id.spanId.toString)
     val __ = headers.set(ZipkinTraceHeader, id.traceId.toString)
     val ___ = headers.set(ZipkinParentHeader, id.parentId.toString)
-    val ____ = headers.set(ZipkinSampleHeader, id.sampled.toString)
-    val _____ = headers.set(ZipkinFlagsHeader, id.flags.toString)
+    val ____ = headers.set(ZipkinSampleHeader, (if ((id.sampled exists { _ == true })) 1 else 0).toString)
+    val _____ = headers.set(ZipkinFlagsHeader, id.flags.toLong.toString)
   }
 
   def getSampler(headers: HeaderMap): Option[Float] =

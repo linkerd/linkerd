@@ -122,8 +122,9 @@ class Admin(
   tlsCfg: Option[TlsServerConfig],
   workers: Int,
   stats: StatsReceiver,
-  securityConfig: Option[AdminSecurityConfig]) {
-  
+  securityConfig: Option[AdminSecurityConfig]
+) {
+
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
