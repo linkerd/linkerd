@@ -32,7 +32,7 @@ class DefaultConfig extends H2ClassifierConfig {
 
 class DefaultInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[DefaultConfig]
-  override val configId = "io.l5d.h2.grpc.Default"
+  override val configId = "io.l5d.h2.grpc.default"
 }
 
 object DefaultInitializer extends DefaultInitializer
@@ -43,7 +43,7 @@ class CompliantConfig extends H2ClassifierConfig {
 
 class CompliantInitializer extends ResponseClassifierInitializer {
   val configClass = classOf[DefaultConfig]
-  override val configId = "io.l5d.h2.grpc.Compliant"
+  override val configId = "io.l5d.h2.grpc.compliant"
 }
 
 object CompliantInitializer extends CompliantInitializer
