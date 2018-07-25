@@ -15,7 +15,7 @@ import com.twitter.util.{Closable, Future, Time, Try}
 
 trait Api {
   def getAppIds(): Future[Api.AppIds]
-  def getAddrs(app: Path): Future[Set[Address]]
+  def getAddrs(app: Path, watchState: Option[WatchState] = None): Future[Set[Address]]
 }
 
 object Api {
@@ -129,10 +129,10 @@ object Api {
       case _ => Future.exception(UnexpectedResponse(rsp))
     }
 
-  private[v2] def rspToAddrs(rsp: http.Response, useHealthCheck: Boolean): Future[Set[Address]] =
+  private[v2] def rspToAppRsp(rsp: http.Response): Future[AppRsp] =
     rsp.status match {
       case http.Status.Ok =>
-        val addrs = readJson[AppRsp](rsp.content).map(toAddresses(_, useHealthCheck))
+        val addrs = readJson[AppRsp](rsp.content)
         Future.const(addrs)
       case _ =>
         Future.exception(UnexpectedResponse(rsp))
@@ -151,7 +151,7 @@ object Api {
     }
   }
 
-  private[this] def toAddresses(appRsp: AppRsp, useHealthCheck: Boolean): Set[Address] =
+  private[v2] def toAddresses(appRsp: AppRsp, useHealthCheck: Boolean): Set[Address] =
     appRsp.app match {
       case Some(App(_, discoveryPort(port), Some(tasks))) =>
         tasks.collect {
@@ -188,8 +188,14 @@ private class AppIdApi(client: Api.Client, apiPrefix: String, useHealthCheck: Bo
     Trace.letClear(client(req)).flatMap(rspToAppIds)
   }
 
-  def getAddrs(app: Path): Future[Set[Address]] = {
+  def getAddrs(app: Path, watchState: Option[WatchState] = None): Future[Set[Address]] = {
     val req = http.Request(s"$apiPrefix/apps${app.show}?embed=app.tasks")
-    Trace.letClear(client(req)).flatMap(rspToAddrs(_, useHealthCheck))
+    watchState.foreach(_.recordApiCall(req))
+    Trace.letClear(client(req)).flatMap { rep =>
+      rspToAppRsp(rep).map { appsResp =>
+        watchState.foreach(_.recordResponse(appsResp))
+        toAddresses(appsResp, useHealthCheck)
+      }
+    }
   }
 }
