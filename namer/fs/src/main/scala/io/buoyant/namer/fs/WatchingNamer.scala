@@ -2,9 +2,12 @@ package io.buoyant.namer.fs
 
 import com.twitter.finagle._
 import com.twitter.finagle.addr.WeightedAddress
+import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
 import io.buoyant.namer.EnumeratingNamer
 import java.nio.file.{Path => NioPath}
 
@@ -46,21 +49,25 @@ object WatchingNamer {
   }
 }
 
-class WatchingNamer(rootDir: NioPath, prefix: Path) extends EnumeratingNamer {
+class WatchingNamer(rootDir: NioPath, prefix: Path) extends EnumeratingNamer with Admin.WithHandlers {
   import WatchingNamer._
 
-  @volatile private[this] var rootCache: Watcher.File.Children = Map.empty
   private[this] lazy val root = Watcher(rootDir)
 
   def lookup(path: Path): Activity[NameTree[Name]] =
-    root.children.flatMap(lookup(prefix, path, _))
+    root.children.underlying.flatMap(lookup(prefix, path, _))
 
   override def getAllNames: Activity[Set[Path]] =
-    root.children.map { children =>
+    root.children.underlying.map { children =>
       children.keySet.map { child =>
         prefix ++ Path.Utf8(child)
       }
     }
+
+  override val adminHandlers: Seq[Admin.Handler] = {
+    val p = prefix.drop(1).show.drop(1) // drop leading "/#/"
+    Seq(Admin.Handler(s"/namer_state/$p.json", new WatchingNamerStateHandler(root)))
+  }
 
   /** Recursively resolve `path` in the given directory. */
   private[this] def lookup(
@@ -87,9 +94,9 @@ class WatchingNamer(rootDir: NioPath, prefix: Path) extends EnumeratingNamer {
 
           Activity.value(NameTree.Leaf(Name.Bound(addr, id, residual)))
 
-        case Some(Watcher.File.Dir(children)) =>
+        case Some(Watcher.File.Dir(children, _)) =>
           log.debug("fs lookup %s dir %s", prefix.show, name)
-          children.flatMap(lookup(id, residual, _))
+          children.underlying.flatMap(lookup(id, residual, _))
 
         case None =>
           log.debug("fs lookup %s missing %s", prefix.show, name)
@@ -97,5 +104,35 @@ class WatchingNamer(rootDir: NioPath, prefix: Path) extends EnumeratingNamer {
       }
 
     case _ => Activity.value(NameTree.Neg)
+  }
+}
+
+class WatchingNamerStateHandler(
+  root: => Watcher.File.Dir
+) extends Service[Request, Response] {
+  private[this] val mapper = Parser.jsonObjectMapper(Nil)
+
+  def render(dir: Watcher.File.Dir): Map[String, Any] = {
+    val meta = Map(
+      "events" -> dir.state,
+      "state" -> dir.children.stateSnapshot()
+    )
+    val children = dir.children.value match {
+      case Activity.Ok(c) => c.collect {
+        case (child, file: Watcher.File.Dir) => (child, render(file))
+      }
+      case _ => Map.empty
+    }
+    meta ++ children
+  }
+
+  override def apply(request: Request): Future[Response] = {
+
+    val json = mapper.writeValueAsString(render(root))
+
+    val res = Response()
+    res.mediaType = MediaType.Json
+    res.contentString = json
+    Future.value(res)
   }
 }
