@@ -47,13 +47,23 @@ class ForwardClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: Re
       }
 
       val headersLike = implicitly[HeadersLike[H]]
-      headersLike.set(requestLike.headers(req), "x-forwarded-client-cert", clientCertHeader.result)
+      headersLike.set(requestLike.headers(req), ForwardClientCertFilter.Header, clientCertHeader.result)
     })
     svc(req)
   }
 }
 
+class ClearForwardedClientCertFilter[Req, H: HeadersLike, Rep](implicit requestLike: RequestLike[Req, H]) extends SimpleFilter[Req, Rep] {
+  override def apply(req: Req, svc: Service[Req, Rep]): Future[Rep] = {
+    val headersLike = implicitly[HeadersLike[H]]
+    headersLike.remove(requestLike.headers(req), ForwardClientCertFilter.Header)
+    svc(req)
+  }
+}
+
 object ForwardClientCertFilter {
+
+  val Header = "x-forwarded-client-cert"
 
   case class Enabled(enabled: Boolean)
   implicit object Param extends Stack.Param[Enabled] {
@@ -68,8 +78,7 @@ object ForwardClientCertFilter {
       val description = "Adds a 'x-forwarded-client-cert' header to requests as they are received"
       def make(_param: Enabled, next: ServiceFactory[Req, Rep]) = {
         if (_param.enabled) new ForwardClientCertFilter().andThen(next)
-        else next
+        else new ClearForwardedClientCertFilter().andThen(next)
       }
     }
 }
-
