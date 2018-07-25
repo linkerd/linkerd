@@ -10,11 +10,6 @@ import io.buoyant.marathon.v2.Api.AppRsp
 
 class WatchState {
 
-  private[this] val mapper = new ObjectMapper with ScalaObjectMapper
-
-  mapper.registerModule(DefaultScalaModule)
-  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-
   @JsonIgnore
   def recordApiCall(req: Request): Unit = synchronized {
     request = Some(s"${req.method} ${req.uri}")

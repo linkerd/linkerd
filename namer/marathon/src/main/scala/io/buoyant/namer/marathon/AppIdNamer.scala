@@ -2,7 +2,7 @@ package io.buoyant.namer.marathon
 
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Request, Response, Status}
+import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
@@ -30,7 +30,7 @@ class AppIdNamer(
     marathonWatchState: WatchState
   )
   private[this] implicit val _timer = timer
-  private[this] lazy val handlerPrefix = prefix.drop(1).show.drop(1)
+  private[this] val handlerPrefix = prefix.drop(1).show.drop(1)
   private[this] var appToAddrMap: Map[Path, InstrumentedMarathonWatch] = Map.empty
 
   /**
@@ -188,6 +188,7 @@ class AppIdNamer(
       }
       val json = mapper.writeValueAsString(currentState)
       val rep = Response(request.version, Status.Ok)
+      rep.mediaType = MediaType.Json
       rep.contentString = json
       Future.value(rep)
     }
