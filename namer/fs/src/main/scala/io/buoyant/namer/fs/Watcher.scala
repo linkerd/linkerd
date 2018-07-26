@@ -4,6 +4,7 @@ import com.twitter.conversions.storage._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.namer.InstrumentedActivity
 import java.nio.file.{Path => NioPath, _}
 import java.nio.file.StandardWatchEventKinds._
 import scala.collection.JavaConverters._
@@ -18,7 +19,7 @@ object Watcher {
     type Children = Map[String, File]
 
     /** A directory of files */
-    case class Dir(children: Activity[Children]) extends File
+    case class Dir(children: InstrumentedActivity[Children], state: WatchState) extends File
 
     /** A regular file */
     sealed trait Reg extends File { def data: Activity[Buf] }
@@ -55,7 +56,9 @@ object Watcher {
   def apply(root: NioPath): File.Dir = {
     require(Files.isDirectory(root))
 
-    val children = Var.async[Activity.State[File.Children]](Activity.Pending) { state =>
+    val eventState = new WatchState()
+
+    val children = InstrumentedActivity[File.Children] { state =>
       log.debug("fs observing %s", root)
       @volatile var closed = false
 
@@ -73,6 +76,7 @@ object Watcher {
 
         var (updirs, upregs) = (dirs, regs)
         for (ev <- key.pollEvents.asScala) {
+          eventState.recordEvent(ev)
           ev.context match {
             case p: NioPath =>
               val child = root.resolve(p)
@@ -170,6 +174,6 @@ object Watcher {
       }
     }
 
-    File.Dir(Activity(children))
+    File.Dir(children, eventState)
   }
 }

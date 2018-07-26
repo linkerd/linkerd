@@ -17,7 +17,7 @@ case class FsInterpreterConfig(dtabFile: File) extends InterpreterConfig {
 
   @JsonIgnore
   private[this] def dtab: Activity[Dtab] =
-    Watcher(path.getParent).children.flatMap { children =>
+    Watcher(path.getParent).children.underlying.flatMap { children =>
       children.get(path.getFileName.toString) match {
         case Some(file: Watcher.File.Reg) => file.data
         case _ => Activity.pending
