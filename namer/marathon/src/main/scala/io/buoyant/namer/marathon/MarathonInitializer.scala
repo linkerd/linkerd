@@ -8,9 +8,8 @@ import com.twitter.finagle.tracing.NullTracer
 import com.twitter.io.Buf
 import com.twitter.util.{Duration, Return, Throw}
 import io.buoyant.config.types.Port
+import io.buoyant.marathon.v2.Api
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
-import io.buoyant.marathon.v2.{Api, AppIdNamer}
-
 import scala.util.control.NoStackTrace
 import scala.util.Random
 

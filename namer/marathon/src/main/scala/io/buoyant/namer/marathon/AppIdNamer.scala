@@ -1,9 +1,15 @@
-package io.buoyant.marathon.v2
+package io.buoyant.namer.marathon
 
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.twitter.finagle._
+import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.util._
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
+import io.buoyant.marathon.v2.{Api, WatchState}
+import io.buoyant.namer.InstrumentedVar
 import scala.util.control.NonFatal
 
 object AppIdNamer {
@@ -15,11 +21,17 @@ class AppIdNamer(
   prefix: Path,
   ttl: => Duration,
   timer: Timer = DefaultTimer
-) extends Namer {
+) extends Namer with Admin.WithHandlers {
 
   import AppIdNamer._
 
+  private[this] case class InstrumentedMarathonWatch(
+    instrumentedAddrs: InstrumentedVar[Addr],
+    marathonWatchState: WatchState
+  )
   private[this] implicit val _timer = timer
+  private[this] val handlerPrefix = prefix.drop(1).show.drop(1)
+  private[this] var appToAddrMap: Map[Path, InstrumentedMarathonWatch] = Map.empty
 
   /**
    * Accepts names in the form:
@@ -111,12 +123,13 @@ class AppIdNamer(
       case Some(addr) => addr
 
       case None =>
-        val addr = Var.async[Addr](Addr.Pending) { addr =>
+        val watch = new WatchState()
+        val addr = InstrumentedVar[Addr](Addr.Pending) { addr =>
           @volatile var initialized, stopped = false
           @volatile var pending: Future[_] = Future.never
 
           def loop(): Unit = if (!stopped) {
-            pending = api.getAddrs(app).respond {
+            pending = api.getAddrs(app, Some(watch)).respond {
               case Return(addrs) =>
                 initialized = true
                 addr() = if (addrs.isEmpty) Addr.Neg else Addr.Bound(addrs)
@@ -147,9 +160,38 @@ class AppIdNamer(
             Future.Unit
           }
         }
+        appToAddrMap += (app -> InstrumentedMarathonWatch(addr, watch))
+        appMonitors += (app -> addr.underlying)
+        addr.underlying
+    }
+  }
 
-        appMonitors += (app -> addr)
-        addr
+  override def adminHandlers: Seq[Admin.Handler] = {
+    Seq(Admin.Handler(
+      s"namer_state/$handlerPrefix.json",
+      new MarathonNamerHandler
+    ))
+  }
+
+  private[AppIdNamer] class MarathonNamerHandler extends Service[Request, Response] {
+    private[this] val mapper = Parser.jsonObjectMapper(Nil)
+      .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+
+    override def apply(request: Request): Future[Response] = {
+      val currentState = appToAddrMap.map {
+        case (path, marathonAddr) => Map(
+          s"${path.show}" -> Map(
+            "state" -> marathonAddr.instrumentedAddrs.stateSnapshot(),
+            "watch" -> marathonAddr.marathonWatchState
+          )
+        )
+      }
+      val json = mapper.writeValueAsString(currentState)
+      val rep = Response(request.version, Status.Ok)
+      rep.mediaType = MediaType.Json
+      rep.contentString = json
+      Future.value(rep)
     }
   }
 }
+

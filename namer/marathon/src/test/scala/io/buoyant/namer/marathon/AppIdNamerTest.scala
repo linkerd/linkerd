@@ -1,10 +1,10 @@
-package io.buoyant.marathon.v2
+package io.buoyant.namer.marathon
 
 import com.twitter.conversions.time._
 import com.twitter.finagle._
-import com.twitter.util.{Activity, Future, MockTimer, Promise, Time, Var}
+import com.twitter.util._
+import io.buoyant.marathon.v2.{Api, WatchState}
 import io.buoyant.test.Awaits
-import java.net.{InetSocketAddress, SocketAddress}
 import org.scalatest.FunSuite
 
 class AppIdNamerTest extends FunSuite with Awaits {
@@ -25,7 +25,7 @@ class AppIdNamerTest extends FunSuite with Awaits {
 
     def getAppIds(): Future[Api.AppIds] =
       if (idsAlive) ids else exc
-    def getAddrs(app: Path): Future[Set[Address]] =
+    def getAddrs(app: Path, watchState: Option[WatchState] = None): Future[Set[Address]] =
       if (addrsAlive) addrs else exc
   }
 
