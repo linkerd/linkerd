@@ -102,7 +102,8 @@ class ForwardClientCertTest extends FunSuite {
       val rsp = {
         val req = Request()
         req.host = "clifford"
-        req.headerMap(ForwardClientCertFilter.Header) = "totally_bogus"
+        req.headerMap.add(ForwardClientCertFilter.Header, "Hash=17595BEB34A925D9D5D74E581A47883B6969DF6102227ED4770F5121458684EF;SAN=https://buoyant.io;DNS=upstream;DNS=linkerd;Subject=\"C=US,CN=upstream\"")
+        req.headerMap.add(ForwardClientCertFilter.Header, "Hash=0CE1279F4A837E6BE60110B59EE852F86DDBEFE6011802B8151512342DAB3FE6;SAN=https://buoyant.io;DNS=upstream;DNS=linkerd2;Subject=\"C=US,CN=upstream\"")
         await(client(req))
       }
 
