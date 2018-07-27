@@ -329,9 +329,13 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Mesh.core)
         .withTests()
 
+      val destination = projectDir("namerd/iface/destination")
+        .dependsOn(core, Grpc.runtime)
+        .withGrpc
+
       val all = aggregateDir(
         "namerd/iface",
-        controlHttp, interpreterThriftIdl, interpreterThrift, mesh
+        controlHttp, interpreterThriftIdl, interpreterThrift, mesh, destination
       )
     }
 
@@ -770,6 +774,7 @@ object LinkerdBuild extends Base {
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
   val namerdIfaceMesh = Namerd.Iface.mesh
+  val namerdIfaceDestination = Namerd.Iface.destination
   val namerdStorageEtcd = Namerd.Storage.etcd
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s
