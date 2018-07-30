@@ -4,6 +4,7 @@ import com.twitter.finagle.buoyant.h2.{Method, Request, Response, Status, Stream
 import com.twitter.util.Future
 import io.buoyant.linkerd.Linker
 import io.buoyant.linkerd.tls.TlsUtils.withCerts
+import io.buoyant.router.http.ForwardClientCertFilter
 import io.buoyant.test.FunSuite
 import io.buoyant.test.h2.StreamTestUtils._
 import java.io.FileInputStream
@@ -57,11 +58,11 @@ class ForwardClientCertTest extends FunSuite {
 
       try {
         val request = Request("http", Method.Get, "clifford", "/", Stream.empty())
-        xForwardedClientCert.foreach(h => request.headers.add("x-forwarded-client-cert", h))
+        xForwardedClientCert.foreach(h => request.headers.add(ForwardClientCertFilter.Header, h))
         val rsp = await(client(request))
 
         assert(await(rsp.stream.readDataString) == "woof")
-        assert(downstreamRequest.headers.get("x-forwarded-client-cert") == {
+        assert(downstreamRequest.headers.get(ForwardClientCertFilter.Header) == {
           val cf = CertificateFactory.getInstance("X.509")
           val cert = cf.generateCertificate(new FileInputStream(upstreamServiceCert.cert))
           val digest = MessageDigest.getInstance("SHA-256")
