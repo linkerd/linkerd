@@ -46,4 +46,14 @@ class ConfiguredDtabNamerTest extends FunSuite {
       ))))
     } finally Await.result(closer.close())
   }
+
+  test("use default interpreter_state"){
+    val dtabState = Var[Activity.State[Dtab]](Activity.Pending)
+    val interpreter = ConfiguredDtabNamer(Activity(dtabState))
+    interpreter.adminHandlers.headOption match {
+      case Some(handler) =>
+        assert(handler.url == "/interpreter_state")
+      case None => fail("invalid uri used for default interpreter state")
+    }
+  }
 }
