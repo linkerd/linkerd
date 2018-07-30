@@ -9,6 +9,7 @@ import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.param.Label
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.admin.Admin
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.{ClientConfig, WatchState, v1}
@@ -45,7 +46,7 @@ case class ConfigMapInterpreterConfig(
   private[this] val watch = new WatchState[v1.ConfigMap, v1.ConfigMapWatch]()
 
   @JsonIgnore
-  private[this] val adminUri = Some("/interpreter_state/io.l5d.k8s.configmap.json")
+  private[this] val adminUri = "/interpreter_state/io.l5d.k8s.configmap.json"
 
   @JsonIgnore
   val api = {
@@ -103,7 +104,7 @@ case class ConfigMapInterpreterConfig(
     }
 
   @JsonIgnore
-  private[this] val interpreterService = new Service[Request, Response] {
+  private[this] val watchStateHandler = new Service[Request, Response] {
     val mapper = Parser.jsonObjectMapper(Nil)
 
     override def apply(request: Request): Future[Response] = {
@@ -119,14 +120,15 @@ case class ConfigMapInterpreterConfig(
     }
   }
 
+  private[this] val handlers = Seq(Admin.Handler(adminUri, watchStateHandler))
+
   @JsonIgnore
   override def newInterpreter(params: Params): NameInterpreter = {
     val Param.Namers(namers) = params[Param.Namers]
     ConfiguredDtabNamer(
       act.underlying,
       namers,
-      adminUri,
-      Some(interpreterService)
+      handlers
     )
   }
 }

@@ -2,16 +2,14 @@ package io.buoyant.namer
 
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
-import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.{Activity, Future, Var}
+import com.twitter.util.{Activity, Future}
 import io.buoyant.admin.Admin
 
 case class ConfiguredDtabNamer(
   configuredDtab: Activity[Dtab],
   namers: Seq[(Path, Namer)] = Nil,
-  uri: Option[String] = None,
-  handler: Option[Service[Request, Response]] = None
+  handlers: Seq[Admin.Handler] = Seq.empty
 ) extends NameInterpreter with Delegator with Admin.WithHandlers {
 
   def bind(localDtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
@@ -56,22 +54,5 @@ case class ConfiguredDtabNamer(
 
   override def dtab: Activity[Dtab] = configuredDtab
 
-  override def adminHandlers: Seq[Admin.Handler] = {
-    val adminUri = uri match {
-      case Some(str) => str
-      case None => "/interpreter_state"
-    }
-
-    val interpreterHandler = handler match {
-      case Some(configuredHandler) => configuredHandler
-      case None => new Service[Request, Response] {
-        override def apply(request: Request): Future[Response] = {
-          val rep = Response(Status.NotFound)
-          rep.contentString = "Interpreter watch state not configured"
-          Future.value(rep)
-        }
-      }
-    }
-    Seq(Admin.Handler(adminUri, interpreterHandler))
-  }
+  override def adminHandlers: Seq[Admin.Handler] = handlers
 }
