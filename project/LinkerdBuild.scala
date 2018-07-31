@@ -332,6 +332,7 @@ object LinkerdBuild extends Base {
       val destination = projectDir("namerd/iface/destination")
         .dependsOn(core, Grpc.runtime)
         .withGrpc
+        .withTests()
 
       val all = aggregateDir(
         "namerd/iface",
