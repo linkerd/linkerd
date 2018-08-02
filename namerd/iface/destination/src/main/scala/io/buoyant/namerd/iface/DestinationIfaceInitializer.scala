@@ -7,32 +7,17 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{ListeningServer, Namer, Path}
-import com.twitter.util.Activity
 import io.buoyant.grpc.runtime.ServerDispatcher
-import io.buoyant.namer.ConfiguredNamersInterpreter
 import io.buoyant.namerd.iface.destination.DestinationService
 import io.linkerd.proxy.destination.Destination
 import java.net.{InetAddress, InetSocketAddress}
 
-class DestinationIfaceConfig extends InterpreterInterfaceConfig {
+class DestinationIfaceConfig(namespace: Option[String]) extends InterpreterInterfaceConfig {
+
   @JsonIgnore
   override protected def defaultAddr: InetSocketAddress = DestinationIfaceInitializer.defaultAddr
 
-  //  @JsonIgnore
-  //  override def mk(
-  //    store: DtabStore,
-  //    namers: Map[Path, Namer],
-  //    stats: StatsReceiver
-  //  ): Servable = new Servable {
-  //    override def kind: String = DestinationIfaceInitializer.kind
-  //
-  //    override def serve(): ListeningServer = {
-  //      val interpreter = ConfiguredNamersInterpreter(namers.toSeq)
-  //      val destination = new DestinationService(interpreter)
-  //      val dispatcher = ServerDispatcher(Destination.Server(destination))
-  //      H2.server.withTracer(NullTracer).serve(addr, dispatcher)
-  //    }
-  //  }
+  @JsonIgnore
   override protected def mk(
     delegate: Ns => NameInterpreter,
     namers: Map[Path, Namer],
@@ -42,7 +27,7 @@ class DestinationIfaceConfig extends InterpreterInterfaceConfig {
     override def kind: String = DestinationIfaceInitializer.kind
 
     override def serve(): ListeningServer = {
-      val destination = new DestinationService(delegate("default"))
+      val destination = new DestinationService(delegate(namespace.getOrElse("default")))
       val dispatcher = ServerDispatcher(Destination.Server(destination))
       H2.server.withTracer(NullTracer).serve(addr, dispatcher)
     }
