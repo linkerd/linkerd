@@ -2,17 +2,19 @@ package io.buoyant.interpreter
 package k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.Dtab
+import com.twitter.finagle.{Dtab, Service}
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle.naming.NameInterpreter
+import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.param.Label
 import com.twitter.logging.Logger
 import com.twitter.util._
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
-import io.buoyant.k8s.ClientConfig
+import io.buoyant.k8s.{ClientConfig, WatchState, v1}
 import io.buoyant.k8s.v1._
 import io.buoyant.namer.{ConfiguredDtabNamer, InterpreterConfig, InterpreterInitializer, Param}
-import java.util.concurrent.atomic.AtomicReference
 
 class ConfigMapInterpreterInitializer extends InterpreterInitializer {
   val configClass = classOf[ConfigMapInterpreterConfig]
@@ -41,6 +43,12 @@ case class ConfigMapInterpreterConfig(
   private[this] val log = Logger()
 
   @JsonIgnore
+  private[this] val watch = new WatchState[v1.ConfigMap, v1.ConfigMapWatch]()
+
+  @JsonIgnore
+  private[this] val adminUri = "/interpreter_state/io.l5d.k8s.configmap.json"
+
+  @JsonIgnore
   val api = {
     val client = mkClient(Params.empty).configured(Label("configMapInterpreter"))
     val nsOrDefault = namespace.getOrElse(DefaultNamespace)
@@ -49,7 +57,7 @@ case class ConfigMapInterpreterConfig(
 
   @JsonIgnore
   val act = api.configMap(name)
-    .activity(extractDtab) {
+    .activity(extractDtab, watchState = Some(watch)) {
       // TODO: if the event doesn't update our dtab, don't update the activity?
       case (oldDtab, ConfigMapAdded(newDtab)) =>
         getDtab(newDtab).getOrElse { oldDtab }
@@ -96,9 +104,31 @@ case class ConfigMapInterpreterConfig(
     }
 
   @JsonIgnore
-  override def newInterpreter(params: Params): NameInterpreter = {
-    val Param.Namers(namers) = params[Param.Namers]
-    ConfiguredDtabNamer(act.underlying, namers)
+  private[this] val watchStateHandler = new Service[Request, Response] {
+    val mapper = Parser.jsonObjectMapper(Nil)
+
+    override def apply(request: Request): Future[Response] = {
+      val rep = Response(Status.Ok)
+      val watchState = Map(
+        "state" -> act.stateSnapshot(),
+        "watch" -> watch
+      )
+
+      rep.contentString = mapper.writeValueAsString(watchState)
+      rep.mediaType = MediaType.Json
+      Future.value(rep)
+    }
   }
 
+  private[this] val handlers = Seq(Admin.Handler(adminUri, watchStateHandler))
+
+  @JsonIgnore
+  override def newInterpreter(params: Params): NameInterpreter = {
+    val Param.Namers(namers) = params[Param.Namers]
+    ConfiguredDtabNamer(
+      act.underlying,
+      namers,
+      handlers
+    )
+  }
 }

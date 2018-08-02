@@ -10,7 +10,7 @@ import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.v1
 import io.buoyant.k8s.v1.ConfigMap
-import io.buoyant.namer.{ConfiguredDtabNamer, InterpreterConfig, InterpreterInitializer, RichActivity}
+import io.buoyant.namer.{ConfiguredDtabNamer, InterpreterConfig, InterpreterInitializer, RichActivity, VarState}
 import io.buoyant.test.{Awaits, FunSuite}
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.{Inside, OptionValues, TryValues}
@@ -170,6 +170,8 @@ class ConfigMapInterpreterTest extends FunSuite
 
     val activity = interpreter.asInstanceOf[ConfiguredDtabNamer].dtab
 
+    val handlers = interpreter.asInstanceOf[ConfiguredDtabNamer].handlers
+
     @volatile var state: Activity.State[Dtab] = Activity.Pending
 
     activity.states.respond { s =>
@@ -288,6 +290,30 @@ class ConfigMapInterpreterTest extends FunSuite
       await(writer.write(Rsps.DtabModified))
       await(activity.toFuture)
       assert(state.toString() == "Ok(Dtab(/ph=>/$/io.buoyant.rinet;/svc=>/ph/80;/svc=>/$/io.buoyant.porthostPfx/ph))")
+    }
+  }
+
+  test("configmap interpreter watch state url is correct") {
+    val _ = new Fixtures {
+      handlers.headOption match {
+        case Some(h) =>
+          assert(h.url == "/interpreter_state/io.l5d.k8s.configmap.json")
+        case None => fail("configmap interpreter does not have watch state handler configured")
+      }
+    }
+  }
+
+  test("configmap interpreter handler returns dtab value in watch state ") {
+    val _ = new Fixtures {
+      val mapper = Parser.jsonObjectMapper(Nil)
+      handlers.headOption match {
+        case Some(h) =>
+          val rep = await(h.service(Request("/interpreter_state/io.l5d.k8s.configmap.json")))
+          val json = mapper.readValue[Map[String, AnyRef]](rep.contentString)
+          val watchState = json("state").asInstanceOf[Map[String,String]]
+          assert(watchState("value") == "/svc=>/$/inet/127.1/11111")
+        case None => fail("configmap interpreter does not have watch state handler configured")
+      }
     }
   }
 

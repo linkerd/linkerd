@@ -3,12 +3,14 @@ package io.buoyant.namer
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.util.{Activity, Future, Var}
+import com.twitter.util.{Activity, Future}
+import io.buoyant.admin.Admin
 
 case class ConfiguredDtabNamer(
   configuredDtab: Activity[Dtab],
-  namers: Seq[(Path, Namer)] = Nil
-) extends NameInterpreter with Delegator {
+  namers: Seq[(Path, Namer)] = Nil,
+  handlers: Seq[Admin.Handler] = Seq.empty
+) extends NameInterpreter with Delegator with Admin.WithHandlers {
 
   def bind(localDtab: Dtab, path: Path): Activity[NameTree[Name.Bound]] =
     configuredDtab.flatMap { configuredDtab =>
@@ -51,4 +53,6 @@ case class ConfiguredDtabNamer(
     }
 
   override def dtab: Activity[Dtab] = configuredDtab
+
+  override def adminHandlers: Seq[Admin.Handler] = handlers
 }
