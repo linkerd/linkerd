@@ -379,7 +379,7 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       core, main, Namer.fs, Storage.inMemory, Router.http,
-      Iface.controlHttp, Iface.interpreterThrift, Iface.mesh,
+      Iface.controlHttp, Iface.interpreterThrift, Iface.mesh, Iface.destination,
       Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.dnssrv, Namer.rancher,
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
