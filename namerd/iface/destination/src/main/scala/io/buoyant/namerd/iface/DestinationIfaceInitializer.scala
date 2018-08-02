@@ -10,6 +10,7 @@ import com.twitter.finagle.{ListeningServer, Namer, Path}
 import com.twitter.util.Activity
 import io.buoyant.grpc.runtime.ServerDispatcher
 import io.buoyant.namer.ConfiguredNamersInterpreter
+import io.buoyant.namerd.iface.destination.DestinationService
 import io.linkerd.proxy.destination.Destination
 import java.net.{InetAddress, InetSocketAddress}
 

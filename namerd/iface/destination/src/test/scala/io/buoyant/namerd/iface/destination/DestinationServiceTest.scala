@@ -1,15 +1,14 @@
-package io.buoyant.namerd.iface
+package io.buoyant.namerd.iface.destination
 
 import com.twitter.finagle._
 import com.twitter.util.{Activity, Var}
 import io.buoyant.namer.ConfiguredDtabNamer
 import io.buoyant.test.FunSuite
-import io.linkerd.proxy.destination
 import io.linkerd.proxy.destination.Update.OneofUpdate
 
 class DestinationServiceTest extends FunSuite {
   import DestinationService._
-  import destination._
+  import io.linkerd.proxy.destination._
   private[this] def TestNameInterpreter(namers: Seq[(Path, Namer)]) = ConfiguredDtabNamer(
     Activity.value(Dtab.read("/svc=>/#/io.l5d.test")),
     namers
