@@ -24,9 +24,7 @@ class DestinationServiceTest extends FunSuite {
 
     addrStates() = Activity.Ok(NameTree.Leaf(Name.Bound(vaddr, Path.read("/#/io.l5d.test/hello.svc.cluster.local"))))
     val result = await(dstSvc.get(dstReq).recv())
-    assert(
-      result.value == Update(mkUpdateAdd(Seq(("127.0.0.1", 7777))))
-    )
+    assert(result.value == mkAddUpdate(Set(Address("127.0.0.1", 7777))))
   }
 
   test("send no endpoints update at start of stream"){
@@ -58,10 +56,27 @@ class DestinationServiceTest extends FunSuite {
     addrStates() = Activity.Ok(NameTree.Leaf(Name.Bound(firstAddrSet, Path.read("/#/io.l5d.test/hello.svc.cluster.local"))))
     val stream = dstSvc.get(dstReq)
     val firstRes = await(stream.recv())
-    assert(firstRes.value == Update(mkUpdateAdd(Seq(("127.0.0.1", 7777), ("127.0.0.1", 7778)))))
+    assert(firstRes.value == mkAddUpdate(Set(Address("127.0.0.1", 7777), Address("127.0.0.1", 7778))))
     firstAddrSet.update(Addr.Bound(Address("127.0.0.1", 7778)))
     val secondRes = await(stream.recv())
-    assert(secondRes.value == Update(mkUpdateRemove(Seq(("127.0.0.1", 7777)))))
+    assert(secondRes.value == mkRemoveUpdate(Set(Address("127.0.0.1", 7777))))
   }
 
+  test("send no endpoints available when all endpoint addresses are removed"){
+    val addrStates = Var[Activity.State[NameTree[Name.Bound]]](Activity.Pending)
+    val dstSvc = new DestinationService(TestNameInterpreter(Seq(Path.read("/#/io.l5d.test") -> new Namer {def lookup(path: Path) = Activity(addrStates) })))
+    val dstReq = GetDestination(Some("k8s"), Some("hello.svc.cluster.local"))
+    val firstAddrSet = Var[Addr](Addr.Bound(Address("127.0.0.1", 7777), Address("127.0.0.1", 7778)))
+
+    addrStates() = Activity.Ok(NameTree.Leaf(Name.Bound(firstAddrSet, Path.read("/#/io.l5d.test/hello.svc.cluster.local"))))
+    val stream = dstSvc.get(dstReq)
+    val firstRes = await(stream.recv())
+    assert(firstRes.value == mkAddUpdate(Set(Address("127.0.0.1", 7777), Address("127.0.0.1", 7778))))
+    firstAddrSet.update(Addr.Bound())
+    val secondRes = await(stream.recv())
+    assert(secondRes.value == mkRemoveUpdate(Set(Address("127.0.0.1", 7777), Address("127.0.0.1", 7778))))
+    firstAddrSet.update(Addr.Bound())
+    val thirdRes = await(stream.recv())
+    assert(thirdRes.value == mkNoEndpointsUpdate(true))
+  }
 }

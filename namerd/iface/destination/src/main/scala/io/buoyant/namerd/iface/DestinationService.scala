@@ -1,8 +1,9 @@
 package io.buoyant.namerd.iface
 
-import com.twitter.finagle._
+import com.twitter.finagle.{Address, _}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.grpc.runtime.{GrpcStatus, Stream}
 import io.linkerd.proxy.destination
@@ -11,17 +12,18 @@ import io.linkerd.proxy.destination.Update.OneofUpdate.{NoEndpoints => Endpoints
 import io.linkerd.proxy.destination._
 import io.linkerd.proxy.net.IPAddress.OneofIp
 import io.linkerd.proxy.net.{IPAddress, TcpAddress}
-import java.net.{Inet4Address, Inet6Address, InetAddress}
+import java.net.{InetAddress, InetSocketAddress}
 
 class DestinationService(
   interpreter: NameInterpreter
 ) extends destination.Destination {
   import DestinationService._
 
-  @volatile private[this] var PathCache = Map.empty[String, Set[Address]]
-  private[this] val PatchCacheMu = new {}
+  implicit val _addressDiffable = new AddressDiffable
 
+  private[this] val log = Logger.get(getClass.getName)
   override def get(req: destination.GetDestination): Stream[destination.Update] = {
+    log.info(s"stream initiated from request: $req")
     if (!req.scheme.contains("k8s")) {
       val res = Stream.mk[destination.Update]
       res.close(GrpcStatus.Unimplemented("Unknown scheme: " + req.scheme.getOrElse("unknown")))
@@ -31,38 +33,28 @@ class DestinationService(
     val name = Path(Seq(Buf.Utf8("svc")) ++ req.path.map(Buf.Utf8(_)): _*)
 
     val stream = Stream.mk[Update]
-    val act = interpreter.bind(Dtab.empty, name).run.changes.respond {
+    interpreter.bind(Dtab.empty, name).run.changes.respond {
       case Activity.Pending =>
-        val _ = Var.value(Update(Some(EndpointsNone(NoEndpoints(Some(false)))))).changes.respond { update =>
-          stream.send(update); ()
-        }
-      case Activity.Failed(_) =>
-        val _ = Var.value(Update(Some(EndpointsNone(NoEndpoints(Some(false)))))).changes.respond { update =>
-          stream.send(update); ()
-        }
+        stream.send(mkNoEndpointsUpdate(false)); ()
+      case Activity.Failed(e) =>
+        log.info(s"address lookup failed: $e")
+        stream.send(mkNoEndpointsUpdate(false)); ()
       case Activity.Ok(t) => t.eval match {
         case None =>
-          val _ = Var.value(Update(Some(EndpointsNone(NoEndpoints(Some(false)))))).changes.respond { update =>
-            stream.send(update); ()
-          }
+          stream.send(mkNoEndpointsUpdate(true)); ()
         case Some(value) =>
-          val _ = updates(name, value).respond {
+          val _ = updates(name, value).diff.respond {
             case AddressDiff(add, remove) =>
-              if (add.nonEmpty) stream.send(Update(Some(Add(AddressSetToWeightedAddress(add))))); ()
-              if (remove.nonEmpty) stream.send(Update(Some(Remove(AddressSetToAddrSet(remove))))); ()
-
-              if (add.isEmpty && remove.isEmpty) stream.send(Update(Some(EndpointsNone(NoEndpoints(Some(true)))))); ()
-          }
-        case _ =>
-          val _ = Var.value(Update(Some(Add(WeightedAddrSet(Nil, Map("set" -> "Set")))))).changes.respond { update =>
-            stream.send(update); ()
+              if (add.nonEmpty) stream.send(mkAddUpdate(add)); ()
+              if (remove.nonEmpty) stream.send(mkRemoveUpdate(remove)); ()
+              if (add.isEmpty && remove.isEmpty) stream.send(mkNoEndpointsUpdate(true)); ()
           }
       }
     }
     stream
   }
 
-  private def foldAddr(addrs: List[Addr]) = {
+  private[this] def foldAddr(addrs: List[Addr]) = {
     addrs.fold(Addr.Pending) {
       case (Addr.Pending, Addr.Pending) => Addr.Pending
       case (Addr.Pending, Addr.Neg) => Addr.Neg
@@ -72,12 +64,10 @@ class DestinationService(
     }
   }
 
-  private def updates(
+  private[this] def updates(
     name: Path,
     value: Set[Name.Bound]
-  ) = {
-
-    implicit val _addressDiffable = new AddressDiffable
+  ) :Var[Set[Address]] = {
     val vaddrs = value.map(_.addr)
     val foldedAddr = Var.collect(vaddrs.toList).map(foldAddr)
 
@@ -86,7 +76,7 @@ class DestinationService(
       case Addr.Bound(addresses, _) => addresses
       case _ => Set.empty[Address]
     }
-    difference.diff
+    difference
   }
 
   class AddressDiffable extends Diffable[Set] {
@@ -103,37 +93,6 @@ class DestinationService(
 
     override def map[U](f: T => U): Diff[Set, U] = AddressDiff(add.map(f), remove.map(f))
   }
-
-  private[this] def DiffAddressSet(oldSet: Set[Address], newSet: Set[Address]) = {
-    (oldSet -- newSet, newSet -- oldSet)
-  }
-
-  private[this] def AddressSetToWeightedAddress(addresses: Set[Address]) = {
-    WeightedAddrSet(addresses.toSeq.map(_toWeightedAddr))
-  }
-  private[this] def AddressSetToAddrSet(addresses: Set[Address]) = {
-    AddrSet(addresses.toSeq.map(_toTcpAddress))
-  }
-
-  private[this] def _toWeightedAddr(addr: Address) = {
-    val tcpAddress = _toTcpAddress(addr)
-    WeightedAddr(Some(tcpAddress))
-  }
-
-  private[this] def _toTcpAddress(addr: Address) = {
-    addr match {
-      case Address.Inet(inet, meta) => inet.getAddress match {
-        case _: Inet4Address =>
-          TcpAddress(
-            Some(IPAddress(Some(OneofIp.Ipv4(inetAddressToInt(inet.getAddress))))),
-            Some(inet.getPort)
-          )
-
-        case _: Inet6Address => TcpAddress(Some(IPAddress()), Some(9999))
-      }
-      case _ => TcpAddress() //TODO: Remove to advance in test cases
-    }
-  }
 }
 
 object DestinationService {
@@ -145,28 +104,38 @@ object DestinationService {
     }
   }
 
-  def mkUpdateAdd(addresses: Seq[(String, Int)]) = {
-    val weightedAddrSet = addresses.map { address =>
-      WeightedAddr(Some(TcpAddress(
-        Some(IPAddress(Some(OneofIp.Ipv4(inetAddressToInt(InetAddress.getByName(address._1)))))),
-        Some(address._2)
-      )))
-
-    }
-    Some(OneofUpdate.Add(
-      WeightedAddrSet(weightedAddrSet)
-    ))
+  def mkAddUpdate(addresses: Set[Address]): Update = {
+    val weightedAddrSet = addresses.collect {
+      case Address.Inet(socketAddress, _) =>
+        WeightedAddr(
+          `addr` = Some(mkTcpAddress(socketAddress)),
+          `weight` = Some(1)
+        )
+    }.toSeq
+    Update(Some(OneofUpdate.Add(WeightedAddrSet(weightedAddrSet))))
   }
 
-  def mkUpdateRemove(addresses: Seq[(String, Int)]) = {
-    val addrSet = addresses.map { address =>
-      TcpAddress(
-        Some(IPAddress(Some(OneofIp.Ipv4(inetAddressToInt(InetAddress.getByName(address._1)))))),
-        Some(address._2)
-      )
-    }
-    Some(OneofUpdate.Remove(
-      AddrSet(addrSet)
-    ))
+  private def mkTcpAddress(addr: InetSocketAddress) = {
+    TcpAddress(
+      Some(
+        IPAddress(
+          Some(
+            OneofIp
+              .Ipv4(inetAddressToInt(InetAddress.getByName(addr.getHostString)))
+          )
+        )
+      ),
+      Some(addr.getPort)
+    )
   }
+
+  def mkRemoveUpdate(addresses: Set[Address]): Update = {
+    val addrSet = addresses.collect {
+      case Address.Inet(addr, _) =>
+        mkTcpAddress(addr)
+    }.toSeq
+    Update(Some(Remove(AddrSet(addrSet))))
+  }
+
+  def mkNoEndpointsUpdate(exists: Boolean) = Update(Some(EndpointsNone(NoEndpoints(Some(exists)))))
 }
