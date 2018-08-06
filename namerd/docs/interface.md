@@ -60,6 +60,21 @@ ip | loopback address | The local IP address on which to serve the namer interfa
 port | `4321` | The port number on which to serve the namer interface.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls). The server TLS key file must be in PKCS#8 format.
 
+## Linkerd2 Destination Interface
+
+kind: `io.l5d.destination`
+
+A gRPC interface implementation based on Linkerd 2 [destination API](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto). It's intended for Linkerd2
+proxies to resolve request paths through Namerd's interpreter in a Linkerd 1.x Kubernetes daemonset environment.
+environment.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+ip | loopback address | The local IP address on which to serve the destination interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
+port | `8086` | The port number on which to serve the destination interface.
+prefix | /svc | The prefix to use when delegating Linkerd2 request paths to Namerd
+namespace | default | The namespace with which Namerd should use to retrieve a dtab
+
 ## Http Controller
 
 kind: `io.l5d.httpController`

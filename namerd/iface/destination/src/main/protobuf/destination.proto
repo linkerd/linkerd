@@ -1,5 +1,5 @@
 syntax = "proto3";
-
+// file copied from https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto
 package io.linkerd.proxy.destination;
 
 option go_package = "github.com/linkerd/linkerd2-proxy-api/go/destination";

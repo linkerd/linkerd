@@ -12,7 +12,10 @@ import io.buoyant.namerd.iface.destination.DestinationService
 import io.linkerd.proxy.destination.Destination
 import java.net.{InetAddress, InetSocketAddress}
 
-class DestinationIfaceConfig(namespace: Option[String]) extends InterpreterInterfaceConfig {
+class DestinationIfaceConfig(
+  namespace: Option[String],
+  prefix: Option[String]
+) extends InterpreterInterfaceConfig {
 
   @JsonIgnore
   override protected def defaultAddr: InetSocketAddress = DestinationIfaceInitializer.defaultAddr
@@ -27,7 +30,8 @@ class DestinationIfaceConfig(namespace: Option[String]) extends InterpreterInter
     override def kind: String = DestinationIfaceInitializer.kind
 
     override def serve(): ListeningServer = {
-      val destination = new DestinationService(delegate(namespace.getOrElse("default")))
+      val pfx = prefix.getOrElse("/svc").drop(1)
+      val destination = new DestinationService(pfx, delegate(namespace.getOrElse("default")))
       val dispatcher = ServerDispatcher(Destination.Server(destination))
       H2.server.withTracer(NullTracer).serve(addr, dispatcher)
     }
@@ -36,7 +40,7 @@ class DestinationIfaceConfig(namespace: Option[String]) extends InterpreterInter
 
 object DestinationIfaceInitializer {
   val kind = "io.l5d.destination"
-  val defaultAddr = new InetSocketAddress(InetAddress.getLoopbackAddress, 4333)
+  val defaultAddr = new InetSocketAddress(InetAddress.getLoopbackAddress, 8086)
 }
 
 class DestinationIfaceInitializer extends InterfaceInitializer {
