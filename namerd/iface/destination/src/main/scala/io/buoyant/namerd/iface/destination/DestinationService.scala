@@ -1,10 +1,10 @@
 package io.buoyant.namerd.iface.destination
 
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.{Address, _}
+import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
-import com.twitter.util.{Event, _}
+import com.twitter.util._
 import io.buoyant.grpc.runtime.VarEventStream.{Ev, Val}
 import io.buoyant.grpc.runtime.{GrpcStatus, Stream, VarEventStream}
 import io.linkerd.proxy.destination.Destination
@@ -22,40 +22,38 @@ class DestinationService(
 ) extends Destination {
   import DestinationService._
 
-  //Helper trait to capture Failed Addresses
-  sealed trait FailedAddress extends Set[Address]
-  case class FAddress(e: Throwable) extends FailedAddress {
-    override def contains(elem: Address): Boolean = false
-
-    override def +(elem: Address): Set[Address] = Set.empty
-
-    override def -(elem: Address): Set[Address] = Set.empty
-
-    override def iterator: Iterator[Address] = Iterator.empty
-  }
+  type TrySet[T] = Try[Set[T]]
 
   //Diff implementation for Address Set
-  class AddressDiffable extends Diffable[Set] {
+  class SetDiffable extends Diffable[TrySet] {
     override def diff[T](
-      left: Set[T],
-      right: Set[T]
-    ): Diff[Set, T] =
+      left: TrySet[T],
+      right: TrySet[T]
+    ): Diff[TrySet, T] =
       (left, right) match {
-        case (FAddress(e), _) => AddressDiff(Set.empty, Set.empty, Some(e))
-        case (_, FAddress(e)) => AddressDiff(Set.empty, Set.empty, Some(e))
-        case _ => AddressDiff(right -- left, left -- right)
+        case (Throw(e), _) => FailedDiff(e)
+        case (_, Throw(e)) => FailedDiff(e)
+        case (Return(l), Return(r)) => SetDiff(r -- l, l -- r)
       }
 
-    override def empty[T]: Set[T] = Set.empty
+    override def empty[T]: TrySet[T] = Return(Set.empty)
   }
 
-  case class AddressDiff[T](add: Set[T], remove: Set[T], exc: Option[Throwable] = None) extends Diff[Set, T] {
-    override def patch(coll: Set[T]): Set[T] = coll ++ add -- remove
+  case class FailedDiff[T](throwable: Throwable) extends Diff[TrySet, T] {
+    override def patch(coll: TrySet[T]): TrySet[T] = Throw(throwable)
 
-    override def map[U](f: T => U): Diff[Set, U] = AddressDiff(add.map(f), remove.map(f))
+    override def map[U](f: T => U): Diff[TrySet, U] = FailedDiff(throwable)
+  }
+  case class SetDiff[T](add: Set[T], remove: Set[T]) extends Diff[TrySet, T] {
+    override def patch(coll: TrySet[T]): TrySet[T] = coll match {
+      case t@Throw(_) => t
+      case Return(set) => Return(set ++ add -- remove)
+    }
+
+    override def map[U](f: T => U): Diff[TrySet, U] = SetDiff(add.map(f), remove.map(f))
   }
 
-  implicit val _addressDiffable = new AddressDiffable
+  implicit val _addressDiffable = new SetDiffable
 
   private[this] val log = Logger.get(getClass.getName)
   override def get(req: GetDestination): Stream[Update] = {
@@ -71,12 +69,18 @@ class DestinationService(
         val res = Stream.mk[Update]
         res.close(GrpcStatus.Unimplemented("Empty request path"))
         return res
+      /*
+      * Linkerd 2 proxies sends request paths in kubeDNS format.
+      * e.g. service.default.cluster.local. Linkerd 1.x uses the format /svc/service_name.
+      * This line gets the service name before the first dot in the request path destination request
+      * path and uses that first string value against the configured Name interpreter. This assumes that your
+      * k8s namer already handles how to reach endpoints in specific namespaces. */
       case Some(p) => Buf.Utf8(p.substring(0, p.indexOf(".")))
     }
 
     val name = Path(Seq(Buf.Utf8(pathPfx), path): _*)
     val events = interpreter.bind(Dtab.empty, name).map(_.eval).flatMap {
-      case None => Activity.value(Var.value(Addr.Bound()))
+      case None => Activity.value(Var.value(Addr.Neg))
       case Some(boundSet) =>
         val set = Var.collect(boundSet.map(_.addr).toList).map(foldAddr)
         Activity.value(set)
@@ -85,19 +89,19 @@ class DestinationService(
       case Activity.Pending => Var(Addr.Pending)
       case Activity.Ok(t) => t
     }.changes.collect {
-      case Addr.Failed(e) => FAddress(e)
-      case Addr.Bound(addresses, _) => addresses
+      case Addr.Failed(e) => Throw(e)
+      case Addr.Neg => Throw(new Throwable(s"endpoints for service ${name.show} doesn't exist"))
+      case Addr.Bound(addresses, _) => Return(addresses)
     }
 
-    val updateEvents = eventFlatMap[Diff[Set, Address], Ev[Update]](events.diff, {
-      case AddressDiff(add, remove, exc) =>
-        val noEndpointsUpdate = exc match {
-          case Some(_) => Seq(Val(mkNoEndpointsUpdate(false)))
-          case None => Nil
-        }
+    val updateEvents = eventFlatMap[Diff[TrySet, Address], Ev[Update]](events.diff, {
+      case FailedDiff(e) =>
+        log.debug(s"address set encountered FailedDiff: $e")
+        Seq(Val(mkNoEndpointsUpdate(false)))
+      case SetDiff(add, remove) =>
         val addUpdate = if (add.nonEmpty) Seq(Val(mkAddUpdate(add))) else Nil
         val removeUpdate = if (remove.nonEmpty) Seq(Val(mkRemoveUpdate(remove))) else Nil
-        noEndpointsUpdate ++ addUpdate ++ removeUpdate
+        addUpdate ++ removeUpdate
     })
     val totalUpdates = prependEventOnCondition[Ev[Update]](updateEvents, Val(mkNoEndpointsUpdate(true)),
       {
@@ -113,6 +117,7 @@ class DestinationService(
       case (Addr.Pending, nonPending) => nonPending
       case (nonPending, Addr.Pending) => nonPending
       // Bound addresses combined
+      case (Addr.Bound(a, _), Addr.Bound(b, _)) => Addr.Bound(a ++ b)
       case (a@Addr.Bound(_, _), _) => a
       case (_, a@Addr.Bound(_, _)) => a
       // otherwise, just use the first state (e.g. in a list of negs or fails)
@@ -141,12 +146,13 @@ object DestinationService {
 
   //Prepends an init event to an already existing event only once.
   private[destination] def prependEventOnCondition[T](ev: Event[T], init: T, f: T => Boolean): Event[T] = new Event[T] {
-    @volatile var prependOnce: AtomicBoolean = new AtomicBoolean(false)
+    val prependOnce: AtomicBoolean = new AtomicBoolean(false)
     def register(w: Witness[T]): Closable = {
       ev.respond { t =>
-        if (!prependOnce.getAndSet(true) && f(t)) {
+        if (f(t) && !prependOnce.get) {
           w.notify(init)
           w.notify(t)
+          val _ = prependOnce.compareAndSet(false, true)
         } else w.notify(t)
       }
     }

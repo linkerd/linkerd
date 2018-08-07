@@ -65,4 +65,18 @@ class DestinationServiceTest extends FunSuite {
     val secondRes = await(stream.recv())
     assert(secondRes.value == mkRemoveUpdate(Set(Address("127.0.0.1", 7777))))
   }
+
+  test("no endpoints on Addr.Neg"){
+    val addrStates = Var[Activity.State[NameTree[Name.Bound]]](Activity.Pending)
+    val dstSvc = new DestinationService(
+      "svc",
+      TestNameInterpreter(Seq(Path.read("/#/io.l5d.test") -> mkNamer(addrStates))))
+    val dstReq = GetDestination(Some("k8s"), Some("hello.svc.cluster.local"))
+    val firstAddrSet = Var[Addr](Addr.Neg)
+
+    addrStates() = Activity.Ok(NameTree.Leaf(Name.Bound(firstAddrSet, Path.read("/#/io.l5d.test/hello.svc.cluster.local"))))
+    val stream = dstSvc.get(dstReq)
+    val firstRes = await(stream.recv())
+    assert(firstRes.value == mkNoEndpointsUpdate(false))
+  }
 }

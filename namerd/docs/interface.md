@@ -64,9 +64,8 @@ tls | no tls | The namer interface will serve over TLS if this parameter is prov
 
 kind: `io.l5d.destination`
 
-A gRPC interface implementation based on Linkerd 2 [destination API](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto). It's intended for Linkerd2
+A gRPC interface implementation based on Linkerd 2's [destination API](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto). It's intended for Linkerd 2
 proxies to resolve request paths through Namerd's interpreter in a Linkerd 1.x Kubernetes daemonset environment.
-environment.
 
 Key | Default Value | Description
 --- | ------------- | -----------
