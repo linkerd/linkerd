@@ -1,3 +1,4 @@
+//This file is added using pull-destination-proto.sh. DO NOT EDIT!
 syntax = "proto3";
 
 package io.linkerd.proxy.net;
