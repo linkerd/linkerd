@@ -7,6 +7,7 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{ListeningServer, Namer, Path}
+import com.twitter.logging.Logger
 import io.buoyant.grpc.runtime.ServerDispatcher
 import io.buoyant.namerd.iface.destination.DestinationService
 import io.linkerd.proxy.destination.Destination
@@ -16,6 +17,9 @@ class DestinationIfaceConfig(
   namespace: Option[String],
   prefix: Option[String]
 ) extends InterpreterInterfaceConfig {
+
+  @JsonIgnore
+  private[this] val log = Logger.get(getClass.getName)
 
   @JsonIgnore
   override protected def defaultAddr: InetSocketAddress = DestinationIfaceInitializer.defaultAddr
@@ -31,7 +35,9 @@ class DestinationIfaceConfig(
 
     override def serve(): ListeningServer = {
       val pfx = prefix.getOrElse("/svc").drop(1)
-      val destination = new DestinationService(pfx, delegate(namespace.getOrElse("default")))
+      val ns = namespace.getOrElse("default")
+      log.info(s"DestinationIfaceInitializer using dtab in $ns with prefix $pfx")
+      val destination = new DestinationService(pfx, delegate(ns))
       val dispatcher = ServerDispatcher(Destination.Server(destination))
       H2.server.withTracer(NullTracer).serve(addr, dispatcher)
     }

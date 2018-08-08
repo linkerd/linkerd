@@ -101,6 +101,7 @@ class DestinationService(
       case SetDiff(add, remove) =>
         val addUpdate = if (add.nonEmpty) Seq(Val(mkAddUpdate(add))) else Nil
         val removeUpdate = if (remove.nonEmpty) Seq(Val(mkRemoveUpdate(remove))) else Nil
+        log.debug(s"Destination Updates: ${addUpdate ++ removeUpdate}")
         addUpdate ++ removeUpdate
     })
     val totalUpdates = prependEventOnCondition[Ev[Update]](updateEvents, Val(mkNoEndpointsUpdate(true)),
@@ -128,7 +129,8 @@ class DestinationService(
 
 object DestinationService {
   private[this] def inetAddressToInt(ip: InetAddress): Int = {
-    ip.getAddress.reverse.zipWithIndex.foldRight(0) { (b, acc) =>
+    val octets = ip.getHostAddress.split("\\.")
+    octets.reverse.zipWithIndex.foldRight(0) { (b, acc) =>
       val pow = b._2 * 8
       val bitShift = 1 << pow
       acc + (b._1.toInt * bitShift)
@@ -149,11 +151,14 @@ object DestinationService {
     val prependOnce: AtomicBoolean = new AtomicBoolean(false)
     def register(w: Witness[T]): Closable = {
       ev.respond { t =>
-        if (f(t) && !prependOnce.get) {
-          w.notify(init)
-          w.notify(t)
-          val _ = prependOnce.compareAndSet(false, true)
-        } else w.notify(t)
+        // Check that we haven't already sent our conditional event, skip if we have.
+        if (!prependOnce.get) {
+          // Set the prependOnce flag to true to force "happens once" behavior
+          if (f(t) && prependOnce.compareAndSet(false, true)) {
+            w.notify(init)
+          }
+        }
+        w.notify(t)
       }
     }
   }
