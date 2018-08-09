@@ -1,3 +1,39 @@
+## 1.4.6 2018-08-09
+
+Linkerd 1.4.6 now adds even more watch state debugging endpoints to Linkerd's debugging arsenal. 
+This release adds a ConfigMap interpreter endpoint to observe dtab stored in a Kubernetes 
+environment as well as marathon and file system namer watch state endpoints.
+
+With Conduit now officially Linkerd 2, this release introduces a new 
+`io.l5d.destination` for Namerd. With this interface, Linkerd 1.x can run alongside Linkerd 2 in
+Kubernetes through using this Namerd interface. The interface implements Linkerd 2's control plane
+[Destination API](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto).
+Note that this interface is experimental and shouldn't be used in production yet but feel free to 
+try it out!
+
+Full release notes:
+
+* HTTP/1.1 and HTTP/2
+  * Allow HTTP/1.1 and HTTP/2 POST requests to be retryable.
+  * Fix an issue where the `x-forwarded-client-cert` header was not always cleared on incoming
+   requests.
+* Add TLS support for etcd namer HTTP clients used to connect to etcd servers.
+* Admin
+  * Add a new `io.l5d.marathon` namer watch state endpoint that instruments watches in the marathon 
+  namer.
+  * Add a new `io.l5d.fs` namer watch state endpoint that instruments watches in the file system 
+  namer.
+  * Add a `io.l5d.k8s.configMap` watch state endpoint to observe dtabs stored in a Kubernetes 
+  ConfigMap.
+* Distributed Tracing
+  * Add support for the `io.l5d.zipkin` trace propagation module to use Zipkin B3 headers in requests.
+* Namerd
+  * Add a new `io.l5d.destination` interface for Linkerd 2 proxies to resolve service names in 
+  Kubernetes.
+
+
+
+
 ## 1.4.5 2018-07-13
 
 Linkerd 1.4.5 contains some minor bugfixes and introduces two much-requested features. First, it is
