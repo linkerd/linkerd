@@ -329,9 +329,14 @@ object LinkerdBuild extends Base {
         .dependsOn(core, Mesh.core)
         .withTests()
 
+      val destination = projectDir("namerd/iface/destination")
+        .dependsOn(core, Grpc.runtime)
+        .withGrpc
+        .withTests()
+
       val all = aggregateDir(
         "namerd/iface",
-        controlHttp, interpreterThriftIdl, interpreterThrift, mesh
+        controlHttp, interpreterThriftIdl, interpreterThrift, mesh, destination
       )
     }
 
@@ -374,7 +379,7 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       core, main, Namer.fs, Storage.inMemory, Router.http,
-      Iface.controlHttp, Iface.interpreterThrift, Iface.mesh,
+      Iface.controlHttp, Iface.interpreterThrift, Iface.mesh, Iface.destination,
       Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.dnssrv, Namer.rancher,
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
@@ -770,6 +775,7 @@ object LinkerdBuild extends Base {
   val namerdIfaceInterpreterThriftIdl = Namerd.Iface.interpreterThriftIdl
   val namerdIfaceInterpreterThrift = Namerd.Iface.interpreterThrift
   val namerdIfaceMesh = Namerd.Iface.mesh
+  val namerdIfaceDestination = Namerd.Iface.destination
   val namerdStorageEtcd = Namerd.Storage.etcd
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s
