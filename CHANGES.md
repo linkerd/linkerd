@@ -1,38 +1,26 @@
-## 1.4.6 2018-08-09
+## 1.4.6 2018-08-13
 
-Linkerd 1.4.6 now adds even more watch state debugging endpoints to Linkerd's debugging arsenal. 
-This release adds a ConfigMap interpreter endpoint to observe dtab stored in a Kubernetes 
-environment as well as marathon and file system namer watch state endpoints.
-
-With Conduit now officially Linkerd 2, this release introduces a new 
-`io.l5d.destination` for Namerd. With this interface, Linkerd 1.x can run alongside Linkerd 2 in
-Kubernetes through using this Namerd interface. The interface implements Linkerd 2's control plane
-[Destination API](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto).
-Note that this interface is experimental and shouldn't be used in production yet but feel free to 
-try it out!
+Linkerd 1.4.6 adds even more watch state endpoints to Linkerd's debugging arsenal, allowing you to 
+inspect the state of Linkerd’s watches easily. This release adds watch state endpoints for the 
+Kubernetes ConfigMap interpreter as well as the Marathon and filesystem namers.
 
 Full release notes:
 
 * HTTP/1.1 and HTTP/2
   * Allow HTTP/1.1 and HTTP/2 POST requests to be retryable.
   * Fix an issue where the `x-forwarded-client-cert` header was not always cleared on incoming
-   requests.
-* Add TLS support for etcd namer HTTP clients used to connect to etcd servers.
+    requests.
+* Add TLS support for the `io.l5d.etcd` namer client.
 * Admin
-  * Add a new `io.l5d.marathon` namer watch state endpoint that instruments watches in the marathon 
-  namer.
-  * Add a new `io.l5d.fs` namer watch state endpoint that instruments watches in the file system 
-  namer.
-  * Add a `io.l5d.k8s.configMap` watch state endpoint to observe dtabs stored in a Kubernetes 
-  ConfigMap.
+  * Add new `io.l5d.marathon`, `io.l5d.fs`, and `io.l5d.k8s.configMap` watch state endpoints to 
+  allow diagnosis of Linkerd’s various watches.
 * Distributed Tracing
-  * Add support for the `io.l5d.zipkin` trace propagation module to use Zipkin B3 headers in requests.
+  * Add a new `io.l5d.zipkin` trace propagation plugin that writes Zipkin B3 trace headers to
+  outgoing requests. Previously, Zipkin trace headers were ignored by Linkerd in order for Linkerd 
+  to not interfere with other tracing systems like Zipkin.
 * Namerd
-  * Add a new `io.l5d.destination` interface for Linkerd 2 proxies to resolve service names in 
-  Kubernetes.
-
-
-
+  * Add an experimental `io.l5d.destination` interface which implements the Linkerd 
+  [destination API.](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto)
 
 ## 1.4.5 2018-07-13
 
