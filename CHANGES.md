@@ -1,3 +1,27 @@
+## 1.4.6 2018-08-13
+
+Linkerd 1.4.6 adds even more watch state endpoints to Linkerd's debugging arsenal, allowing you to 
+inspect the state of Linkerd’s watches easily. This release adds watch state endpoints for the 
+Kubernetes ConfigMap interpreter as well as the Marathon and filesystem namers.
+
+Full release notes:
+
+* HTTP/1.1 and HTTP/2
+  * Allow HTTP/1.1 and HTTP/2 POST requests to be retryable.
+  * Fix an issue where the `x-forwarded-client-cert` header was not always cleared on incoming
+    requests.
+* Add TLS support for the `io.l5d.etcd` namer client.
+* Admin
+  * Add new `io.l5d.marathon`, `io.l5d.fs`, and `io.l5d.k8s.configMap` watch state endpoints to 
+  allow diagnosis of Linkerd’s various watches.
+* Distributed Tracing
+  * Add a new `io.l5d.zipkin` trace propagation plugin that writes Zipkin B3 trace headers to
+  outgoing requests. Previously, Zipkin trace headers were ignored by Linkerd in order for Linkerd 
+  to not interfere with other tracing systems like Zipkin.
+* Namerd
+  * Add an experimental `io.l5d.destination` interface which implements the Linkerd 
+  [destination API.](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto)
+
 ## 1.4.5 2018-07-13
 
 Linkerd 1.4.5 contains some minor bugfixes and introduces two much-requested features. First, it is
