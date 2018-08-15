@@ -395,7 +395,7 @@ svc | N/A | The name of the service.
 
 
 <a href="istio-identifier"></a>
-### Istio Identifier
+### Istio Identifier (Deprecated)
 
 kind: `io.l5d.k8s.istio`
 
@@ -494,7 +494,7 @@ Key | Default Value | Description
 kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-request-authorizer) is currently supported.
 
 <a name="istio-request-authorizer"></a>
-### Istio Request Authorizer
+### Istio Request Authorizer (Deprecated)
 
 kind: `io.l5d.k8s.istio`.
 

@@ -295,7 +295,7 @@ namespace | N/A | The Kubernetes namespace.
 port | N/A | The port name.
 svc | N/A | The name of the service.
 
-### HTTP/2 Istio Identifier
+### HTTP/2 Istio Identifier (Deprecated)
 
 kind: `io.l5d.k8s.istio`
 
@@ -358,7 +358,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-request-authorizer) is currently supported.
 
-### HTTP/2 Istio Request Authorizer
+### HTTP/2 Istio Request Authorizer (Deprecated)
 
 kind: `io.l5d.k8s.istio`.
 
