@@ -44,6 +44,8 @@ object Api {
     state: Option[String]
   )
 
+  final case class HealthCheck()
+
   final case class TaskIpAddress(
     ipAddress: Option[String]
   )
@@ -64,6 +66,7 @@ object Api {
   final case class App(
     id: Option[String],
     ipAddress: Option[AppIpAddress],
+    healthChecks: Option[Seq[HealthCheck]],
     tasks: Option[Seq[Task]]
   )
 
@@ -73,6 +76,11 @@ object Api {
 
   final case class AppRsp(
     app: Option[App] = None
+  )
+
+  final case class TaskWithHealthCheckInfo(
+    task: Task,
+    numberOfHealthChecks: Int
   )
 
   object discoveryPort {
@@ -92,9 +100,9 @@ object Api {
   }
 
   object healthyHostPort {
-    def unapply(task: Task): Option[(String, Int)] = {
-      if (isHealthy(task)) {
-        hostPort.unapply(task)
+    def unapply(extendedTask: TaskWithHealthCheckInfo): Option[(String, Int)] = {
+      if (isHealthy(extendedTask)) {
+        hostPort.unapply(extendedTask.task)
       } else {
         None
       }
@@ -108,13 +116,21 @@ object Api {
   }
 
   object healthyIpAddress {
-    def unapply(task: Task): Option[String] = {
-      if (isHealthy(task)) {
-        ipAddress.unapply(task)
+    def unapply(extendedTask: TaskWithHealthCheckInfo): Option[String] = {
+      if (isHealthy(extendedTask)) {
+        ipAddress.unapply(extendedTask.task)
       } else {
         None
       }
     }
+  }
+
+  object healthCheckCount {
+    def unapply(healthChecks: Option[Seq[HealthCheck]]): Option[Int] =
+      healthChecks match {
+        case Some(healthCheckSeq) => Some(healthCheckSeq.size)
+        case None => Some(0)
+      }
   }
 
   def apply(client: Client, uriPrefix: String, useHealthCheck: Boolean): Api =
@@ -146,33 +162,40 @@ object Api {
   private[this] def toAppIds(appsRsp: AppsRsp): Api.AppIds = {
     appsRsp.apps match {
       case Some(apps) =>
-        apps.collect { case App(Some(id), _, _) => Path.read(id.toLowerCase) }.toSet
+        apps.collect { case App(Some(id), _, _, _) => Path.read(id.toLowerCase) }.toSet
       case None => Set.empty
     }
   }
 
   private[v2] def toAddresses(appRsp: AppRsp, useHealthCheck: Boolean): Set[Address] =
     appRsp.app match {
-      case Some(App(_, discoveryPort(port), Some(tasks))) =>
-        tasks.collect {
-          case ipAddress(host) if !useHealthCheck => Address(host, port)
-          case healthyIpAddress(host) => Address(host, port)
-        }.toSet
-      case Some(App(_, _, Some(tasks))) =>
-        tasks.collect {
-          case hostPort(host, port) if !useHealthCheck => Address(host, port)
-          case healthyHostPort(host, port) => Address(host, port)
-        }.toSet
+      case Some(App(_, discoveryPort(port), healthCheckCount(count), Some(tasks))) =>
+        if (!useHealthCheck)
+          tasks.collect { case ipAddress(host) => Address(host, port) }.toSet
+        else
+          tasks.map(TaskWithHealthCheckInfo(_, count)).collect {
+            case healthyIpAddress(host) => Address(host, port)
+          }.toSet
+      case Some(App(_, _, healthCheckCount(count), Some(tasks))) =>
+        if (!useHealthCheck)
+          tasks.collect { case hostPort(host, port) => Address(host, port) }.toSet
+        else
+          tasks.map(TaskWithHealthCheckInfo(_, count)).collect {
+            case healthyHostPort(host, port) => Address(host, port)
+          }.toSet
       case _ => Set.empty
     }
 
-  private[this] def isHealthy(task: Task): Boolean =
-    task match {
-      case Task(_, _, _, _, Some(healthCheckResults), Some(state)) =>
+  private[this] def isHealthy(extendedTask: TaskWithHealthCheckInfo): Boolean = {
+    extendedTask.task match {
+      case Task(_, _, _, _, Some(healthCheckResults), Some(state)) if extendedTask.numberOfHealthChecks > 0 =>
         state == taskRunning &&
-          healthCheckResults.forall(_ == HealthCheckResult(Some(true)))
+          healthCheckResults.count(_ == HealthCheckResult(Some(true))) >= extendedTask.numberOfHealthChecks
+      case Task(_, _, _, _, _, Some(state)) =>
+        state == taskRunning && extendedTask.numberOfHealthChecks == 0
       case _ => false
     }
+  }
 }
 
 private class AppIdApi(client: Api.Client, apiPrefix: String, useHealthCheck: Boolean)
