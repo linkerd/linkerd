@@ -395,7 +395,7 @@ svc | N/A | The name of the service.
 
 
 <a href="istio-identifier"></a>
-### Istio Identifier
+### Istio Identifier (Deprecated)
 
 kind: `io.l5d.k8s.istio`
 
@@ -494,7 +494,7 @@ Key | Default Value | Description
 kind | _required_ | Only [`io.l5d.k8s.istio`](#istio-request-authorizer) is currently supported.
 
 <a name="istio-request-authorizer"></a>
-### Istio Request Authorizer
+### Istio Request Authorizer (Deprecated)
 
 kind: `io.l5d.k8s.istio`.
 
@@ -528,7 +528,7 @@ trace propagator is also responsible for writing this trace context into request
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | One of [`io.l5d.default`](#default-trace-propagator).
+kind | _required_ | One of [`io.l5d.default`](#default-trace-propagator), [`io.l5d.zipkin`](#zipkin-trace-propagator).
 
 <a name="default-trace-propagator"></a>
 ### Default Trace Propagator
@@ -538,13 +538,31 @@ kind: `io.l5d.default`.
 The default trace propagator stores the trace id in the `l5d-ctx-trace` request header.  It also
 reads the `l5d-sample` and, if present, uses this value as the sample rate for this request.
 
-#### Trace Propagator Configuration:
+<aside class="notice">
+The trace information in the header are serialized by Finagles `TraceId.serialize` method.
+</aside>
+
+<a name="zipkin-trace-propagator"></a>
+### Zipkin Trace Propagator
+
+kind: `io.l5d.zipkin`.
+
+A trace propagator that writes Zipkin B3 trace headers to outgoing requests. Processes B3 Headers 
+received from upstream as well. 
+
+Header | Content
+------ | -------
+`x-b3-traceid` | 128 or 64 lower-hex encoded bits (required)
+`x-b3-spanid` | 64 lower-hex encoded bits (required)
+`x-b3-parentspanid` | 64 lower-hex encoded bits (absent on root span)
+`x-b3-sampled` | Boolean (either “1” or “0”, can be absent)
+`x-b3-flags` | '1' means debug (can be absent)
 
 > Configuration example
 
 ```yaml
 tracePropagator:
-- kind: io.l5d.default
+  kind: io.l5d.zipkin
 ```
 
 <a name="http-headers"></a>

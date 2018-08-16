@@ -3,6 +3,7 @@ package io.buoyant.linkerd.protocol.http.istio
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Filter, Stack}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio.mixer.MixerClient
@@ -23,6 +24,8 @@ case class IstioRequestAuthorizerInitializerConfig(
   mixerPort: Option[Port] = Some(Port(DefaultMixerPort))
 ) extends HttpRequestAuthorizerConfig {
   import IstioServices._
+
+  Logger.get(this.getClass.getName).warning("Istio HTTP Request Authorizer has been deprecated since version 1.4.7")
 
   @JsonIgnore
   override def role = Stack.Role("IstioRequestAuthorizer")

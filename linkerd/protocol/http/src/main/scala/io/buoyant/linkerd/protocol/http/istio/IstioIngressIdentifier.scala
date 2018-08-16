@@ -5,6 +5,7 @@ import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.param.Label
+import com.twitter.logging.Logger
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.{ClientConfig, IngressCache}
@@ -48,6 +49,8 @@ case class IstioIngressIdentifierConfig(
   mixerPort: Option[Port]
 ) extends HttpIdentifierConfig with ClientConfig {
   import IstioServices._
+
+  Logger.get(this.getClass.getName).warning("Istio HTTP Ingress Identifier has been deprecated since version 1.4.7")
 
   protected def mkK8sApiClient() = mkClient(Params.empty).configured(Label("ingress-identifier"))
 
