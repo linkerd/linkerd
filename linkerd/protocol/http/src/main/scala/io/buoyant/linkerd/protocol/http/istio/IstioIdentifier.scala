@@ -1,7 +1,9 @@
 package io.buoyant.linkerd.protocol.http.istio
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.{Dtab, Path, Stack}
+import com.twitter.logging.Logger
 import com.twitter.util.Future
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.istio._
@@ -40,6 +42,9 @@ case class IstioIdentifierConfig(
   mixerPort: Option[Port]
 ) extends HttpIdentifierConfig {
   import IstioServices._
+
+  @JsonIgnore
+  val _ = Logger.get(this.getClass.getName).warning("Istio HTTP Identifier has been deprecated since version 1.4.7")
 
   override def newIdentifier(
     prefix: Path,
