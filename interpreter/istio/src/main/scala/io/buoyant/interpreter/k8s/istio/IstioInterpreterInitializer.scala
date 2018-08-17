@@ -33,8 +33,7 @@ case class IstioInterpreterConfig(
   @JsonIgnore
   override val experimentalRequired = true
 
-  @JsonIgnore
-  val _ = Logger.get(this.getClass.getName).warning("Istio K8S Interpreter has been deprecated since version 1.4.7")
+  Logger.get(this.getClass.getName).warning("Istio K8S Interpreter has been deprecated since version 1.4.7")
 
   @JsonIgnore
   val prefix: Path = Path.read("/io.l5d.k8s.istio")

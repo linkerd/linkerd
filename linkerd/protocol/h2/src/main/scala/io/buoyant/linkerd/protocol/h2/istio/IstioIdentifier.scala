@@ -40,8 +40,7 @@ case class IstioIdentifierConfig(
 ) extends H2IdentifierConfig {
   import IstioServices._
 
-  @JsonIgnore
-  val _ = Logger.get(this.getClass.getName).warning("Istio HTTP/2 Identifier has been deprecated since version 1.4.7")
+  Logger.get(this.getClass.getName).warning("Istio HTTP/2 Identifier has been deprecated since version 1.4.7")
 
   @JsonIgnore
   override def newIdentifier(params: Stack.Params) = {

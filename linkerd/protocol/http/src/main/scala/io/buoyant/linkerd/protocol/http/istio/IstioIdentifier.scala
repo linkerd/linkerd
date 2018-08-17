@@ -43,8 +43,7 @@ case class IstioIdentifierConfig(
 ) extends HttpIdentifierConfig {
   import IstioServices._
 
-  @JsonIgnore
-  val _ = Logger.get(this.getClass.getName).warning("Istio HTTP Identifier has been deprecated since version 1.4.7")
+  Logger.get(this.getClass.getName).warning("Istio HTTP Identifier has been deprecated since version 1.4.7")
 
   override def newIdentifier(
     prefix: Path,

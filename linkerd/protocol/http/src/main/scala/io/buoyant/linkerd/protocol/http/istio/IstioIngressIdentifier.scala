@@ -50,8 +50,7 @@ case class IstioIngressIdentifierConfig(
 ) extends HttpIdentifierConfig with ClientConfig {
   import IstioServices._
 
-  @JsonIgnore
-  val _ = Logger.get(this.getClass.getName).warning("Istio HTTP Ingress Identifier has been deprecated since version 1.4.7")
+  Logger.get(this.getClass.getName).warning("Istio HTTP Ingress Identifier has been deprecated since version 1.4.7")
 
   protected def mkK8sApiClient() = mkClient(Params.empty).configured(Label("ingress-identifier"))
 

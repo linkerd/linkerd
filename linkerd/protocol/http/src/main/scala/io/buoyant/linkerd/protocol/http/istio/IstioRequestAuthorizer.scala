@@ -25,8 +25,7 @@ case class IstioRequestAuthorizerInitializerConfig(
 ) extends HttpRequestAuthorizerConfig {
   import IstioServices._
 
-  @JsonIgnore
-  val _ = Logger.get(this.getClass.getName).warning("Istio HTTP Request Authorizer has been deprecated since version 1.4.7")
+  Logger.get(this.getClass.getName).warning("Istio HTTP Request Authorizer has been deprecated since version 1.4.7")
 
   @JsonIgnore
   override def role = Stack.Role("IstioRequestAuthorizer")
