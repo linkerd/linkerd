@@ -499,7 +499,7 @@ port-name | yes | The port name.
 svc-name | yes | The name of the service.
 label-value | yes if `labelSelector` is defined | The label value used to filter services.
 
-### Istio Configuration
+### Istio Configuration (Deprecated)
 
 > Configure an Istio namer
 
@@ -528,7 +528,7 @@ experimental | _required_ | Because this namer is still considered experimental,
 host | `istio-manager.default.svc.cluster.local` | The host of the Istio-Manager.
 port | `8080` | The port of the Istio-Manager.
 
-### Istio Path Parameters
+### Istio Path Parameters (Deprecated)
 
 > Dtab Path Format
 

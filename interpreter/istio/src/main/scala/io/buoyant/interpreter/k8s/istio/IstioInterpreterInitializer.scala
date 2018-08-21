@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Path, Stack, param}
+import com.twitter.logging.Logger
 import io.buoyant.config.types.Port
 import io.buoyant.k8s.{SetHostFilter, SingleNsNamer}
 import io.buoyant.k8s.v1.Api
@@ -31,6 +32,8 @@ case class IstioInterpreterConfig(
 
   @JsonIgnore
   override val experimentalRequired = true
+
+  Logger.get(this.getClass.getName).warning("Istio K8S Interpreter has been deprecated since version 1.4.7")
 
   @JsonIgnore
   val prefix: Path = Path.read("/io.l5d.k8s.istio")
