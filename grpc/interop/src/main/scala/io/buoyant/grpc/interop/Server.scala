@@ -5,6 +5,7 @@ import com.twitter.app.App
 import com.twitter.finagle.Failure
 import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.finagle.buoyant.{H2, h2}
+import com.twitter.logging.Logger
 import com.twitter.server.TwitterServer
 import com.twitter.util.{Await, Future, Promise, Return, Throw, Try}
 import grpc.{testing => pb}
@@ -89,6 +90,7 @@ class Server extends pb.TestService {
       override protected def onInterrupt(t: Throwable): Unit =
         t match {
           case e: Failure if e.isFlagged(Failure.Interrupted) =>
+            Logger.get("GrpcInteropServer").debug("streamingInputCall failed with %s", e)
             reqs.reset(Reset.Cancel)
             f.raise(e)
           case e =>

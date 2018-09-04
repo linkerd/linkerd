@@ -3,6 +3,7 @@ package io.buoyant.grpc.runtime
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.twitter.finagle.buoyant.h2
+import com.twitter.logging.Logger
 import scala.util.Try
 import scala.util.control.NoStackTrace
 
@@ -106,7 +107,9 @@ object GrpcStatus {
     case Internal(_) => h2.Reset.InternalError
     case Unavailable(_) => h2.Reset.Refused
     case ResourceExhausted(_) => h2.Reset.EnhanceYourCalm
-    case _ => h2.Reset.Cancel
+    case _ =>
+      Logger.get("GrpcStatus").debug("toReset got unknown gRPC status: %s", status)
+      h2.Reset.Cancel
   }
 
   def tryFromHeaders(headers: h2.Headers): Option[GrpcStatus] = {

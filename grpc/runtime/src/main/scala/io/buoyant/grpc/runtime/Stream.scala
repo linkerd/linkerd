@@ -3,6 +3,7 @@ package io.buoyant.grpc.runtime
 import com.twitter.concurrent.{AsyncMutex, AsyncQueue}
 import com.twitter.finagle.Failure
 import com.twitter.finagle.buoyant.h2.Reset
+import com.twitter.logging.Logger
 import com.twitter.util._
 
 trait Stream[+T] {
@@ -151,19 +152,24 @@ object Stream {
         }
 
         val p = new Promise[Stream.Releasable[T]] with Promise.InterruptHandler {
-          override protected def onInterrupt(t: Throwable): Unit =
+          override protected def onInterrupt(t: Throwable): Unit = {
+            val log = Logger.get("Stream")
             t match {
               case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
                 val status = cause match {
                   case Some(e: Reset) => e
-                  case _ => Reset.Cancel
+                  case _ =>
+                    log.debug("recv got unknown Interrupted failure: %s", cause)
+                    Reset.Cancel
                 }
                 reset(status)
                 f.raise(e)
               case _ =>
+                log.debug("recv got unknown failure: %s", t)
                 reset(Reset.Cancel)
                 f.raise(t)
             }
+          }
         }
         f.proxyTo(p)
         p

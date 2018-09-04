@@ -111,7 +111,9 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     override protected def onInterrupt(t: Throwable): Unit = t match {
       case rst: Reset =>
         reset(rst, local = true); ()
-      case _ => reset(Reset.Cancel, local = true); ()
+      case _ =>
+        log.debug("unknown stream error in onInterrupt: %s", t)
+        reset(Reset.Cancel, local = true); ()
     }
   }
 

@@ -6,6 +6,7 @@ import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.config.Parser
@@ -293,6 +294,7 @@ object Client {
     Closable.make { _ =>
       closed = true
       if (currentStream != null) {
+        Logger.get("MeshClient").debug("streamVar resetting currentStream: %s", currentStream)
         currentStream.reset(Reset.Cancel)
       }
       streamState.recordStreamEnd()

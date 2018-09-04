@@ -83,7 +83,9 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
           log.debug("[%s S:%d] stream reset from local; resetting remote: %s", prefix, id, e)
           val rst = e match {
             case rst: Reset => rst
-            case _ => Reset.Cancel
+            case _ =>
+              log.debug("[%s S:%d] unknown stream error: %s", prefix, id, e)
+              Reset.Cancel
           }
           if (!closed.get) { writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), rst); () }
         }
