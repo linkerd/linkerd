@@ -1,0 +1,9 @@
+admin:
+  ip: 0.0.0.0
+  port: 9990
+routers:
+- protocol: http
+  interpreter:
+    kind: io.l5d.consul.dtab
+    host: localhost
+    port: 8500

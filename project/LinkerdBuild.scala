@@ -569,7 +569,11 @@ object LinkerdBuild extends Base {
       .dependsOn(Namer.core, LinkerdBuild.istio, perHost, subnet)
       .withTests()
 
-    val all = aggregateDir("interpreter", fs, k8s, mesh, namerd, perHost, subnet)
+    val consul = projectDir("interpreter/consul")
+      .dependsOn(Namer.core, Namer.consul)
+      .withTests()
+
+    val all = aggregateDir("interpreter", consul, fs, k8s, mesh, namerd, perHost, subnet)
   }
 
   object Linkerd {
@@ -726,7 +730,7 @@ object LinkerdBuild extends Base {
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
       Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
-      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
+      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet, Interpreter.consul,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
@@ -861,6 +865,7 @@ object LinkerdBuild extends Base {
   val namerdMain = Namerd.main
 
   val interpreter = Interpreter.all
+  val interpreterConsul = Interpreter.consul
   val interpreterFs = Interpreter.fs
   val interpreterK8s = Interpreter.k8s
   val interpreterIstio = Interpreter.istio
