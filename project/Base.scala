@@ -170,6 +170,7 @@ class Base extends Build {
       val home = s"/${organization.value}/${name.value}/${version.value}"
       val exec = s"$home/${configuration.value}-exec"
       from(dockerJavaImage.value)
+      run("[ -d /var/log/linkerd ]", "||", "mkdir", "-p", "/var/log/linkerd")
       run("mkdir", "-p", home)
       workDir(home)
       env(envPrefix+"HOME", home)

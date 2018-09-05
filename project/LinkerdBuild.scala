@@ -257,6 +257,16 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
+       |   -XX:+PrintGCDetails                                           \
+       |   -XX:+PrintGCDateStamps                                        \
+       |   -XX:+PrintHeapAtGC                                            \
+       |   -XX:+PrintTenuringDistribution                                \
+       |   -XX:+PrintGCApplicationStoppedTime                            \
+       |   -XX:+PrintPromotionFailure                                    \
+       |   -Xloggc:/var/log/linkerd/gc.log                               \
+       |   -XX:+UseGCLogFileRotation                                     \
+       |   -XX:NumberOfGCLogFiles=10                                     \
+       |   -XX:GCLogFileSize=10M                                         \
        |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
