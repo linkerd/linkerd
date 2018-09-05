@@ -263,7 +263,7 @@ object LinkerdBuild extends Base {
        |   -XX:+PrintTenuringDistribution                                \
        |   -XX:+PrintGCApplicationStoppedTime                            \
        |   -XX:+PrintPromotionFailure                                    \
-       |   -Xloggc:/var/log/linkerd/gc.log                               \
+       |   -Xloggc:${GC_LOG}/gc.log                                      \
        |   -XX:+UseGCLogFileRotation                                     \
        |   -XX:NumberOfGCLogFiles=10                                     \
        |   -XX:GCLogFileSize=10M                                         \
@@ -370,6 +370,13 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/linkerd"
+         |fi
+         |
+         |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
@@ -432,6 +439,13 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/linkerd"
+         |fi
+         |
+         |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
          |""" +
       execScriptJvmOptions +
       """|if read -t 0; then
@@ -640,6 +654,13 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/linkerd"
+         |fi
+         |
+         |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
