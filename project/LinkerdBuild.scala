@@ -373,10 +373,16 @@ object LinkerdBuild extends Base {
          |
          |# Configure GC logging directory
          |if [ -z "$GC_LOG" ]; then
-         |  GC_LOG="/var/log/linkerd"
+         |  GC_LOG="/var/log/namerd"
          |fi
          |
          |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
+         |
+         |if [ ! \( -w "$GC_LOG" \) ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
@@ -442,10 +448,16 @@ object LinkerdBuild extends Base {
          |
          |# Configure GC logging directory
          |if [ -z "$GC_LOG" ]; then
-         |  GC_LOG="/var/log/linkerd"
+         |  GC_LOG="/var/log/namerd"
          |fi
          |
          |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
+         |
+         |if [ ! \( -w "$GC_LOG" \) ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|if read -t 0; then
@@ -661,6 +673,12 @@ object LinkerdBuild extends Base {
          |fi
          |
          |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
+         |
+         |if [ ! \( -w "$GC_LOG" \) ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
