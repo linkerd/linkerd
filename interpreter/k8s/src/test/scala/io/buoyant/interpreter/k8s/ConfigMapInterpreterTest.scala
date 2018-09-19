@@ -145,7 +145,7 @@ class ConfigMapInterpreterTest extends FunSuite
   }
 
   trait Fixtures {
-    @volatile var writer: Writer = null
+    @volatile var writer: Writer[Buf] = null
     val service = Service.mk[Request, Response] {
       case req if req.uri.startsWith("/api/v1/namespaces/test/configmaps/test-config") =>
         val rsp = Response()

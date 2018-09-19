@@ -16,7 +16,7 @@ class RewriteHostHeaderTest extends FunSuite with Awaits {
     }
 
     val stk = RewriteHostHeader.module.toStack(
-      Stack.Leaf(RewriteHostHeader.module.role, ServiceFactory.const(svc))
+      Stack.leaf(RewriteHostHeader.module.role, ServiceFactory.const(svc))
     )
 
     await(stk.make(Stack.Params.empty + AddrMetadata(meta))())

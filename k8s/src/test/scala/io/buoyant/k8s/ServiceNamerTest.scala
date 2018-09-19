@@ -107,7 +107,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
 
   trait Fixtures {
 
-    @volatile var writer: Writer = null
+    @volatile var writer: Writer[Buf] = null
 
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/namespaces/pythonsky/services/l5d" =>

@@ -11,10 +11,10 @@ case class Port(port: Int) {
 }
 
 class PortDeserializer extends ConfigDeserializer[Port] {
-  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Port =
-    catchMappingException(ctxt) {
-      Port(_parseInteger(jp, ctxt))
-    }
+  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Port = {
+    val port = Port(jp.getIntValue)
+    port
+  }
 }
 
 class PortSerializer extends ConfigSerializer[Port] {

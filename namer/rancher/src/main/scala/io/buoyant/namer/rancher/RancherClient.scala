@@ -34,7 +34,7 @@ class PortMappingDeserializer extends StdDeserializer[PortMapping](RancherParser
       case Mapping(ip, privatePort, publicPort, protocol) =>
         PortMapping(ip, privatePort.toInt, publicPort.toInt, protocol)
       case _ =>
-        throw ctx.mappingException(s"Failed to understand ip-binding: $mapping")
+        throw new IllegalArgumentException(s"Failed to understand ip-binding: $mapping")
     }
   }
 }

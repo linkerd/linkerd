@@ -168,7 +168,7 @@ class StreamingNamerClient(
 }
 
 object StreamingNamerClient {
-  val Closed = Failure("stream closed", Failure.Interrupted)
+  val Closed = Failure("stream closed", FailureFlags.Interrupted)
 
   def asyncStreamToVar[T](init: T, mkStream: () => AsyncStream[T], closable: Closable): Var[T] = {
     Var.async[T](init) { update =>

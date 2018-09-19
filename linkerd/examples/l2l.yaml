@@ -1,0 +1,26 @@
+namers:
+- kind: io.l5d.fs
+  rootDir: disco
+
+routers:
+- protocol: http
+  label: outgoing
+  servers:
+  - port: 4140
+  dtab: /svc => /#/io.l5d.fs
+  interpreter:
+    kind: default
+    transformers:
+    - kind: io.l5d.port
+      port: 4141
+
+- protocol: http
+  label: incoming
+  servers:
+  - port: 4141
+  dtab: /svc => /#/io.l5d.fs
+  interpreter:
+    kind: default
+    transformers:
+    - kind: io.l5d.localhost
+

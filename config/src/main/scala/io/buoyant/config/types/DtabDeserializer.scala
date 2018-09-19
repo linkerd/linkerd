@@ -7,9 +7,7 @@ import io.buoyant.config.{ConfigSerializer, ConfigDeserializer}
 
 class DtabDeserializer extends ConfigDeserializer[Dtab] {
   override def deserialize(parser: JsonParser, ctx: DeserializationContext): Dtab =
-    catchMappingException(ctx) {
-      Dtab.read(_parseString(parser, ctx))
-    }
+    Dtab.read(_parseString(parser, ctx))
 }
 
 class DtabSerializer extends ConfigSerializer[Dtab] {

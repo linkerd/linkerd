@@ -1,0 +1,10 @@
+namers: []
+
+routers:
+- protocol: http
+  dtab: /svc/* => /$/inet/google.com/443
+  servers:
+  - port: 4140
+  client:
+    tls:
+      commonName: google.com

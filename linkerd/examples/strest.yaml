@@ -1,0 +1,8 @@
+namers: []
+
+routers:
+- protocol: h2
+  servers:
+  - port: 4140
+  dtab: /svc/* => /$/inet/localhost/8888
+

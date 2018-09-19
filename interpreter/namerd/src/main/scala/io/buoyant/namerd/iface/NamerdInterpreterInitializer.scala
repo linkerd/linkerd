@@ -99,7 +99,7 @@ case class NamerdInterpreterConfig(
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
 
     val monitor = Monitor.mk {
-      case e: Failure if e.isFlagged(Failure.Interrupted) => true
+      case e: Failure if e.isFlagged(FailureFlags.Interrupted) => true
     }
 
     val param.Stats(stats0) = params[param.Stats]

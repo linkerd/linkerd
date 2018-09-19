@@ -9,7 +9,7 @@ import com.twitter.finagle.service.{Backoff, RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Failure, Filter, http}
+import com.twitter.finagle.{Failure, FailureFlags, Filter, http}
 import com.twitter.io.Reader
 import com.twitter.io.Reader.ReaderDiscarded
 import com.twitter.util.TimeConversions._
@@ -42,7 +42,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
         log.error("retrying k8s request to %s on unexpected response code %d with message %s", path, rep.statusCode, rep.contentString)
         true
       // Don't retry on interruption
-      case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
+      case (_, Throw(e: Failure)) if e.isFlagged(FailureFlags.Interrupted) => false
       // Don't retry on reader discarded
       case (_, Throw(_: ReaderDiscarded)) => false
       case (_, Throw(NonFatal(ex))) =>

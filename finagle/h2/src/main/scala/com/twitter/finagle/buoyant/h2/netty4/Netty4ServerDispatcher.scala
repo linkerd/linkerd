@@ -1,7 +1,7 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
-import com.twitter.finagle.{Failure, Service}
+import com.twitter.finagle.{Failure, FailureFlags, Service}
 import com.twitter.finagle.context.{Contexts, RemoteInfo}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
@@ -98,10 +98,10 @@ class Netty4ServerDispatcher(
       case ServiceException(e) =>
         val rst = e match {
           case rst: Reset => rst
-          case f@Failure(_) if f.isFlagged(Failure.Interrupted) =>
+          case f@Failure(_) if f.isFlagged(FailureFlags.Interrupted) =>
             log.info(f, "[%s S:%d] interrupted; resetting remote: CANCEL", prefix, st.streamId)
             Reset.Cancel
-          case f@Failure(_) if f.isFlagged(Failure.Rejected) =>
+          case f@Failure(_) if f.isFlagged(FailureFlags.Rejected) =>
             log.info(f, "[%s S:%d] rejected; resetting remote: REFUSED", prefix, st.streamId)
             Reset.Refused
           case e =>

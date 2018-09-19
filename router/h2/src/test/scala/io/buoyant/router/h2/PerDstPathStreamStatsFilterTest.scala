@@ -33,7 +33,7 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
     val sf = ServiceFactory(() => Future.value(service))
     val stk = new StackBuilder[ServiceFactory[Request, Response]](nilStack)
     stk.push(PerDstPathStreamStatsFilter.module)
-    stk.result ++ Stack.Leaf(Endpoint, sf)
+    stk.result ++ Stack.leaf(Endpoint, sf)
   }
 
   val dogReq = Request("http", Method.Get, "foo", "dog", Stream.empty())
@@ -73,11 +73,16 @@ class PerDstPathStreamStatsFilterTest extends FunSuite with Matchers {
       "pfx/service/req/cat/stream/total_latency_ms",
       "pfx/service/req/dog/stream/total_latency_ms",
 
+      "pfx/service/req/cat/stream/data_bytes",
+      "pfx/service/req/dog/stream/data_bytes",
+
       "pfx/service/req/cat/request/stream/stream_duration_ms",
+      "pfx/service/req/cat/response/stream/stream_duration_ms",
       "pfx/service/req/dog/request/stream/stream_duration_ms",
       "pfx/service/req/dog/response/stream/stream_duration_ms",
 
       "pfx/service/req/cat/request/stream/data_bytes",
+      "pfx/service/req/cat/response/stream/data_bytes",
       "pfx/service/req/dog/request/stream/data_bytes",
       "pfx/service/req/dog/response/stream/data_bytes"
     ))

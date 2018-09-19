@@ -122,7 +122,7 @@ private[consul] object SvcAddr {
       Closable.make { _ =>
         stopped = true
         stats.closes.incr()
-        pending.raise(Failure(ServiceRelease.getMessage, ServiceRelease, Failure.Interrupted))
+        pending.raise(Failure(ServiceRelease.getMessage, ServiceRelease, FailureFlags.Interrupted))
         pending
       }
     }

@@ -30,7 +30,7 @@ class ThriftNamerClient(
   private[this] implicit val timer = _timer
   private[this] val tclientId = TPath(clientId)
 
-  private[this] val Released = Failure("Released", Failure.Interrupted)
+  private[this] val Released = Failure("Released", FailureFlags.Interrupted)
 
   private case class InstrumentedBind(
     act: InstrumentedActivity[NameTree[Name.Bound]],

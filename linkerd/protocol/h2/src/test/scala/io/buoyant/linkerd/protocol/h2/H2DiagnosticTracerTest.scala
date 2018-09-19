@@ -24,7 +24,7 @@ class H2DiagnosticTracerTest extends FunSuite {
   }
 
   private[this] val testStack = H2DiagnosticTracer.module +:
-    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
+    Stack.leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
 
   test("pass through TRACE requests without l5d-add-context header") {
     val serviceFactory = testStack.make(Stack.Params.empty)

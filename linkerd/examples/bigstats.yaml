@@ -1,0 +1,12 @@
+telemetry:
+- kind: io.l5d.prometheus
+
+routers:
+- protocol: http
+  client:
+    failureAccrual:
+      kind: none
+  dtab: |
+    /svc/* => /$/inet/127.0.0.1/8080;
+  servers:
+  - port: 4140

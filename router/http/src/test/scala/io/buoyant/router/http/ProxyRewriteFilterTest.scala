@@ -18,7 +18,7 @@ class ProxyRewriteFilterTest extends FunSuite with Awaits {
     }
 
     val stk = ProxyRewriteFilter.module.toStack(
-      Stack.Leaf(ProxyRewriteFilter.module.role, ServiceFactory.const(svc))
+      Stack.leaf(ProxyRewriteFilter.module.role, ServiceFactory.const(svc))
     )
 
     await(stk.make(Stack.Params.empty)())

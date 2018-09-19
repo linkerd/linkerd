@@ -1,7 +1,7 @@
 package io.buoyant.grpc.runtime
 
 import com.twitter.finagle.buoyant.h2
-import com.twitter.finagle.{Failure, Service => FinagleService}
+import com.twitter.finagle.{Failure, FailureFlags, Service => FinagleService}
 import com.twitter.util._
 import io.netty.buffer.Unpooled
 
@@ -53,7 +53,7 @@ object ClientDispatcher {
 
         val p = new Promise[T]
         p.setInterruptHandler {
-          case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
+          case e@Failure(cause) if e.isFlagged(FailureFlags.Interrupted) =>
             val rst = cause match {
               case Some(s: GrpcStatus) => s.toReset
               case _ => h2.Reset.Cancel

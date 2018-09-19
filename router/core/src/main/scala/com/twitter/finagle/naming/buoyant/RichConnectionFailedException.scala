@@ -33,7 +33,7 @@ case class RichConnectionFailedException(
     )
   }
 
-  override private[finagle] def flags = FailureFlags.Retryable
+  override def flags = FailureFlags.Retryable
 
   override protected def copyWithFlags(flags: Long): RichConnectionFailedException =
     throw new IllegalStateException("Cannot modify flags of RichConnectionFailedException")
@@ -71,7 +71,7 @@ dtab resolution:
 $resolutionList
 """
 
-  override private[finagle] def flags = FailureFlags.Retryable
+  override def flags = FailureFlags.Retryable
 
   override protected def copyWithFlags(flags: Long): RichConnectionFailedExceptionWithPath =
     throw new IllegalStateException("Cannot modify flags of RichConnectionFailedExceptionWithPath")
