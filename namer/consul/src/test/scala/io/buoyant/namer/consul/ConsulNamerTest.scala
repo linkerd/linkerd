@@ -3,13 +3,15 @@ package io.buoyant.namer.consul
 import com.twitter.finagle._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Await, Future, Promise}
+import com.twitter.logging.Level
+import com.twitter.util.{Config => _, _}
 import io.buoyant.consul.v1._
 import io.buoyant.namer.{ConfiguredDtabNamer, Metadata}
-import io.buoyant.test.Awaits
-import org.scalatest.FunSuite
+import io.buoyant.test.{Awaits, FunSuite}
 
 class ConsulNamerTest extends FunSuite with Awaits {
+
+  setLogLevel(Level.ERROR)
 
   val testPath = Path.read("/test")
   val testServiceNode = ServiceNode(
@@ -75,13 +77,19 @@ class ConsulNamerTest extends FunSuite with Awaits {
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
-    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
-    assert(state == Activity.Pending)
-    assert(stats.counters == Map(
-      Seq("service", "cached") -> 1,
-      Seq("service", "opens") -> 1,
-      Seq("lookups") -> 1
-    ))
+    Time.withCurrentTimeFrozen { _ =>
+      namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
+        state = _
+      }
+      assert(state == Activity.Pending)
+      assert(
+        stats.counters == Map(
+          Seq("service", "cached") -> 1,
+          Seq("service", "opens") -> 1,
+          Seq("lookups") -> 1
+        )
+      )
+    }
   }
 
   test("Namer returns Neg if the consul api cannot be reached") {
@@ -99,15 +107,21 @@ class ConsulNamerTest extends FunSuite with Awaits {
     val namer = ConsulNamer.untagged(testPath, new TestApi(), new TestAgentApi("acme.co"), stats = stats)
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
-    namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
+    Time.withCurrentTimeFrozen { _ =>
+      namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
+        state = _
+      }
 
-    assert(state == Activity.Ok(NameTree.Neg))
-    assert(stats.counters == Map(
-      Seq("service", "cached") -> 1,
-      Seq("service", "opens") -> 1,
-      Seq("service", "errors") -> 1,
-      Seq("lookups") -> 1
-    ))
+      assert(state == Activity.Ok(NameTree.Neg))
+      assert(
+        stats.counters == Map(
+          Seq("service", "cached") -> 1,
+          Seq("service", "opens") -> 1,
+          Seq("service", "errors") -> 1,
+          Seq("lookups") -> 1
+        )
+      )
+    }
   }
 
   test("Namer returns Neg when servicename does not exist") {
@@ -584,7 +598,6 @@ class ConsulNamerTest extends FunSuite with Awaits {
     @volatile var nameTreeUpdates: Int = 0
     namer.lookup(Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond { s =>
       nameTreeUpdates += 1
-      log.info(s"count: $nameTreeUpdates")
       state = s
     }
 
@@ -723,7 +736,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     withClue("after close") { assert(reqs == 2, "Consul observed by closed activity!") }
     assert(stats.counters.get(Seq("service", "opens")).contains(1))
     assert(stats.counters.get(Seq("service", "closes")).contains(1))
-    assert(stats.counters.get(Seq("service", "errors")) == None)
+    assert(stats.counters.get(Seq("service", "errors")).forall(_ == 0))
   }
   test("Namer returns weighted bound address metadata when service has configured weight tag") {
     class TestApi extends CatalogApi(null, "/v1") {

@@ -90,10 +90,14 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
       numOfRequests.incrementAndGet()
       Future.exception(new Throwable("whatever is thrown we retry"))
     }
-    val numOfAttempts = 5
+    val numOfRetries = 5
     val retried = new Promise[Unit] // satisfied when backoffs stream reaches hang
-    lazy val hang: Duration = { retried.setDone(); Duration.Top }
-    val backoffs: Stream[Duration] = Stream.fill(numOfAttempts)(10.millis) #::: hang #:: Stream.empty
+    // When the head of a stream is destructured off, the next element is reified.  This means that
+    // when the first Duration.Top backoff is used, the next element is evaluated and the retried
+    // promise is satisfied.
+    lazy val hang: Stream[Duration] = Duration.Top #:: {retried.setDone(); Duration.Top} #:: Stream.empty[Duration]
+
+    val backoffs: Stream[Duration] = Stream.fill(numOfRetries)(10.millis) #::: hang
 
     // when
     val addr: InstrumentedVar[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
@@ -101,7 +105,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
 
     // then
     await(retried)
-    numOfRequests.intValue() should equal(numOfAttempts)
+    numOfRequests.intValue() should equal(numOfRetries+1)
   }
 
   test("should extract nested root cause correctly") {
