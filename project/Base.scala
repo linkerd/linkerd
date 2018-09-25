@@ -144,13 +144,12 @@ class Base extends Build {
   val nodeModulesRE = ".*/node_modules/.*".r
 
   /**
-   * finagle-thrift includes files copied from libthrift that cause assembly merge conflicts.  To
-   * work around this, we use a merge strategy that uses the files from libthrift in the event of
-   * a conflict.  This should be removed once https://github.com/twitter/finagle/issues/688 is
-   * resolved.
+   * zookeeper:3.5.0-alpha and util-slf4j-api_2.12:18.9.0 depend on conflicting versions of slf4j.
+   * To work around this, we use a merge strategy that uses the files from the newer version of
+   * slf4j in the event of a conflict: slf4j-simple-1.7.21.jar.
    */
-  val libthriftMergeStrategy = new MergeStrategy {
-    override def name: String = "libthrift-merge-strategy"
+  val slf4jMergeStrategy = new MergeStrategy {
+    override def name: String = "slf4j-merge-strategy"
     override def apply(
       tempDir: File,
       path: String,
@@ -158,7 +157,7 @@ class Base extends Build {
     ): Either[String, Seq[(File, String)]] = {
       Right {
         files.find { f =>
-          AssemblyUtils.sourceOfFileForMerge(tempDir, f)._1.getName == "libthrift-0.10.0.jar"
+          AssemblyUtils.sourceOfFileForMerge(tempDir, f)._1.getName == "slf4j-simple-1.7.21.jar"
         }.map { f =>
           f -> path
         }.toSeq
@@ -179,7 +178,7 @@ class Base extends Build {
       case "BUILD" => MergeStrategy.discard
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case "META-INF/io.netty.versions.properties" => MergeStrategy.last
-      case path if path.startsWith("org/apache/thrift/protocol") => libthriftMergeStrategy
+      case path if path.startsWith("org/slf4j/impl") => slf4jMergeStrategy
       case path => (assemblyMergeStrategy in assembly).value(path)
     }
   )

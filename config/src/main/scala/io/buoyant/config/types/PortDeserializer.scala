@@ -10,8 +10,7 @@ case class Port(port: Int) {
   require((MinValue <= port) && (port <= MaxValue), s"$port outside valid range for ports")
 }
 
-class
-PortDeserializer extends ConfigDeserializer[Port] {
+class PortDeserializer extends ConfigDeserializer[Port] {
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Port =
     Port(jp.getIntValue)
 }
