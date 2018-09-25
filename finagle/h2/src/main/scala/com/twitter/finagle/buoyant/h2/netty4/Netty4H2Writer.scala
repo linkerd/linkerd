@@ -19,10 +19,20 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
    */
 
   override def write(stream: H2FrameStream, msg: Headers, eos: Boolean): Future[Unit] = {
+    if (stream.streamId == 7777) {
+      Netty4H2Writer.log.error("Building netty frame...")
+    }
     val headers = Netty4Message.Headers.extract(msg)
     val frame = new DefaultHttp2HeadersFrame(headers, eos)
     if (stream.id >= 0) frame.stream(stream)
-    write(frame)
+    if (stream.streamId == 7777) {
+      Netty4H2Writer.log.error("Writing netty frame: %s", frame.name)
+    }
+    write(frame).ensure {
+      if (stream.streamId == 7777) {
+        Netty4H2Writer.log.error("Finished writing netty frame: %s", frame.name)
+      }
+    }
   }
 
   override def write(stream: H2FrameStream, f: Frame): Future[Unit] = f match {

@@ -60,11 +60,17 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
       throw new IllegalStateException(s"stream ${stream.streamId} already exists")
     }
     log.debug("[%s S:%d] initialized stream", prefix, id)
+    if (id == 7777) {
+      log.error("[%s S:%d] initialized stream", prefix, id)
+    }
     val _ = stream.onReset.respond {
       case Return(_) =>
         // Free and clear.
         addClosedId(id)
         streams.remove(id)
+        if (id == 7777) {
+          log.error("[%s S:%d] stream closed", prefix, id)
+        }
         log.debug("[%s S:%d] stream closed", prefix, id)
 
       case Throw(StreamError.Remote(e)) =>
@@ -139,6 +145,9 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
             goAway(GoAway.ProtocolError).before(Future.exception(e))
 
           case id =>
+            if (id == 7777) {
+              log.error("[%s S:%d] demuxing frame %s", prefix, id, f.name)
+            }
             streams.get(id) match {
               case null if id <= closedId.get =>
                 // The stream has been closed and should know better than

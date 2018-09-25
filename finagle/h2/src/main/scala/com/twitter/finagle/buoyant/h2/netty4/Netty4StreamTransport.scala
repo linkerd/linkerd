@@ -211,7 +211,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     val state = stateRef.get
     log.trace("[%s] admitting %s in %s", prefix, in.name, state)
 
-    def recvFrame(f: Frame, q: AsyncQueue[Frame]): Boolean =
+    def recvFrame(f: Frame, q: AsyncQueue[Frame]): Boolean = {
+      if (streamId == 7777) {
+        log.debug("[%s] enqueuing frame %s", prefix, f)
+      }
       if (q.offer(f)) {
         statsReceiver.recordRemoteFrame(f)
         true
@@ -220,6 +223,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         log.debug("[%s] failed to accept frame %s", prefix, in.name)
         false
       }
+    }
 
     in match {
       /*
@@ -389,13 +393,24 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    */
   def send(msg: SendMsg): Future[Future[Unit]] = {
 
+    if (streamId == 7777) {
+      log.error("[%s] sending message", prefix)
+    }
+
     val headersF = writeHeaders(msg).onFailure {
       // If writeHeaders fails, the state will be left in SendPending
       // so we must cancel the send stream ourselves.
       case rst: Reset => msg.stream.cancel(rst)
       case e: Throwable => msg.stream.cancel(Reset.InternalError)
     }
+    if (streamId == 7777) {
+      log.error("[%s] headers write started", prefix)
+    }
+
     val streamFF = headersF.map { _ =>
+      if (streamId == 7777) {
+        log.error("[%s] headers sent", prefix)
+      }
       if (msg.stream.isEmpty) Future.Unit
       else localResetOnCancel(writeStream(msg.stream))
     }
@@ -463,8 +478,17 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   /** Write a request stream to the underlying transport */
   private[this] val writeStream: Stream => Future[Unit] = { stream =>
     def loop(): Future[Unit] = {
+      if (streamId == 7777) {
+        log.error("[%s] pulling a frame off the stream...", prefix)
+      }
       stream.read().flatMap { f =>
+        if (streamId == 7777) {
+          log.error("[%s] got a frame, sending...", prefix)
+        }
         writeFrame(f).flatMap { _ =>
+          if (streamId == 7777) {
+            log.error("[%s] frame sent...", prefix)
+          }
           if (!f.isEnd) loop() else Future.Unit
         }
       }
@@ -559,6 +583,13 @@ object Netty4StreamTransport {
       case _: Frame.Trailers => remoteTrailersCount.incr()
     }
 
+    private[this] val windowUpdates = underlying.counter("window_updates")
+    private[this] val windowUpdateSize = underlying.stat("window_update_size")
+
+    val recordWindowUpdate: Int => Unit = { size =>
+      windowUpdates.incr()
+      windowUpdateSize.add(size)
+    }
   }
 
   object NullStatsReceiver extends StatsReceiver(FNullStatsReceiver)
