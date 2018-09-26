@@ -257,16 +257,7 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
-       |   -XX:+PrintGCDetails                                           \
-       |   -XX:+PrintGCDateStamps                                        \
-       |   -XX:+PrintHeapAtGC                                            \
-       |   -XX:+PrintTenuringDistribution                                \
-       |   -XX:+PrintGCApplicationStoppedTime                            \
-       |   -XX:+PrintPromotionFailure                                    \
-       |   -Xloggc:${GC_LOG}/gc.log                                      \
-       |   -XX:+UseGCLogFileRotation                                     \
-       |   -XX:NumberOfGCLogFiles=10                                     \
-       |   -XX:GCLogFileSize=10M                                         \
+       |   ${GC_LOG_OPTION:-}                                            \
        |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
@@ -376,11 +367,22 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
-         |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
-         |
          |if [ ! \( -w "$GC_LOG" \) ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  [ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
          |fi
          |
          |""" +
@@ -451,11 +453,22 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
-         |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
-         |
          |if [ ! \( -w "$GC_LOG" \) ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  [ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
          |fi
          |
          |""" +
@@ -672,11 +685,25 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/linkerd"
          |fi
          |
-         |[ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
-         |
          |if [ ! \( -w "$GC_LOG" \) ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  [ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
          |fi
          |
          |""" +
