@@ -146,7 +146,8 @@ class Base extends Build {
   /**
    * zookeeper:3.5.0-alpha and util-slf4j-api_2.12:18.9.0 depend on conflicting versions of slf4j.
    * To work around this, we use a merge strategy that uses the files from the newer version of
-   * slf4j in the event of a conflict: slf4j-simple-1.7.21.jar.
+   * slf4j in the event of a conflict: slf4j-simple-1.7.21.jar.  This should be removed when
+   * https://github.com/twitter/util/issues/229 is fixed.
    */
   val slf4jMergeStrategy = new MergeStrategy {
     override def name: String = "slf4j-merge-strategy"
