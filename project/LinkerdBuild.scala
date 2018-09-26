@@ -706,9 +706,7 @@ object LinkerdBuild extends Base {
       .withExamples(Linkerd.all, exampleConfigs)
       .configDependsOn(Test)(BundleProjects: _*)
       .settings(publishArtifact := false)
-      // Example tests are running out of memory in CI and so have been temporarily been disabled to
-      // unblock CI.  This needs to be investigated and fixed.
-      //.withTests()
+      .withTests()
   }
 
   val validateAssembled = taskKey[Unit]("run validation against assembled artifacts")
