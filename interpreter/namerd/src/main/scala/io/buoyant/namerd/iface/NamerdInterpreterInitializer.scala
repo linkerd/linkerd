@@ -53,16 +53,12 @@ case class ClientTlsConfig(commonName: String, caCert: Option[String]) {
 
 case class FailureThresholdConfig(
   minPeriodMs: Option[Int],
-  @JsonDeserialize(contentAs = classOf[java.lang.Double]) threshold: Option[Double],
-  windowSize: Option[Int],
   closeTimeoutMs: Option[Int]
 ) {
   @JsonIgnore
   def params: Stack.Params = {
     val thresholdConfig = ThresholdConfig(
       minPeriodMs.map(_.milliseconds).getOrElse(FailureThresholdConfig.DefaultMinPeriod),
-      threshold.getOrElse(FailureThresholdConfig.DefaultThreshold),
-      windowSize.getOrElse(FailureThresholdConfig.DefaultWindowSize),
       closeTimeoutMs.map(_.milliseconds).getOrElse(FailureThresholdConfig.DefaultCloseTimeout)
     )
     StackParams.empty + FailureDetector.Param(thresholdConfig)
@@ -131,14 +127,10 @@ object NamerdInterpreterConfig {
 object FailureThresholdConfig {
 
   val DefaultMinPeriod = 5.seconds
-  val DefaultThreshold = 2.0
-  val DefaultWindowSize = 100
   val DefaultCloseTimeout = 4.seconds
 
   def defaultStackParam = StackParams.empty + FailureDetector.Param(ThresholdConfig(
     DefaultMinPeriod,
-    DefaultThreshold,
-    DefaultWindowSize,
     DefaultCloseTimeout
   ))
 }

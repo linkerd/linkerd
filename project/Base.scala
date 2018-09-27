@@ -143,29 +143,6 @@ class Base extends Build {
 
   val nodeModulesRE = ".*/node_modules/.*".r
 
-  /**
-   * zookeeper:3.5.0-alpha and util-slf4j-api_2.12:18.9.0 depend on conflicting versions of slf4j.
-   * To work around this, we use a merge strategy that uses the files from the newer version of
-   * slf4j in the event of a conflict: slf4j-simple-1.7.21.jar.  This should be removed when
-   * https://github.com/twitter/util/issues/229 is fixed.
-   */
-  val slf4jMergeStrategy = new MergeStrategy {
-    override def name: String = "slf4j-merge-strategy"
-    override def apply(
-      tempDir: File,
-      path: String,
-      files: Seq[File]
-    ): Either[String, Seq[(File, String)]] = {
-      Right {
-        files.find { f =>
-          AssemblyUtils.sourceOfFileForMerge(tempDir, f)._1.getName == "slf4j-simple-1.7.21.jar"
-        }.map { f =>
-          f -> path
-        }.toSeq
-      }
-    }
-  }
-
   val appAssemblySettings = assemblySettings ++ Seq(
     assemblyExecScript := defaultExecScript,
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(
@@ -179,7 +156,6 @@ class Base extends Build {
       case "BUILD" => MergeStrategy.discard
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case "META-INF/io.netty.versions.properties" => MergeStrategy.last
-      case path if path.startsWith("org/slf4j/impl") => slf4jMergeStrategy
       case path => (assemblyMergeStrategy in assembly).value(path)
     }
   )

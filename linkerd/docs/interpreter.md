@@ -58,8 +58,6 @@ to determine the health of the connection to a Namerd instance. Linkerd sends pi
 Key | Default Value | Description
 --- | ------------- | -----------
 minPeriodMs | 5000 | The period between session pings to Namerd
-threshold | 2.0 | Used to calculate the maximum allowed ping latency
-windowSize | 100 | The number of observations to make to gauge session liveness of Namerd
 closeTimeoutMs | 4000 | Timeout for a session ping's response before Linkerd terminates a session
 
 ### Namerd retry
