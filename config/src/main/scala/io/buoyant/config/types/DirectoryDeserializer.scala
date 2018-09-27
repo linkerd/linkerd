@@ -10,10 +10,8 @@ case class Directory(path: java.nio.file.Path) {
 }
 
 class DirectoryDeserializer extends ConfigDeserializer[Directory] {
-  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Directory = {
-    val dir = Directory(Paths.get(_parseString(jp, ctxt)))
-    dir
-  }
+  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Directory =
+    Directory(Paths.get(_parseString(jp, ctxt)))
 }
 
 class DirectorySerializer extends ConfigSerializer[Directory] {
