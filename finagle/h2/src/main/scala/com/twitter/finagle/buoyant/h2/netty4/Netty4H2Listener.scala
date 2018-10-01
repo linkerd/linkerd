@@ -3,14 +3,11 @@ package netty4
 
 import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
-import com.twitter.finagle.netty4.transport.ChannelTransport
-import com.twitter.finagle.netty4.transport.buoyant.MyChannelTransport
-import com.twitter.finagle.param.Stats
+import com.twitter.finagle.netty4.transport.buoyant.BufferingChannelTransport
 import com.twitter.finagle.server.Listener
 import com.twitter.finagle.transport.{Transport, TransportContext}
 import io.netty.channel._
 import io.netty.handler.codec.http2._
-import io.netty.handler.flush.FlushConsolidationHandler
 import io.netty.handler.ssl.{ApplicationProtocolNames, ApplicationProtocolNegotiationHandler}
 
 /**
@@ -33,13 +30,11 @@ object Netty4H2Listener {
         autoRefillConnectionWindow = params[param.FlowControl.AutoRefillConnectionWindow].enabled
       )
 
-      val stats = params[Stats].statsReceiver.scope("channel_transport")
-
       Netty4Listener(
         pipelineInit = pipelineInit(codec),
         params = params + Netty4Listener.BackPressure(false),
         setupMarshalling = identity,
-        transportFactory = new MyChannelTransport(_)
+        transportFactory = new BufferingChannelTransport(_)
       )
     }
 
