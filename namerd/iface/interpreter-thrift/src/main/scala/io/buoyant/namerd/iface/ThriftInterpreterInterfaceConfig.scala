@@ -5,7 +5,6 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Namer, Path, Stack, ThriftMux}
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.param
-import com.twitter.scrooge.ThriftService
 import io.buoyant.namerd.iface.ThriftNamerInterface.LocalStamper
 import io.buoyant.namerd._
 import java.net.{InetAddress, InetSocketAddress}
@@ -51,7 +50,7 @@ class ThriftInterpreterInterfaceInitializer extends InterfaceInitializer {
   val configClass = classOf[ThriftInterpreterInterfaceConfig]
 }
 
-case class ThriftServable(addr: InetSocketAddress, iface: ThriftService, params: Stack.Params) extends Servable {
+case class ThriftServable(addr: InetSocketAddress, iface: AnyRef, params: Stack.Params) extends Servable {
   def kind = ThriftInterpreterInterfaceConfig.kind
   val thriftMux = ThriftMux.server
   def serve() = ThriftMux.server

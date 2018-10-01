@@ -69,10 +69,10 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
     }
   }
 
-  def readStream[T: TypeReference](reader: Reader, bufsize: Int = 8 * 1024): AsyncStream[T] = {
+  def readStream[T: TypeReference](reader: Reader[Buf], bufsize: Int = 8 * 1024): AsyncStream[T] = {
     // Wrap the reader so reads just terminate if a non-fatal exception occurs. This ensures the below AsyncStream ends
     // if reads fail
-    val terminatingReader = new Reader {
+    val terminatingReader = new Reader[Buf] {
       def read(n: Int): Future[Option[Buf]] = reader.read(n).handle {
         case NonFatal(e) =>
           log.debug(e, "Error reading JSON stream")

@@ -67,7 +67,7 @@ class ConsulDtabStore(
               case Throw(e: NotFound) =>
                 updates() = Activity.Ok(Set.empty[Ns])
                 cycle(e.rsp.headerMap.get(Headers.Index), backoffs0)
-              case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
+              case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) => Future.Done
               case Throw(e) =>
                 updates() = Activity.Failed(e)
                 log.error("consul ns list observation error %s", e)
@@ -79,7 +79,7 @@ class ConsulDtabStore(
       val pending = cycle(None, api.backoffs)
       Closable.make { _ =>
         running = false
-        pending.raise(Failure("Consul observation released", Failure.Interrupted))
+        pending.raise(Failure("Consul observation released", FailureFlags.Interrupted))
         Future.Unit
       }
     }
@@ -207,7 +207,7 @@ class ConsulDtabStore(
               case Throw(e: NotFound) =>
                 updates() = Activity.Ok(None)
                 cycle(e.rsp.headerMap.get(Headers.Index), backoffs0)
-              case Throw(e: Failure) if e.isFlagged(Failure.Interrupted) => Future.Done
+              case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) => Future.Done
               case Throw(e) =>
                 updates() = Activity.Failed(e)
                 log.error("consul ns %s dtab observation error %s", ns, e)
@@ -221,7 +221,7 @@ class ConsulDtabStore(
 
       Closable.make { _ =>
         running = false
-        pending.raise(Failure("Consul observation released", Failure.Interrupted))
+        pending.raise(Failure("Consul observation released", FailureFlags.Interrupted))
         Future.Unit
       }
     }

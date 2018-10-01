@@ -2,7 +2,7 @@ package io.buoyant.grpc.interop
 
 import com.twitter.io.Buf
 import com.twitter.app.App
-import com.twitter.finagle.Failure
+import com.twitter.finagle.{Failure, FailureFlags}
 import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.finagle.buoyant.{H2, h2}
 import com.twitter.server.TwitterServer
@@ -88,7 +88,7 @@ class Server extends pb.TestService {
     val p = new Promise[pb.StreamingInputCallResponse] with Promise.InterruptHandler {
       override protected def onInterrupt(t: Throwable): Unit =
         t match {
-          case e: Failure if e.isFlagged(Failure.Interrupted) =>
+          case e: Failure if e.isFlagged(FailureFlags.Interrupted) =>
             reqs.reset(Reset.Cancel)
             f.raise(e)
           case e =>

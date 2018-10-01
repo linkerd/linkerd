@@ -33,7 +33,7 @@ class H2InitializerTest extends FunSuite {
       val sf = ServiceFactory { () => serviceP.before(Future.value(svc)) }
 
       def make(params: Stack.Params = Stack.Params.empty) =
-        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+        (defaultRouter.pathStack ++ Stack.leaf(Stack.Role("leaf"), sf)).make(params)
     }
 
     // The factory is returned immediately because it is wrapped in a

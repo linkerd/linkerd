@@ -1,6 +1,6 @@
 package io.buoyant.namer.marathon
 
-import com.twitter.finagle.{Failure, http}
+import com.twitter.finagle.{Failure, FailureFlags, http}
 import com.twitter.util.{Future, Promise, Return, Throw, Time}
 import io.buoyant.marathon.v2.Api
 import java.net.URL
@@ -24,7 +24,7 @@ object Authenticator {
   }
   private[marathon] case class UnauthorizedResponse(rsp: http.Response) extends Throwable
   private[this] case class AuthToken(token: Option[String])
-  private[this] val closedException = Failure("closed", Failure.Interrupted)
+  private[this] val closedException = Failure("closed", FailureFlags.Interrupted)
   private[this] val closedExceptionF = Future.exception(closedException)
   private[this] val missingTokenException = Failure("missing token")
   private[this] val missingTokenExceptionF = Future.exception(missingTokenException)

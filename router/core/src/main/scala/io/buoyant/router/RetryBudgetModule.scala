@@ -20,7 +20,7 @@ object RetryBudgetModule {
       // See ClassifieredRetries.Backoffs for the backoff that is actually used in
       // the path stack.
       val budget = Retries.Budget(mkBudget(params[RetryBudgetConfig]), Backoff.constant(Duration.Zero))
-      Stack.Leaf(role, next.make(params + budget))
+      Stack.leaf(role, next.make(params + budget))
     }
   }
 

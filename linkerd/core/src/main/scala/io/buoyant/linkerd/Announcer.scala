@@ -1,6 +1,6 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.{Announcement, Failure, Path}
+import com.twitter.finagle.{Announcement, Failure, FailureFlags, Path}
 import com.twitter.util.{Closable, Future, Return, Throw, Time}
 import java.util.concurrent.atomic.AtomicReference
 import java.net.InetSocketAddress
@@ -23,7 +23,7 @@ abstract class FutureAnnouncer extends Announcer {
     @volatile var deadline: Option[Time] = None
     val closeRef = new AtomicReference[Closable](Closable.make { d =>
       deadline = Some(d)
-      pending.raise(Failure("closed", Failure.Interrupted))
+      pending.raise(Failure("closed", FailureFlags.Interrupted))
       Future.Unit
     })
     pending.respond {

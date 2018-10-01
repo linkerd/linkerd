@@ -8,26 +8,26 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "18.7.0")
+    ("com.twitter" %% "twitter-server" % "18.9.1")
       .exclude("com.twitter", "finagle-zipkin_2.12")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" % "18.7.0"
+    "com.twitter" %% s"util-$mod" % "18.9.1"
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "18.7.0"
+    "com.twitter" %% s"finagle-$mod" % "18.9.1"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.16.Final"
+    "io.netty" % s"netty-$mod" % "4.1.28.Final"
 
-  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.7.Final"
+  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.12.Final"
 
   def zkCandidate =
     ("com.twitter.common.zookeeper" % "candidate" % "0.0.84")
       .exclude("com.twitter.common", "util")
 
   // Jackson (parsing)
-  val jacksonVersion = "2.8.4"
+  val jacksonVersion = "2.9.6"
   val jacksonCore =
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion
   val jacksonAnnotations =

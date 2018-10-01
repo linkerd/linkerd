@@ -1,6 +1,6 @@
 package io.buoyant.consul
 
-import com.twitter.finagle.{Failure, Http}
+import com.twitter.finagle.{Failure, FailureFlags, Http}
 import com.twitter.util.Monitor
 import io.buoyant.config.types.Port
 
@@ -8,7 +8,7 @@ object utils {
 
   object RichConsulClient {
     val monitor = Monitor.mk {
-      case e: Failure if e.isFlagged(Failure.Interrupted) => true
+      case e: Failure if e.isFlagged(FailureFlags.Interrupted) => true
     }
   }
 

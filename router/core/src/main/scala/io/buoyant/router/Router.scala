@@ -209,7 +209,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
 
         def pathMk(dst: Dst.Path, sf: ServiceFactory[Req, Rsp]) = {
           val sr = stats.scope("service", dst.path.show.stripPrefix("/"))
-          val stk = pathStack ++ Stack.Leaf(Endpoint, sf)
+          val stk = pathStack ++ Stack.leaf(Endpoint, sf)
 
           val pathParams = params[StackRouter.Client.PerPathParams].paramsFor(dst.path)
           stk.make(params ++ pathParams + dst + param.Stats(sr) + param.Label(dst.path.show) +
@@ -217,7 +217,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
         }
 
         def boundMk(bound: Dst.Bound, sf: ServiceFactory[Req, Rsp]) = {
-          val stk = (boundStack ++ Stack.Leaf(Endpoint, sf))
+          val stk = (boundStack ++ Stack.leaf(Endpoint, sf))
           stk.make(params + bound)
         }
 
@@ -251,7 +251,7 @@ trait StdStackRouter[Req, Rsp, This <: StdStackRouter[Req, Rsp, This]]
           params[DstBindingFactory.IdleTtl]
         )(params[param.Timer].timer)
 
-        Stack.Leaf(role, new RoutingFactory(newIdentifier(), cache, label))
+        Stack.leaf(role, new RoutingFactory(newIdentifier(), cache, label))
       }
     }
 

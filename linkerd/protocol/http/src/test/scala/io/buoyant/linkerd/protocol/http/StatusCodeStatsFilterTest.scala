@@ -19,7 +19,7 @@ class StatusCodeStatsFilterTest extends FunSuite with Awaits {
       Future.value(rep)
     }
     val stk = StatusCodeStatsFilter.module.toStack(
-      Stack.Leaf(StatusCodeStatsFilter.role, ServiceFactory.const(svc))
+      Stack.leaf(StatusCodeStatsFilter.role, ServiceFactory.const(svc))
     )
     val service = await(stk.make(Stack.Params.empty + param.Stats(stats))())
 
@@ -33,7 +33,7 @@ class StatusCodeStatsFilterTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver()
     val svc = Service.mk[Request, Response] { _ => Future.exception(Thrown) }
     val stk = StatusCodeStatsFilter.module.toStack(
-      Stack.Leaf(StatusCodeStatsFilter.role, ServiceFactory.const(svc))
+      Stack.leaf(StatusCodeStatsFilter.role, ServiceFactory.const(svc))
     )
     val service = await(stk.make(Stack.Params.empty + param.Stats(stats))())
 

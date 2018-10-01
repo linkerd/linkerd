@@ -55,7 +55,7 @@ object ClassifiedRetries {
           params[BufferSize].requestBufferSize,
           params[BufferSize].responseBufferSize
         )(params[param.HighResTimer].timer)
-        Stack.Leaf(role, filter.andThen(next.make(params)))
+        Stack.leaf(role, filter.andThen(next.make(params)))
       }
     }
   }

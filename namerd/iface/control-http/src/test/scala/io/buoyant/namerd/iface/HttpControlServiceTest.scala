@@ -36,12 +36,12 @@ class HttpControlServiceTest extends FunSuite with Awaits {
       ConfiguredDtabNamer(dtab, Nil)
     }, Map.empty)
 
-  def readAndAssert(reader: Reader, value: String): Assertion = {
+  def readAndAssert(reader: Reader[Buf], value: String): Assertion = {
     val buf = Buf.Utf8(value)
     readAndAssert(reader, buf)
   }
 
-  def readAndAssert(reader: Reader, value: Buf): Assertion = {
+  def readAndAssert(reader: Reader[Buf], value: Buf): Assertion = {
     val buf = value.concat(HttpControlService.newline)
     val res = await(reader.read(buf.length)).flatMap(Buf.Utf8.unapply)
     assert(res == Some(buf).flatMap(Buf.Utf8.unapply))

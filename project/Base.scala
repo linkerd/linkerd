@@ -143,29 +143,6 @@ class Base extends Build {
 
   val nodeModulesRE = ".*/node_modules/.*".r
 
-  /**
-   * finagle-thrift includes files copied from libthrift that cause assembly merge conflicts.  To
-   * work around this, we use a merge strategy that uses the files from libthrift in the event of
-   * a conflict.  This should be removed once https://github.com/twitter/finagle/issues/688 is
-   * resolved.
-   */
-  val libthriftMergeStrategy = new MergeStrategy {
-    override def name: String = "libthrift-merge-strategy"
-    override def apply(
-      tempDir: File,
-      path: String,
-      files: Seq[File]
-    ): Either[String, Seq[(File, String)]] = {
-      Right {
-        files.find { f =>
-          AssemblyUtils.sourceOfFileForMerge(tempDir, f)._1.getName == "libthrift-0.10.0.jar"
-        }.map { f =>
-          f -> path
-        }.toSeq
-      }
-    }
-  }
-
   val appAssemblySettings = assemblySettings ++ Seq(
     assemblyExecScript := defaultExecScript,
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(
@@ -179,7 +156,6 @@ class Base extends Build {
       case "BUILD" => MergeStrategy.discard
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case "META-INF/io.netty.versions.properties" => MergeStrategy.last
-      case path if path.startsWith("org/apache/thrift/protocol") => libthriftMergeStrategy
       case path => (assemblyMergeStrategy in assembly).value(path)
     }
   )

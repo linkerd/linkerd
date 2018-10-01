@@ -235,9 +235,9 @@ class ResponseClassificationEndToEndTest extends FunSuite {
 
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "service", "svc/b", "success")) == None)
+    assert(stats.counters.get(Seq("rt", "http", "service", "svc/b", "success")).forall(_ == 0))
     assert(stats.counters(Seq("rt", "http", "service", "svc/b", "failures")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "success")) == None)
+    assert(stats.counters.get(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "success")).forall(_ == 0))
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "failures")) == 1)
   }
 

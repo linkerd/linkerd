@@ -8,7 +8,7 @@ import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.io.Reader
+import com.twitter.io.{Pipe, Reader}
 import com.twitter.util.{Future, MockTimer, Promise, Time}
 import io.buoyant.linkerd.protocol.http.ResponseClassifiers
 import io.buoyant.router.RetryBudgetConfig
@@ -27,7 +27,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     val http = new HttpInitializer {
       val svc = new Service[Request, Response] {
         def apply(req: Request) = {
-          val rw = Reader.writable()
+          val rw = new Pipe()
           val rsp = Response(req.version, Status.Ok, rw)
           val _ = bodyP.before(rw.close())
           respondingP.setDone()
@@ -42,7 +42,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
       val sf = ServiceFactory { () => serviceP.before(Future.value(svc)) }
 
       def make(params: Stack.Params = Stack.Params.empty) =
-        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+        (defaultRouter.pathStack ++ Stack.leaf(Stack.Role("leaf"), sf)).make(params)
     }
 
     // The factory is returned immediately because it is wrapped in a
@@ -91,7 +91,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
       })
 
       def make(params: Stack.Params = Stack.Params.empty) =
-        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+        (defaultRouter.pathStack ++ Stack.leaf(Stack.Role("leaf"), sf)).make(params)
     }
 
     val params = Stack.Params.empty +
@@ -121,7 +121,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
       })
 
       def make(params: Stack.Params = Stack.Params.empty) =
-        (defaultRouter.pathStack ++ Stack.Leaf(Stack.Role("leaf"), sf)).make(params)
+        (defaultRouter.pathStack ++ Stack.leaf(Stack.Role("leaf"), sf)).make(params)
     }
 
     val stats = new InMemoryStatsReceiver

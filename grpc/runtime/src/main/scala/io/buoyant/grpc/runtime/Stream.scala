@@ -1,7 +1,7 @@
 package io.buoyant.grpc.runtime
 
 import com.twitter.concurrent.{AsyncMutex, AsyncQueue}
-import com.twitter.finagle.Failure
+import com.twitter.finagle.{Failure, FailureFlags}
 import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.util._
 
@@ -83,7 +83,7 @@ object Stream {
         Future.Unit
       }
       if (q.offer(Releasable(msg, release))) p
-      else Future.exception(Failure("rejected", Failure.Rejected))
+      else Future.exception(Failure("rejected", FailureFlags.Rejected))
     }
 
     override def close(grpcStatus: GrpcStatus = GrpcStatus.Ok()): Future[Unit] = {
@@ -131,7 +131,7 @@ object Stream {
           case Right(Return(s)) => s.reset(e)
           case Right(Throw(_)) => // Do nothing.
           case Left(f) =>
-            f.raise(Failure(e, Failure.Interrupted))
+            f.raise(Failure(e, FailureFlags.Interrupted))
             // Interrupting a Future does not guarantee that it will fail.  If the stream future
             // does succeed, we should reset that stream.
             f.onSuccess(_.reset(e))
@@ -153,7 +153,7 @@ object Stream {
         val p = new Promise[Stream.Releasable[T]] with Promise.InterruptHandler {
           override protected def onInterrupt(t: Throwable): Unit =
             t match {
-              case e@Failure(cause) if e.isFlagged(Failure.Interrupted) =>
+              case e@Failure(cause) if e.isFlagged(FailureFlags.Interrupted) =>
                 val status = cause match {
                   case Some(e: Reset) => e
                   case _ => Reset.Cancel

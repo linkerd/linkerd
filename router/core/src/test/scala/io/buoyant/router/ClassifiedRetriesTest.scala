@@ -25,7 +25,7 @@ class ClassifiedRetriesTest extends FunSuite {
     }
 
     @volatile var nextValue: Try[Int] = Throw(new IllegalArgumentException)
-    private val stk = ClassifiedRetries.module[String, Int] +: Stack.Leaf(
+    private val stk = ClassifiedRetries.module[String, Int] +: Stack.leaf(
       stack.Endpoint,
       ServiceFactory.const(Service.mk[String, Int](_ => Future.const((nextValue))))
     )
@@ -50,7 +50,7 @@ class ClassifiedRetriesTest extends FunSuite {
     nextValue = Return(0)
     assert(await(svc("ok")) == 0)
     assert(stats.stats == Map(Seq("retries", "per_request") -> Seq(0.0)))
-    assert(!stats.counters.contains(Seq("retries", "total")))
+    assert(stats.counters.get(Seq("retries", "total")).forall(_ == 0L))
     assert(tracer.iterator.map(_.annotation).toSeq == Seq.empty)
   }
 
@@ -62,7 +62,7 @@ class ClassifiedRetriesTest extends FunSuite {
     nextValue = Throw(new Badness)
     assertThrows[Badness] { await(svc("ok")) }
     assert(stats.stats == Map(Seq("retries", "per_request") -> Seq(0.0)))
-    assert(!stats.counters.contains(Seq("retries", "total")))
+    assert(stats.counters.get(Seq("retries", "total")).forall(_ == 0L))
     assert(tracer.iterator.map(_.annotation).toSeq == Seq.empty)
   }
 
@@ -74,17 +74,17 @@ class ClassifiedRetriesTest extends FunSuite {
       nextValue = Throw(new Badness)
       val f = svc("retry")
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       clock.advance(1.second)
       timer.tick()
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       clock.advance(2.second - 1.millisecond)
       timer.tick()
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       nextValue = Return(2)
       clock.advance(1.millisecond)
@@ -106,17 +106,17 @@ class ClassifiedRetriesTest extends FunSuite {
       nextValue = Throw(new Badness)
       val f = svc("retry")
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       clock.advance(1.second)
       timer.tick()
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       clock.advance(2.second - 1.millisecond)
       timer.tick()
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       clock.advance(1.millisecond)
       timer.tick()
@@ -138,12 +138,12 @@ class ClassifiedRetriesTest extends FunSuite {
       nextValue = Throw(new Badness)
       val f = svc("retry")
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       clock.advance(10.millis)
       timer.tick()
       assert(!f.isDefined)
-      assert(stats.stats == Map.empty)
+      assert(stats.stats.get(Seq("retries", "per_request")).forall(_.isEmpty))
 
       clock.advance(10.millis)
       timer.tick()

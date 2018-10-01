@@ -200,9 +200,9 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
+    assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).forall(_ == 0))
     assert(stats.counters(Seq("rt", "h2", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
+    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")).forall(_ == 0))
     assert(stats
       .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
     assert(stats
@@ -245,9 +245,9 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     await(rsp.stream.readToEnd)
 
     assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
+    assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).forall(_ == 0))
     assert(stats.counters(Seq("rt", "h2", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
+    assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")).forall(_ == 0))
     assert(stats
       .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
     assert(stats
@@ -298,9 +298,9 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     withClue("after first response: ") {
       assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == Some(1),
         s", did get ${stats.counters}")
-      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == None)
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).forall(_ == 0))
       assert(stats.counters(Seq("rt", "h2", "service", "svc/a", "success")) == 1)
-      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/a", "failures")) == None)
+      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/a", "failures")).forall(_ == 0))
       assert(stats
         .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "success")) == 1)
       assert(stats
@@ -317,10 +317,10 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
     withClue("after second response: ") {
       assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "success")) == 1)
       assert(stats.counters(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")) == 1)
-      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/b", "success")) == None)
+      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/b", "success")).forall(_ == 0))
       assert(stats.counters(Seq("rt", "h2", "service", "svc/b", "failures")) == 1)
       assert(stats.counters
-        .get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "success")) == None)
+        .get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "success")).forall(_ == 0))
       assert(stats
         .counters(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/b", "failures")) == 1)
     }
@@ -364,9 +364,9 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
 
     testClassifier("io.l5d.h2.allSuccessful") { stats =>
       assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "success")) == Some(1))
-      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")) == None)
+      assert(stats.counters.get(Seq("rt", "h2", "service", "svc/foo", "failures")).forall(_ == 0))
       assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
-      assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
+      assert(stats.counters.get(Seq("rt", "h2", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")).forall(_ == 0))
     }
 
     testClassifier("io.l5d.h2.nonRetryable5XX") { stats =>
@@ -387,12 +387,12 @@ class StreamClassificationEndToEndTest extends FunSuite with Awaits {
 
     testClassifier("io.l5d.h2.allSuccessful") { stats =>
       assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")).contains(1), s"did get ${stats.counters}")
-      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).isEmpty)
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).forall(_ == 0))
       succeed
     }
 
     testClassifier("io.l5d.h2.nonRetryable5XX") { stats =>
-      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")).isEmpty)
+      assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "success")).forall(_ == 0))
       assert(stats.counters.get(Seq("rt", "h2", "server", "127.0.0.1/0", "failures")).contains(1))
       succeed
     }

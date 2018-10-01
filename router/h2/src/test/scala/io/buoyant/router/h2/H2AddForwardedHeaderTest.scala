@@ -15,7 +15,7 @@ class H2AddForwardedHeaderTest extends FunSuite {
   }
 
   val OkStack = H2AddForwardedHeader.module
-    .toStack(Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(OkSvc)))
+    .toStack(Stack.leaf(Stack.Role("endpoint"), ServiceFactory.const(OkSvc)))
 
   def mkReq(authority: String = "svc/name", proto: String = "http") =
     Request(proto, Method.Get, authority, "Some/Path", Stream.empty)

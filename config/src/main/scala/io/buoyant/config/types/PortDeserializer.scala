@@ -12,9 +12,7 @@ case class Port(port: Int) {
 
 class PortDeserializer extends ConfigDeserializer[Port] {
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Port =
-    catchMappingException(ctxt) {
-      Port(_parseInteger(jp, ctxt))
-    }
+    Port(jp.getIntValue)
 }
 
 class PortSerializer extends ConfigSerializer[Port] {

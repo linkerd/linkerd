@@ -23,13 +23,11 @@ object ThriftProtocol {
 
 class ThriftProtocolDeserializer extends ConfigDeserializer[ThriftProtocol] {
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): ThriftProtocol =
-    catchMappingException(ctxt) {
-      _parseString(jp, ctxt) match {
-        case "binary" => ThriftProtocol.Binary
-        case "compact" => ThriftProtocol.Compact
-        case protocol =>
-          throw new IllegalArgumentException(s"unsupported thrift protocol $protocol")
-      }
+    _parseString(jp, ctxt) match {
+      case "binary" => ThriftProtocol.Binary
+      case "compact" => ThriftProtocol.Compact
+      case protocol =>
+        throw new IllegalArgumentException(s"unsupported thrift protocol $protocol")
     }
 }
 

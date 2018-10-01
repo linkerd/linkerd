@@ -30,7 +30,7 @@ class ClassifiedTracingTest extends FunSuite {
       val stk = DstPathCtx.Setter.module[String, Double] +:
         ResponseClassifierCtx.Setter.module[String, Double] +:
         ClassifiedTracing.module[String, Double] +:
-        Stack.Leaf(Endpoint, sf)
+        Stack.leaf(Endpoint, sf)
       val params = Stack.Params.empty +
         param.Tracer(tracer) +
         param.ResponseClassifier(classifier) +

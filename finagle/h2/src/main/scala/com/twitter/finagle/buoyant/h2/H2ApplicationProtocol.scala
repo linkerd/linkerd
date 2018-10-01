@@ -29,7 +29,7 @@ object H2ApplicationProtocol {
         }
         config.copy(applicationProtocols = ApplicationProtocols.Supported(protocols))
       }
-      Stack.Leaf(role, next.make(params + Transport.ClientSsl(sslParam)))
+      Stack.leaf(role, next.make(params + Transport.ClientSsl(sslParam)))
     }
   }
 }

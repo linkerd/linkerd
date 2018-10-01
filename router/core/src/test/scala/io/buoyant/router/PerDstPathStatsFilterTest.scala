@@ -30,7 +30,7 @@ class PerDstPathStatsFilterTest extends FunSuite {
     val sf = ServiceFactory(() => Future.value(service))
     val stk = new StackBuilder[ServiceFactory[String, Unit]](nilStack)
     stk.push(PerDstPathStatsFilter.module[String, Unit])
-    stk.result ++ Stack.Leaf(Endpoint, sf)
+    stk.result ++ Stack.leaf(Endpoint, sf)
   }
 
   test("module installs a per-path StatsFilter") {
@@ -53,7 +53,8 @@ class PerDstPathStatsFilterTest extends FunSuite {
       (catPfx :+ "failures" :+ "io.buoyant.router.DangCat") -> 1,
       (catPfx :+ "failures" :+ "io.buoyant.router.DangCat" :+ "io.buoyant.router.NotDog") -> 1,
       (dogPfx :+ "requests") -> 2,
-      (dogPfx :+ "success") -> 2
+      (dogPfx :+ "success") -> 2,
+      (catPfx :+ "success") -> 0
     ))
     assert(stats.gauges.keys == Set(
       (catPfx :+ "pending"),

@@ -3,7 +3,7 @@ package netty4
 
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
-import com.twitter.finagle.{ChannelClosedException, Failure}
+import com.twitter.finagle.{ChannelClosedException, Failure, FailureFlags}
 import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2._
@@ -192,7 +192,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         case StreamOpen(st) => st.reset(err, local = false)
         case _ =>
       }
-      demuxing.raise(Failure(err).flagged(Failure.Interrupted))
+      demuxing.raise(Failure(err).flagged(FailureFlags.Interrupted))
       true
     } else false
 

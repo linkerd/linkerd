@@ -23,15 +23,13 @@ object HealthStatus extends Enumeration {
 class HealthStatusDeserializer extends ConfigDeserializer[HealthStatus.Value] {
 
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): HealthStatus.Value =
-    catchMappingException(ctxt) {
-      _parseString(jp, ctxt) match {
-        case "passing" => HealthStatus.Passing
-        case "warning" => HealthStatus.Warning
-        case "critical" => HealthStatus.Critical
-        case "maintenance" => HealthStatus.Maintenance
-        case unknown =>
-          throw new IllegalArgumentException(s"Illegal Consul health status: $unknown")
-      }
+    _parseString(jp, ctxt) match {
+      case "passing" => HealthStatus.Passing
+      case "warning" => HealthStatus.Warning
+      case "critical" => HealthStatus.Critical
+      case "maintenance" => HealthStatus.Maintenance
+      case unknown =>
+        throw new IllegalArgumentException(s"Illegal Consul health status: $unknown")
     }
 }
 

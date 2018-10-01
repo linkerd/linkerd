@@ -59,8 +59,8 @@ object AddForwardedHeaderConfig {
         case Param(Some(config)) =>
           // Wrap the underlying stack, applying the ForwardedHeaderConfig
           val mkNext: (Stack.Params, Stk) => Stk =
-            (prms, next) => Stack.Leaf(this, next.make(prms ++: config))
-          Stack.Node(this, mkNext, stk)
+            (prms, next) => Stack.leaf(this, next.make(prms ++: config))
+          Stack.node(this, mkNext, stk)
       }
     }
 

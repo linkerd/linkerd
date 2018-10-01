@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.finagle.ChannelClosedException
-import com.twitter.io.{Buf, Reader}
+import com.twitter.io.{Buf, Pipe, Reader}
 import com.twitter.util._
 import org.scalatest.FunSuite
 
@@ -60,7 +60,7 @@ class JsonTest extends FunSuite {
   }
 
   test("stream: messages") {
-    val rw = Reader.writable()
+    val rw = new Pipe[Buf]()
     val objs = Seq(
       TestType("foo", Some(TestType("bar"))),
       TestType("bah", Some(TestType("bat"))),
@@ -95,7 +95,7 @@ class JsonTest extends FunSuite {
   }
 
   test("stream: empty chunk reads") {
-    val rw = Reader.writable()
+    val rw = new Pipe[Buf]()
     val decoded = Json.readStream[TestType](rw).toSeq()
 
     val obj = TestType("foo", Some(TestType("inner")))
@@ -108,7 +108,7 @@ class JsonTest extends FunSuite {
   }
 
   test("stream: failing reader terminates stream") {
-    val rw = Reader.writable()
+    val rw = new Pipe[Buf]()
     val decoded = Json.readStream[TestType](rw)
 
     val obj = TestType("foo", Some(TestType("inner")))
