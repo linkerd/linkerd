@@ -40,7 +40,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     val stats = new InMemoryStatsReceiver()
     val svc = Service.mk[Request, Response] { response(_) }
     val stk = StreamStatsFilter.module.toStack(
-      Stack.Leaf(StreamStatsFilter.role, ServiceFactory.const(svc))
+      Stack.leaf(StreamStatsFilter.role, ServiceFactory.const(svc))
     )
     val service = await(stk.make(Stack.Params.empty + param.Stats(stats))())
 
@@ -56,7 +56,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     // all counters should be empty before firing request
     withClue("before request:") {
       for { counter <- allCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        withClue(s"stat: $counter") { assert(stats.counters.get(counter).forall(_ == 0)) }
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -86,7 +86,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     // all counters should be empty before firing request
     withClue("before request:") {
       for { counter <- allCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        withClue(s"stat: $counter") { assert(stats.counters.get(counter).forall(_ == 0)) }
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -117,7 +117,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after first response") {
       for { counter <- failureCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        withClue(s"stat: $counter") { assert(stats.counters.get(counter).forall(_ == 0)) }
     }
 
     rsp = await(service(req))
@@ -125,7 +125,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("after second response") {
       for { counter <- failureCounters }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        withClue(s"stat: $counter") { assert(stats.counters.get(counter).forall(_ == 0)) }
     }
   }
 
@@ -148,7 +148,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
         assert(stats.counters(counter) == 1)
       // counters that should not be incremented on this failure
       for { counter <- failureCounters if !expectedCounters.contains(counter) }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        withClue(s"stat: $counter") { assert(stats.counters.get(counter).forall(_ == 0)) }
 
     }
 
@@ -159,7 +159,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
       // counters that should not be incremented on this failure
       for { counter <- failureCounters if !expectedCounters.contains(counter) }
-        withClue(s"stat: $counter") { assert(!stats.counters.isDefinedAt(counter)) }
+        withClue(s"stat: $counter") { assert(stats.counters.get(counter).forall(_ == 0)) }
     }
   }
 
@@ -170,7 +170,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     withClue("before request:") {
       // stats undefined before request
       for { stat <- allStats }
-        withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
+        withClue(s"stat: $stat") { assert(stats.stats.get(stat).forall(_.isEmpty)) }
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -193,7 +193,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     }
     withClue("before request:") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
+      assert(stats.stats.get(rspFrameSizeStat).forall(_.isEmpty))
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -215,7 +215,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     }
     withClue("before request:") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
+      assert(stats.stats.get(rspFrameSizeStat).forall(_.isEmpty))
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -243,7 +243,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
 
     withClue("before request:") {
       // stats undefined before request
-      assert(!stats.stats.isDefinedAt(rspFrameSizeStat))
+      assert(stats.stats.get(rspFrameSizeStat).forall(_.isEmpty))
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
@@ -276,7 +276,7 @@ class StreamTestStatsFilterTest extends FunSuite with Awaits {
     withClue("before request:") {
       // stats undefined before request
       for { stat <- allStats }
-        withClue(s"stat: $stat") { assert(!stats.stats.isDefinedAt(stat)) }
+        withClue(s"stat: $stat") { assert(stats.stats.get(stat).forall(_.isEmpty)) }
     }
 
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())

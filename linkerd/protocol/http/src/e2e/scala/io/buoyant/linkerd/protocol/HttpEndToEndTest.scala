@@ -11,7 +11,7 @@ import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.io.{Buf, Reader}
+import com.twitter.io.{Buf, Pipe, Reader}
 import com.twitter.util._
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
@@ -84,10 +84,10 @@ class HttpEndToEndTest
 
   def annotationKeys(annotations: Seq[Annotation]): Seq[String] =
     annotations.collect {
-      case Annotation.ClientSend() => "cs"
-      case Annotation.ClientRecv() => "cr"
-      case Annotation.ServerSend() => "ss"
-      case Annotation.ServerRecv() => "sr"
+      case Annotation.ClientSend => "cs"
+      case Annotation.ClientRecv => "cr"
+      case Annotation.ServerSend => "ss"
+      case Annotation.ServerRecv => "sr"
       case Annotation.WireSend => "ws"
       case Annotation.WireRecv => "wr"
       case Annotation.BinaryAnnotation(k, _) if k == "l5d.success" => k
@@ -247,10 +247,10 @@ class HttpEndToEndTest
       val rsp = await(client(req))
       assert(rsp.status == Status.BadGateway)
       assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "requests")) == Some(1))
-      assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == None)
+      assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "success")).forall(_ == 0))
       assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == Some(1))
       assert(stats.counters.get(Seq("rt", "http", "service", "svc/dog", "requests")) == Some(1))
-      assert(stats.counters.get(Seq("rt", "http", "service", "svc/dog", "success")) == None)
+      assert(stats.counters.get(Seq("rt", "http", "service", "svc/dog", "success")).forall(_ == 0))
       assert(stats.counters.get(Seq("rt", "http", "service", "svc/dog", "failures")) == Some(1))
     } finally {
       await(client.close())
@@ -338,19 +338,19 @@ class HttpEndToEndTest
         val rsp = await(client(req))
         assert(rsp.status == Status.InternalServerError)
         assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "requests")) == Some(1))
-        assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == None)
+        assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "success")).forall(_ == 0))
         assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == Some(1))
         assert(stats.counters.get(Seq("rt", "http", "client", label, "requests")) == Some(1))
-        assert(stats.counters.get(Seq("rt", "http", "client", label, "success")) == None)
+        assert(stats.counters.get(Seq("rt", "http", "client", label, "success")).forall(_ == 0))
         assert(stats.counters.get(Seq("rt", "http", "client", label, "failures")) == Some(1))
-        assert(stats.counters.get(Seq("rt", "http", "client", label, "status", "200")) == None)
+        assert(stats.counters.get(Seq("rt", "http", "client", label, "status", "200")).forall(_ == 0))
         assert(stats.counters.get(Seq("rt", "http", "client", label, "status", "500")) == Some(1))
         val name = s"svc/dog"
         assert(stats.counters.get(Seq("rt", "http", "service", name, "requests")) == Some(1))
-        assert(stats.counters.get(Seq("rt", "http", "service", name, "success")) == None)
+        assert(stats.counters.get(Seq("rt", "http", "service", name, "success")).forall(_ == 0))
         assert(stats.counters.get(Seq("rt", "http", "service", name, "failures")) == Some(1))
         assert(stats.stats.get(Seq("rt", "http", "service", name, "retries", "per_request")) == Some(Seq(0.0)))
-        assert(!stats.counters.contains(Seq("rt", "http", "service", name, "retries", "total")))
+        assert(stats.counters.get(Seq("rt", "http", "service", name, "retries", "total")).forall(_ == 0))
         withAnnotations { anns =>
           assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
           ()
@@ -908,7 +908,7 @@ class HttpEndToEndTest
   test("discards content from chunked server response during diagnostic trace"){
     val responseDiscardedMsg = "Diagnostic trace encountered chunked response. Response content discarded."
     val downstream = Downstream.mk("dog") { req =>
-      val chunkedWriter = Reader.writable()
+      val chunkedWriter = new Pipe[Buf]()
       AsyncStream[Buf](
         Seq("Chunked", "Response")
         .map(Buf.Utf8(_)): _*)

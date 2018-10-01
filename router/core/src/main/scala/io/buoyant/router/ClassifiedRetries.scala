@@ -47,7 +47,7 @@ object ClassifiedRetries {
     def apply(in: (Req, Try[Rsp])): Option[(Duration, RetryPolicy[(Req, Try[Rsp])])] = {
       val (req, rsp) = in
       rsp match {
-        case Throw(f: Failure) if f.isFlagged(Failure.Interrupted) => None
+        case Throw(f: Failure) if f.isFlagged(FailureFlags.Interrupted) => None
         case _ =>
           classifier.applyOrElse(ReqRep(req, rsp), ClassifiedRetries.Default) match {
             case ResponseClass.RetryableFailure =>

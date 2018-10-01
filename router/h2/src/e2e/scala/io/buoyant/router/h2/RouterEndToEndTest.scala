@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.buoyant.h2._
-import com.twitter.finagle.{ChannelClosedException, Dtab, Failure, Path}
+import com.twitter.finagle.{Status => _, _}
 import com.twitter.logging.Level
 import com.twitter.util.{Future, Promise, Throw}
 import io.buoyant.router.h2.ClassifiedRetries.BufferSize
@@ -106,7 +106,7 @@ class RouterEndToEndTest
       val reqStream = await(dogReqP)
       assert(!rspF.isDefined)
 
-      rspF.raise(Failure("failz", Failure.Interrupted))
+      rspF.raise(Failure("failz", FailureFlags.Interrupted))
       assert(await(rspF.liftToTry) == Throw(Reset.Cancel))
       eventually(assert(serverInterrupted == Some(Reset.Cancel)))
 
@@ -195,7 +195,7 @@ class RouterEndToEndTest
       val _ = await(dogReqP)
       assert(!rspF.isDefined)
 
-      dogRspP.setException(Failure("failz", Failure.Rejected))
+      dogRspP.setException(Failure("failz", FailureFlags.Rejected))
       assert(await(rspF.liftToTry) == Throw(Reset.Refused))
 
     } finally {

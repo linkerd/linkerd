@@ -26,7 +26,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       stk.push(H2ApplicationProtocol.module)
       stk.push(TracingFilter.module)
       (StackClient.newStack[Request, Response] ++ stk.result)
-        .replace(StackClient.Role.pool, SingletonPool.module[Request, Response])
+        .replace(StackClient.Role.pool, SingletonPool.module[Request, Response](allowInterrupts = true))
         .replace(StackClient.Role.prepConn, DelayedRelease.module)
     }
 

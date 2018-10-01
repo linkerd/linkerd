@@ -38,7 +38,7 @@ class DiagnosticTracerTest extends FunSuite {
   }
 
   private[this] val testStack = DiagnosticTracer.module +:
-    Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
+    Stack.leaf(Stack.Role("endpoint"), ServiceFactory.const(testService))
 
   private[this] def mkTracerRequest(headers:(String, String)*): Request = {
     val req = Request()

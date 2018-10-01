@@ -25,7 +25,7 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
     val service = Service.mk[String, String](Future.value)
     val factory = ServiceFactory.const(service)
     def make(params: Stack.Params, next: Stack[ServiceFactory[String, String]]) =
-      Stack.Leaf(this, factory)
+      Stack.leaf(this, factory)
   }
 
   private[this] val defaultPathStack = StackRouter.newPathStack[String, String]

@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.twitter.finagle.{Failure, http}
+import com.twitter.finagle.{Failure, FailureFlags, http}
 import com.twitter.finagle.http.MediaType
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
@@ -18,7 +18,7 @@ object Api {
     s"""$rsp: $content"""
   })
 
-  val Closed = Failure("k8s observation released", Failure.Interrupted)
+  val Closed = Failure("k8s observation released", FailureFlags.Interrupted)
   case class UnexpectedResponse(rsp: http.Response) extends Response(rsp)
 
   /**
@@ -47,7 +47,7 @@ object Api {
     req
   }
 
-  private[k8s] def dechunk(reader: Reader, init: Buf = Buf.Empty): Future[Buf] =
+  private[k8s] def dechunk(reader: Reader[Buf], init: Buf = Buf.Empty): Future[Buf] =
     reader.read(BufSize).flatMap {
       case Some(chunk) =>
         dechunk(reader, init.concat(chunk))

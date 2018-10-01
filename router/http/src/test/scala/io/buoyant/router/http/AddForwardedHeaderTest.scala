@@ -16,7 +16,7 @@ class AddForwardedHeaderTest extends FunSuite {
   }
 
   val OkStack = AddForwardedHeader.module
-    .toStack(Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(OkSvc)))
+    .toStack(Stack.leaf(Stack.Role("endpoint"), ServiceFactory.const(OkSvc)))
 
   def mkReq() = Request()
   def service(byl: String, forl: String, req: Request = mkReq()) = {

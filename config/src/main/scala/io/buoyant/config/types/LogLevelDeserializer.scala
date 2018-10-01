@@ -8,13 +8,12 @@ import io.buoyant.config.{ConfigSerializer, ConfigDeserializer}
 
 class LogLevelDeserializer extends ConfigDeserializer[Level] {
 
-  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Level =
-    catchMappingException(ctxt) {
-      val lname = _parseString(jp, ctxt)
-      Level.parse(lname.toUpperCase).getOrElse {
-        throw new IllegalArgumentException(s"Illegal log level: $lname")
-      }
+  override def deserialize(jp: JsonParser, ctxt: DeserializationContext): Level = {
+    val lname = _parseString(jp, ctxt)
+    Level.parse(lname.toUpperCase).getOrElse {
+      throw new IllegalArgumentException(s"Illegal log level: $lname")
     }
+  }
 }
 
 class LogLevelSerializer extends ConfigSerializer[Level] {

@@ -9,7 +9,7 @@ import com.twitter.finagle.param.HighResTimer
 import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
-import com.twitter.finagle.{ConnectionFailedException, Failure, Filter, http}
+import com.twitter.finagle._
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.consul.log
@@ -42,7 +42,7 @@ trait BaseApi extends Closable {
         log.error("Will not retry blocking index request '%s %s' on error: %s", req.method, req.uri, err)
         false
       // Don't retry on interruption
-      case (_, Throw(e: Failure)) if e.isFlagged(Failure.Interrupted) => false
+      case (_, Throw(e: Failure)) if e.isFlagged(FailureFlags.Interrupted) => false
       case (req, Throw(NonFatal(ex))) =>
         log.error("Retrying Consul request '%s %s' on NonFatal error: %s", req.method, req.uri, ex)
         true

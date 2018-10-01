@@ -671,7 +671,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
   trait Fixtures {
     @volatile var doInit, didInit, doScaleUp, doScaleDown, doFail, didServices = new Promise[Unit]
-    @volatile var writer: Writer = null
+    @volatile var writer: Writer[Buf] = null
 
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/watch/namespaces/srv/endpoints/sessions?resourceVersion=5319582" =>
@@ -1046,7 +1046,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
   test("routes to new endpoints after scale down followed by scale up") {
     // linkerd #1626 reproduction
-    @volatile var writer: Writer = null
+    @volatile var writer: Writer[Buf] = null
 
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/namespaces/liza1626/endpoints/world-v1" =>
@@ -1190,7 +1190,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
   test("existing Vars are updated when a service goes away and comes back") {
     // linkerd #1626 reproduction
-    @volatile var writer: Writer = null
+    @volatile var writer: Writer[Buf] = null
 
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/namespaces/liza1626/endpoints/world-v1" =>
@@ -1251,7 +1251,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
   }
 
   test("out of order resource versions ignored") {
-    @volatile var writer: Writer = null
+    @volatile var writer: Writer[Buf] = null
 
     val service = Service.mk[Request, Response] {
       case req if req.uri == "/api/v1/namespaces/liza1626/endpoints/world-v1" =>

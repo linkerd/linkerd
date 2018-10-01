@@ -64,7 +64,7 @@ class HeadersTest extends FunSuite {
         dtab = Some(Dtab.local)
         Future.value(Response())
       })
-      val stk = Headers.Ctx.serverModule +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Ctx.serverModule +: Stack.leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty)())
     }
 
@@ -87,7 +87,7 @@ class HeadersTest extends FunSuite {
         dtab = Some(Dtab.local)
         Future.value(Response())
       })
-      val stk = Headers.Ctx.serverModule +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Ctx.serverModule +: Stack.leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty)())
     }
 
@@ -104,7 +104,7 @@ class HeadersTest extends FunSuite {
         deadline = Deadline.current
         Future.value(Response())
       })
-      val stk = Headers.Ctx.serverModule +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Ctx.serverModule +: Stack.leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty)())
     }
 
@@ -138,7 +138,7 @@ class HeadersTest extends FunSuite {
         deadline = Deadline.current
         Future.value(Response())
       })
-      val stk = Headers.Ctx.serverModule +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Ctx.serverModule +: Stack.leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty)())
     }
 
@@ -165,7 +165,7 @@ class HeadersTest extends FunSuite {
         deadline = Headers.Ctx.Deadline.get(req.headerMap)
         Future.value(Response())
       })
-      val stk = Headers.Ctx.clientModule +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Ctx.clientModule +: Stack.leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty)())
     }
 
@@ -186,7 +186,7 @@ class HeadersTest extends FunSuite {
         deadline = Headers.Ctx.Deadline.get(req.headerMap)
         Future.value(Response())
       })
-      val stk = Headers.Ctx.clientModule +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Ctx.clientModule +: Stack.leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty)())
     }
 
@@ -203,7 +203,7 @@ class HeadersTest extends FunSuite {
         path = req.headerMap.get(Headers.Dst.Path)
         Future.value(Response())
       })
-      val stk = Headers.Dst.PathFilter.module +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Dst.PathFilter.module +: Stack.leaf(Stack.Role("sf"), sf)
       await(stk.make(Stack.Params.empty + Dst.Path(Path.read("/freedom")))())
     }
     val _ = await(svc(Request()))
@@ -218,7 +218,7 @@ class HeadersTest extends FunSuite {
         residual = req.headerMap.get(Headers.Dst.Residual)
         Future.value(Response())
       })
-      val stk = Headers.Dst.BoundFilter.module +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Dst.BoundFilter.module +: Stack.leaf(Stack.Role("sf"), sf)
       val bound = Dst.Bound(Var.value(Addr.Pending), Path.Utf8("id"), Path.Utf8("residual"))
       await(stk.make(Stack.Params.empty + bound)())
     }
@@ -235,7 +235,7 @@ class HeadersTest extends FunSuite {
         residual = req.headerMap.get(Headers.Dst.Residual)
         Future.value(Response())
       })
-      val stk = Headers.Dst.BoundFilter.module +: Stack.Leaf(Stack.Role("sf"), sf)
+      val stk = Headers.Dst.BoundFilter.module +: Stack.leaf(Stack.Role("sf"), sf)
       val bound = Dst.Bound(Var.value(Addr.Pending), Path.Utf8("id"))
       await(stk.make(Stack.Params.empty + bound)())
     }

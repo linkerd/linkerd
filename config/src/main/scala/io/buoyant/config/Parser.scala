@@ -20,12 +20,6 @@ private[config] trait Registration {
 
 abstract class ConfigDeserializer[T: ClassTag] extends StdDeserializer[T](Parser.jClass[T]) with Registration {
   def register(module: SimpleModule): SimpleModule = module.addDeserializer(Parser.jClass[T], this)
-
-  protected def catchMappingException(ctxt: DeserializationContext)(t: => T): T =
-    try t catch {
-      case arg: IllegalArgumentException =>
-        throw ctxt.mappingException(arg.getMessage)
-    }
 }
 
 abstract class ConfigSerializer[T: ClassTag] extends StdSerializer[T](Parser.jClass[T]) with Registration {

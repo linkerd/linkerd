@@ -29,7 +29,7 @@ abstract class H2RequestAuthorizerConfig extends PolymorphicConfig { config =>
       next: Stack[ServiceFactory[Request, Response]]
     ): Stack[ServiceFactory[Request, Response]] = {
       val filter = mk(params)
-      Stack.Leaf(role, filter.andThen(next.make(params)))
+      Stack.leaf(role, filter.andThen(next.make(params)))
     }
   }
 }

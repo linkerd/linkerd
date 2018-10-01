@@ -7,9 +7,7 @@ import io.buoyant.config.{ConfigSerializer, ConfigDeserializer}
 
 class PathMatcherDeserializer extends ConfigDeserializer[PathMatcher] {
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): PathMatcher =
-    catchMappingException(ctxt) {
-      PathMatcher(_parseString(jp, ctxt))
-    }
+    PathMatcher(_parseString(jp, ctxt))
 }
 
 class PathMatcherSerializer extends ConfigSerializer[PathMatcher] {

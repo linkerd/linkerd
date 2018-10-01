@@ -11,9 +11,7 @@ case class File(path: java.nio.file.Path) {
 
 class FileDeserializer extends ConfigDeserializer[File] {
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): File =
-    catchMappingException(ctxt) {
-      File(Paths.get(_parseString(jp, ctxt)))
-    }
+    File(Paths.get(_parseString(jp, ctxt)))
 }
 
 class FileSerializer extends ConfigSerializer[File] {

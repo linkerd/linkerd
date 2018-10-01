@@ -21,7 +21,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
       rsp
     }
     val stk = ErrorResponder.module.toStack(
-      Stack.Leaf(Stack.Role("endpoint"), ServiceFactory.const(svc))
+      Stack.leaf(Stack.Role("endpoint"), ServiceFactory.const(svc))
     )
     await(stk.make(Stack.Params.empty)())
   }

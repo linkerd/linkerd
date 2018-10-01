@@ -28,7 +28,7 @@ class RouterTest extends FunSuite {
       copy(params = ps)
 
     def newClient(name: Name, label: String) = {
-      val stk = stack ++ Stack.Leaf(Endpoint, strToIntFactory)
+      val stk = stack ++ Stack.leaf(Endpoint, strToIntFactory)
       stk.make(params + param.Label(label))
     }
 

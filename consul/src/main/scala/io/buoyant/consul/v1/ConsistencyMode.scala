@@ -17,14 +17,12 @@ object ConsistencyMode {
 class ConsistencyModeDeserializer extends ConfigDeserializer[ConsistencyMode] {
 
   override def deserialize(jp: JsonParser, ctxt: DeserializationContext): ConsistencyMode =
-    catchMappingException(ctxt) {
-      _parseString(jp, ctxt) match {
-        case "default" => ConsistencyMode.Default
-        case "stale" => ConsistencyMode.Stale
-        case "consistent" => ConsistencyMode.Consistent
-        case unknown =>
-          throw new IllegalArgumentException(s"Illegal Consul consistency mode level: $unknown")
-      }
+    _parseString(jp, ctxt) match {
+      case "default" => ConsistencyMode.Default
+      case "stale" => ConsistencyMode.Stale
+      case "consistent" => ConsistencyMode.Consistent
+      case unknown =>
+        throw new IllegalArgumentException(s"Illegal Consul consistency mode level: $unknown")
     }
 }
 
