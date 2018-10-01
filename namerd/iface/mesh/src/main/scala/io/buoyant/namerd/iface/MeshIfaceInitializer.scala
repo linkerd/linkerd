@@ -45,7 +45,11 @@ class MeshIfaceConfig extends InterfaceConfig {
         ServerDispatcher(codec, interpreter, delegator, resolver)
       }
 
-      H2.server.withTracer(NullTracer).configuredParams(tlsParams).withStatsReceiver(stats1)
+      H2.server
+        .withTracer(NullTracer)
+        .configuredParams(tlsParams)
+        .configuredParams(socketOptParams)
+        .withStatsReceiver(stats1)
         .serve(addr, dispatcher)
     }
   }

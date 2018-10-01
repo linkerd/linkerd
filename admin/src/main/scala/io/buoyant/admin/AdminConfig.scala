@@ -1,6 +1,6 @@
 package io.buoyant.admin
 
-import com.twitter.finagle.buoyant.TlsServerConfig
+import com.twitter.finagle.buoyant.{SocketOptionsConfig, TlsServerConfig}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.logging.Logger
 import java.net.{InetAddress, InetSocketAddress}
@@ -9,6 +9,7 @@ import io.buoyant.config.types.Port
 case class AdminConfig(
   ip: Option[InetAddress] = None,
   port: Option[Port] = None,
+  socketOptions: Option[SocketOptionsConfig] = None,
   shutdownGraceMs: Option[Int] = None,
   security: Option[AdminSecurityConfig] = None,
   tls: Option[TlsServerConfig] = None,
@@ -20,7 +21,7 @@ case class AdminConfig(
     val adminIp = ip.getOrElse(defaultAddr.getAddress)
     val adminPort = port.map(_.port).getOrElse(defaultAddr.getPort)
     val addr = new InetSocketAddress(adminIp, adminPort)
-    new Admin(addr, tls, workerThreads.getOrElse(2), stats, security)
+    new Admin(addr, tls, workerThreads.getOrElse(2), stats, security, socketOptions)
   }
 }
 

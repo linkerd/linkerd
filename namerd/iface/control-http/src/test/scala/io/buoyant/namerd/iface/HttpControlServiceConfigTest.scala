@@ -1,5 +1,6 @@
 package io.buoyant.namerd.iface
 
+import com.twitter.finagle.buoyant.SocketOptionsConfig
 import io.buoyant.config.Parser
 import org.scalatest.FunSuite
 
@@ -47,5 +48,24 @@ class HttpControlServiceConfigTest extends FunSuite {
     assert(tls.caCertPath == Some("cacert.pem"))
     assert(tls.ciphers == Some(List("foo", "bar")))
     assert(tls.requireClientAuth == Some(true))
+  }
+
+  test("socket options"){
+    val expectedOpts = SocketOptionsConfig(reusePortEnabled = true)
+    val yaml = """
+      |kind: io.l5d.httpController
+      |socketOptions:
+      |  disableTcpNoDelay: true
+      |  reuseAddrEnabled: true
+      |  reusePortEnabled: true
+    """.stripMargin
+
+    val config = Parser
+      .objectMapper(yaml,
+        Iterable(Seq(new HttpControlServiceInitializer))
+      ).readValue[HttpControlServiceConfig](yaml)
+
+    val sockOpts = config.socketOptions.get
+    assert(sockOpts == expectedOpts)
   }
 }

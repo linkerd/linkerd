@@ -3,13 +3,13 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.conversions.time._
-import com.twitter.finagle.buoyant.{TlsServerConfig, ParamsMaybeWith}
+import com.twitter.finagle.buoyant.{ParamsMaybeWith, SocketOptionsConfig, TlsServerConfig}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.service.TimeoutFilter
 import com.twitter.finagle.ssl.server.SslServerEngineFactory
 import com.twitter.finagle.{ListeningServer, Path, Stack}
-import com.twitter.finagle.buoyant.ParamsMaybeWith
+import com.twitter.finagle.transport.Transport
 import io.buoyant.config.types.Port
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -77,6 +77,7 @@ object Server {
 class ServerConfig { config =>
 
   var port: Option[Port] = None
+  var socketOptions: Option[SocketOptionsConfig] = None
   var ip: Option[InetAddress] = None
   var tls: Option[TlsServerConfig] = None
   var label: Option[String] = None
@@ -91,6 +92,7 @@ class ServerConfig { config =>
 
   @JsonIgnore
   protected def serverParams: Stack.Params = Stack.Params.empty
+    .maybeWith(socketOptions.map(_.params))
     .maybeWith(tls.map(_.params(alpnProtocols, sslServerEngine)))
     .maybeWith(clearContext.map(ClearContext.Enabled(_)))
     .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis))) +

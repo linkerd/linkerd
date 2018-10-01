@@ -39,7 +39,9 @@ class DestinationIfaceConfig(
       log.info(s"DestinationIfaceInitializer using dtab in $ns with prefix $pfx")
       val destination = new DestinationService(pfx, delegate(ns))
       val dispatcher = ServerDispatcher(Destination.Server(destination))
-      H2.server.withTracer(NullTracer).serve(addr, dispatcher)
+      H2.server
+        .configuredParams(socketOptParams)
+        .withTracer(NullTracer).serve(addr, dispatcher)
     }
   }
 }

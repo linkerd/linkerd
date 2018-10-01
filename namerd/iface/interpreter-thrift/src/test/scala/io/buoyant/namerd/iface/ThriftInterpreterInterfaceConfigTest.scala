@@ -1,5 +1,6 @@
 package io.buoyant.namerd.iface
 
+import com.twitter.finagle.buoyant.SocketOptionsConfig
 import io.buoyant.config.Parser
 import org.scalatest.FunSuite
 
@@ -55,5 +56,27 @@ class ThriftInterpreterInterfaceConfigTest extends FunSuite {
     assert(tls.caCertPath == Some("cacert.pem"))
     assert(tls.ciphers == Some(List("foo", "bar")))
     assert(tls.requireClientAuth == Some(true))
+  }
+
+  test("socket options"){
+    test("read socket options"){
+      val expectedOpts = SocketOptionsConfig(reusePortEnabled = true)
+      val yaml = s"""
+        |kind: io.l5d.thriftNameInterpreter
+        |ip: 0.0.0.0
+        |port: 8085
+        |socketOptions:
+        |  disableTcpNoDelay: true
+        |  reuseAddrEnabled: true
+        |  reusePortEnabled: true
+     """.stripMargin
+
+      val config = Parser.objectMapper(yaml, Iterable(Seq(new ThriftInterpreterInterfaceInitializer)))
+        .readValue[ThriftInterpreterInterfaceConfig](yaml)
+      config.socketOptions match {
+        case None => fail(s"socket options is None. Expected $expectedOpts")
+        case Some(opts) => assert(opts == expectedOpts)
+      }
+    }
   }
 }

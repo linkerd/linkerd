@@ -22,8 +22,8 @@ class HttpControlServiceConfig extends InterpreterInterfaceConfig {
       tlsParams +
         param.Stats(stats.scope(HttpControlServiceConfig.kind)) +
         param.Label(HttpControlServiceConfig.kind) +
-        Http.Netty4Impl
-
+        Http.Netty4Impl ++
+        socketOptParams
     HttpControlServable(addr, iface, params)
   }
 
