@@ -51,13 +51,13 @@ class HttpControlServiceConfigTest extends FunSuite {
   }
 
   test("socket options"){
-    val expectedOpts = SocketOptionsConfig(reusePortEnabled = true)
+    val expectedOpts = SocketOptionsConfig(reusePort = true)
     val yaml = """
       |kind: io.l5d.httpController
       |socketOptions:
-      |  disableTcpNoDelay: true
-      |  reuseAddrEnabled: true
-      |  reusePortEnabled: true
+      |  noDelay: true
+      |  reuseAddr: true
+      |  reusePort: true
     """.stripMargin
 
     val config = Parser

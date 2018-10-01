@@ -62,15 +62,15 @@ class ThriftInterpreterInterfaceConfigTest extends FunSuite {
   }
 
   test("read socket options") {
-    val expectedOpts = SocketOptionsConfig(reusePortEnabled = true)
+    val expectedOpts = SocketOptionsConfig(reusePort = true)
     val yaml = s"""
         |kind: io.l5d.thriftNameInterpreter
         |ip: 0.0.0.0
         |port: 8085
         |socketOptions:
-        |  disableTcpNoDelay: true
-        |  reuseAddrEnabled: true
-        |  reusePortEnabled: true
+        |  noDelay: true
+        |  reuseAddr: true
+        |  reusePort: true
      """.stripMargin
 
     val config = Parser.objectMapper(yaml, Iterable(Seq(new ThriftInterpreterInterfaceInitializer)))

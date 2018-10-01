@@ -4,11 +4,11 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.transport.Transport
 
 case class SocketOptionsConfig(
-  disableTcpNoDelay: Boolean = true,
-  reuseAddrEnabled: Boolean = true,
-  reusePortEnabled: Boolean = false
+  noDelay: Boolean = true,
+  reuseAddr: Boolean = true,
+  reusePort: Boolean = false
 ) {
   def params = Stack.Params.empty +
-    Transport.Options(disableTcpNoDelay, reuseAddrEnabled, reusePortEnabled)
+    Transport.Options(noDelay, reuseAddr, reusePort)
 
 }

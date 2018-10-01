@@ -83,6 +83,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback address | IP for the admin interface. A value like 0.0.0.0 configures admin to listen on all local IPv4 interfaces.
 port | `9990` | Port for the admin interface.
+socketOptions | none | Socket options to set for the admin interface.
 httpIdentifierPort | none | Port for the http identifier debug endpoint.
 shutdownGraceMs | 10000 | maximum grace period before the Linkerd process exits
 tls | no tls | The admin interface will serve over TLS if this parameter is provided. See [TLS](#server-tls).
@@ -270,3 +271,15 @@ Key | Default Value | Description
 --- | ------------- | -----------
 orgId | empty by default | Optional string of your choosing that identifies your organization
 enabled | true | If set to true, data is sent to Buoyant once per hour
+
+### Socket Options
+
+Linkerd supports configuring socket level options for any given interface.
+i.e. the admin and router interfaces. These configurations are only available 
+on Linux 3.9 distributions and newer.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+noDelay | true | If set to true, enables the use of `TCP_NODELAY` on a socket interface
+reuseAddr | true | If set to true, enables the `SO_REUSEADDR` option
+reusePort | false | If set to true, enables the `SO_REUSEPORT` option, which can be used to bind another Linkerd process to the same interface port.
