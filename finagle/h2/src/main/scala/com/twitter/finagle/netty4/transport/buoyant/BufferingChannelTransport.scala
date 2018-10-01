@@ -32,9 +32,10 @@ class BufferingChannelTransport(
   omitStackTraceOnInactive: Boolean = false
 ) extends ChannelTransport(ch, readQueue, omitStackTraceOnInactive) {
 
-  // Satisfy the done promise when the write
+  // Satisfy the done promise when the write completes.
   private case class WriteItem(msg: Any, done: Promise[Unit])
 
+  // Always flush after this many messages.
   private[this] val MaxFlushSize = 128
   private[this] val flushScheduled = new AtomicBoolean(false)
   private[this] val writeQueue = new LinkedBlockingQueue[WriteItem]()
@@ -45,6 +46,12 @@ class BufferingChannelTransport(
     writeQueue.add(WriteItem(msg, p))
     scheduleFlush()
     p
+  }
+
+  private[this] def scheduleFlush(): Unit = {
+    if (flushScheduled.compareAndSet(false, true)) {
+      ch.eventLoop().execute(flush)
+    }
   }
 
   private[this] val flush: Runnable = { () =>
@@ -58,6 +65,7 @@ class BufferingChannelTransport(
       flushed = true
       ch.flush()
     }
+    // Always flush at least once.
     if (!flushed) {
       ch.flush()
     }
@@ -65,12 +73,6 @@ class BufferingChannelTransport(
     flushScheduled.set(false)
     if (!writeQueue.isEmpty) {
       scheduleFlush()
-    }
-  }
-
-  private[this] def scheduleFlush(): Unit = {
-    if (flushScheduled.compareAndSet(false, true)) {
-      ch.eventLoop().execute(flush)
     }
   }
 
