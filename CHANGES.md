@@ -1,3 +1,28 @@
+## 1.5.0 2018-10-02
+
+Linkerd 1.5.0 adds the long awaited ability to make Linkerd config changes with
+zero downtime! 🤯 This release adds the `socketOptions.reusePort` config property which allows
+multiple processes to bind to the same port.  In this way, you can start a new Linkerd process
+and wait for it to start serving requests before gracefully shutting down the old Linkerd process.
+Note that this feature is only available on Linux 3.9 distributions and newer.
+
+This release features contributions from [Applause](https://github.com/ApplauseAQI), ThreeComma,
+GuteFrage GmbH, and [Buoyant](https://github.com/buoyantio).  An extra special thank you to
+[Zack Angelo](https://github.com/zackangelo) for laying the groundwork in Finagle for the reusePort
+feature!
+
+Full release notes:
+
+* **Breaking Change**: The `threshold` and `windowSize` options have been removed from the `failureThreshold` config in the Namerd interpreter.  These options were of limited value and are no longer supported by Finagle.
+* Socket Options:
+  * Certain socket options may now be set on Linkerd servers by adding a `socketOptions` config in a server config.
+  * Add support for the `SO_REUSEPORT` socket option.  This allows multiple processes to bind to the same port and is a great way to do zero downtime Linkerd deploys.
+* Istio features are now marked as deprecated.
+* Marathon:
+  * Ensure traffic is not sent to Marathon services during their health-check grace period.
+* Use AsyncAppender for console logging so that logging does not impact Linkerd performance.
+* Upgrade to Finagle 18.9.1
+
 ## 1.4.6 2018-08-13
 
 Linkerd 1.4.6 adds even more watch state endpoints to Linkerd's debugging arsenal, allowing you to 
