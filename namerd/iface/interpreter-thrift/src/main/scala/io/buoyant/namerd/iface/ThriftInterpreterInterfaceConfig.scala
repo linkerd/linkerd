@@ -35,7 +35,8 @@ case class ThriftInterpreterInterfaceConfig(
     )
     val params =
       tlsParams +
-        param.Stats(stats1)
+        param.Stats(stats1) ++
+        socketOptParams
     ThriftServable(addr, iface, params)
   }
 }

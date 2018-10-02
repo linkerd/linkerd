@@ -59,7 +59,12 @@ object Admin {
     }
   }
 
-  private def makeServer(tls: Option[TlsServerConfig], workers: Int, stats: StatsReceiver) = {
+  private def makeServer(
+    tls: Option[TlsServerConfig],
+    workers: Int,
+    socketOptionsParams: Option[SocketOptionsConfig],
+    stats: StatsReceiver
+  ) = {
 
     val workerPool = new WorkerPool(Executors.newCachedThreadPool(
       new NamedPoolThreadFactory("admin", makeDaemons = true)
@@ -71,6 +76,7 @@ object Admin {
       .withStatsReceiver(stats)
       .withTracer(NullTracer)
       .configured(workerPool)
+      .maybeWith(socketOptionsParams.map(_.params))
       .maybeWith(tls.map(_.params(None, Netty4ServerEngineFactory())))
   }
 
@@ -122,13 +128,14 @@ class Admin(
   tlsCfg: Option[TlsServerConfig],
   workers: Int,
   stats: StatsReceiver,
-  securityConfig: Option[AdminSecurityConfig]
+  securityConfig: Option[AdminSecurityConfig],
+  socketOptionsConfig: Option[SocketOptionsConfig]
 ) {
 
   import Admin._
 
   private[this] val notFoundView = new NotFoundView()
-  private[this] val server = makeServer(tlsCfg, workers, stats)
+  private[this] val server = makeServer(tlsCfg, workers, socketOptionsConfig, stats)
 
   /**
    * Whether or not this admin service was configured to serve over TLS
@@ -160,6 +167,6 @@ class Admin(
   def serveHandler(port: Int, handler: Handler): ListeningServer = {
     val addrWithPort = new InetSocketAddress(address.getAddress, port)
     val muxer = new HttpMuxer().withHandler(handler.url, handler.service)
-    makeServer(tlsCfg, workers, stats).serve(addrWithPort, muxer)
+    makeServer(tlsCfg, workers, socketOptionsConfig, stats).serve(addrWithPort, muxer)
   }
 }
