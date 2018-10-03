@@ -3,8 +3,8 @@ package io.buoyant.namer.consul
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
-import com.twitter.finagle.service.Retries
 import com.twitter.finagle.tracing.NullTracer
+import com.twitter.util.TimeConversions._
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1
@@ -78,6 +78,9 @@ case class ConsulConfig(
    */
   @JsonIgnore
   def newNamer(params: Stack.Params): Namer = {
+
+    // Request timeout used to make sure long-polling requests are never stale.
+    val DefaultRequestTimeout = 10.minutes
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
     val service = Http.client
@@ -88,6 +91,7 @@ case class ConsulConfig(
       .setAuthToken(token)
       .ensureHost(host, port)
       .withTracer(NullTracer)
+      .withRequestTimeout(DefaultRequestTimeout)
       .newService(s"/$$/inet/$getHost/$getPort")
 
     val consul = (useHealthCheck, healthStatuses) match {
