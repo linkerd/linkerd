@@ -367,11 +367,12 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
-         |if [ ! \( -w "$GC_LOG" \) ]; then
+         |mkdir -p "$GC_LOG" && touch "$GC_LOG/gc.log"
+         |
+         |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          |  Unable to use [$GC_LOG] for GC logging."
          |else
-         |  [ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
          |  GC_LOG_OPTION="
          |   -XX:+PrintGCDetails
          |   -XX:+PrintGCDateStamps
@@ -453,11 +454,12 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
-         |if [ ! \( -w "$GC_LOG" \) ]; then
+         |mkdir -p "$GC_LOG" && touch "$GC_LOG/gc.log"
+         |
+         |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          |  Unable to use [$GC_LOG] for GC logging."
          |else
-         |  [ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
          |  GC_LOG_OPTION="
          |   -XX:+PrintGCDetails
          |   -XX:+PrintGCDateStamps
@@ -685,11 +687,12 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/linkerd"
          |fi
          |
-         |if [ ! \( -w "$GC_LOG" \) ]; then
+         |mkdir -p "$GC_LOG" && touch "$GC_LOG/gc.log"
+         |
+         |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          |  Unable to use [$GC_LOG] for GC logging."
          |else
-         |  [ -d "$GC_LOG" ] || mkdir -p "$GC_LOG"
          |  GC_LOG_OPTION="
          |   -XX:+PrintGCDetails
          |   -XX:+PrintGCDateStamps
@@ -698,9 +701,6 @@ object LinkerdBuild extends Base {
          |   -XX:+PrintGCApplicationStoppedTime
          |   -XX:+PrintPromotionFailure
          |   -Xloggc:${GC_LOG}/gc.log
-         |   -XX:+UseGCLogFileRotation
-         |   -XX:NumberOfGCLogFiles=10
-         |   -XX:GCLogFileSize=10M
          |   -XX:+UseGCLogFileRotation
          |   -XX:NumberOfGCLogFiles=10
          |   -XX:GCLogFileSize=10M"
