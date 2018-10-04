@@ -367,7 +367,7 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
-         |mkdir -p "$GC_LOG" && touch "$GC_LOG/gc.log"
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
          |
          |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
@@ -454,7 +454,7 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
-         |mkdir -p "$GC_LOG" && touch "$GC_LOG/gc.log"
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
          |
          |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
@@ -687,7 +687,7 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/linkerd"
          |fi
          |
-         |mkdir -p "$GC_LOG" && touch "$GC_LOG/gc.log"
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
          |
          |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
