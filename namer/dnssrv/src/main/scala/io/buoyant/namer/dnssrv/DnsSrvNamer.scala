@@ -1,6 +1,7 @@
 package io.buoyant.namer.dnssrv
 
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
+import java.util.concurrent.atomic.AtomicInteger
 
 import com.twitter.finagle._
 import com.twitter.finagle.stats.{Stat, StatsReceiver}
@@ -12,10 +13,9 @@ import scala.util.control.NoStackTrace
 
 class DnsSrvNamer(
   prefix: Path,
-  resolver: DNS.Resolver,
+  resolver: () => DNS.Resolver,
   refreshInterval: Duration,
-  stats: StatsReceiver,
-  pool: FuturePool
+  stats: StatsReceiver
 )(implicit val timer: Timer)
   extends Namer {
 
@@ -23,8 +23,16 @@ class DnsSrvNamer(
 
   private[this] val success = stats.counter("lookup_successes_total")
   private[this] val failure = stats.counter("lookup_failures_total")
+  private[this] val dnsscope = stats.scope("lookup_dns")
+  private[this] val dnsIter = dnsscope.scope("iteration")
+  private[this] val dnsSuccess = dnsscope.scope("success")
+  private[this] val dnsFailed = dnsscope.scope("failed")
+  private[this] val dnsNoCode = dnsscope.scope("nocode")
+
   private[this] val zeroResults = stats.counter("lookup_zero_results_total")
   private[this] val badHosts = stats.counter("unknown_srv_hosts_results_total")
+  private[this] val unexpectedCode = stats.counter("unexpected_code_total")
+
   private[this] val latency = stats.stat("request_duration_ms")
   private[this] val log = Logger.get("dnssrv")
 
@@ -37,7 +45,7 @@ class DnsSrvNamer(
           case Activity.Pending =>
             Addr.Pending
           case Activity.Failed(e) =>
-            log.debug("SRV lookup failure: %s", e.getMessage)
+            log.debug("SRV lookup failure: %s address: %s pattern: %s", e.getMessage, address, id)
             Addr.Failed(e)
         }
 
@@ -58,19 +66,25 @@ class DnsSrvNamer(
     }
   }
 
-  private def watchDns(dsnsrvRecord: String, timer: Timer): Activity[List[Address]] = {
-    val state = Var.async[Activity.State[List[Address]]](Activity.Pending) { update =>
+  private def watchDns(dnsSrvName: String, timer: Timer): Activity[List[Address]] = {
+    val iteration = new AtomicInteger(0)
+    val gauge = dnsIter.addGauge(dnsSrvName)(iteration.floatValue) // emit PER DNS iteration count, ref this val in the doUnit to avoid GC
 
+    val state: Var[Activity.State[List[Address]]] = Var.async[Activity.State[List[Address]]](Activity.Pending) { update =>
       def doUnit(): Unit = {
-        val lookup = new DNS.Lookup(dsnsrvRecord, DNS.Type.SRV, DNS.DClass.IN)
-        lookup.setResolver(resolver)
+        val lookup = new DNS.Lookup(dnsSrvName, DNS.Type.SRV, DNS.DClass.IN)
+        iteration.incrementAndGet()
+        lookup.setResolver(resolver())
+        lookup.setCache(null)
         Stat.time(latency)(lookup.run())
+        log.debug("dns: %s lookup %s iteration: %s", dnsSrvName, lookup.toString, iteration)
         lookup.getResult match {
           case DNS.Lookup.HOST_NOT_FOUND | DNS.Lookup.TYPE_NOT_FOUND =>
-            val msg = s"no results for $dsnsrvRecord"
-            log.trace(msg)
+            val msg = s"no results for $dnsSrvName return type: ${lookup.getResult} errorString: ${lookup.getErrorString} iteration: ${iteration.intValue()}"
+            log.debug(s"in doUnit: message %s", msg)
             failure.incr()
             update.update(Activity.Failed(new DNSLookupException(msg)))
+
           case DNS.Lookup.SUCCESSFUL =>
             val answers = Option(lookup.getAnswers).getOrElse(Array.empty)
             val srvRecords = answers.flatMap {
@@ -79,7 +93,7 @@ class DnsSrvNamer(
                 Some(Address(new InetSocketAddress(inetAddress, srv.getPort)))
               } catch {
                 case _: UnknownHostException =>
-                  log.warning(s"srv lookup of $dsnsrvRecord returned unknown host ${srv.getTarget}")
+                  log.warning(s"srv lookup of $dnsSrvName returned unknown host ${srv.getTarget}")
                   badHosts.incr()
                   None
               }
@@ -89,22 +103,22 @@ class DnsSrvNamer(
               // valid DNS entry, but no instances.
               // return NameTree.Neg because NameTree.Empty causes requests to fail,
               // even in the presence of load-balancing (NameTree.Union) and fail-over (NameTree.Alt)
-              val msg = s"empty response for $dsnsrvRecord"
-              log.trace(msg)
+              val msg = s"empty response for $dnsSrvName iteration: ${iteration.intValue()}"
+              log.debug(s"in doUnit: message %s ", msg)
               zeroResults.incr()
               update.update(Activity.Failed(new DNSLookupException(msg)))
             } else {
-              log.trace("got %d results for %s", srvRecords.length, dsnsrvRecord)
+              log.trace("got %d results for %s", srvRecords.length, dnsSrvName)
               success.incr()
               update.update(Activity.Ok(srvRecords.toList))
             }
           case code =>
-            val msg = s"unexpected result: $code for $dsnsrvRecord: ${lookup.getErrorString}"
+            val msg = s"unexpected result: $code for $dnsSrvName: errorString: ${lookup.getErrorString} iteration: ${iteration.intValue()}"
             log.error(msg)
+            unexpectedCode.incr()
             update.update(Activity.Failed(new DNSLookupException(msg)))
         }
       }
-
       doUnit()
 
       timer.schedule(refreshInterval) {
