@@ -4,7 +4,7 @@ import com.twitter.conversions.time._
 import com.twitter.finagle.http.Request
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Addr, Address, Failure}
+import com.twitter.finagle.{Addr, Address, Failure, IndividualRequestTimeoutException}
 import com.twitter.util.{Duration, Future, Promise, Timer, Var}
 import io.buoyant.consul.v1._
 import io.buoyant.namer.consul.SvcAddr.Stats
@@ -150,4 +150,57 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     addr.lastUpdatedAt shouldBe 'defined
     addr.underlying.sample() should matchPattern { case Addr.Neg => }
   }
+
+  test("should use last known state on api timeout") {
+    // given
+    val invoked = Promise[Unit]()
+    val secondInvoke = Promise[Unit]()
+    val requestCounter = new AtomicInteger()
+    val (initServiceUpdate, firstAddr) = service()
+    @volatile var changes: Addr = Addr.Pending
+
+    val api = apiStub { (_, _, _, _, _, _) =>
+      requestCounter.incrementAndGet() match {
+        case 1 =>
+          invoked.setDone()
+          val response = Indexed[Seq[ServiceNode]](Seq(initServiceUpdate), Some("1"))
+          Future.value(response)
+        case 2 =>
+          secondInvoke.setDone()
+          Future.exception(new IndividualRequestTimeoutException(1.minutes))
+      }
+    }
+
+    // when
+    val addr: InstrumentedVar[Addr] = SvcAddr(
+      api,
+      hangForLongBackoff,
+      "dc1",
+      SvcKey("svc", None),
+      None,
+      None,
+      None,
+      Map.empty,
+      Stats(NullStatsReceiver),
+      new PollState
+    )
+    addr.underlying.changes.respond {
+      changes = _
+    }
+
+    // then
+    await(invoked)
+    changes match {
+      case Addr.Bound(addrs, _) => addrs.head shouldBe Address
+        .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+      case _ => fail("received unexpected Addr on initial service discovery")
+    }
+    await(secondInvoke)
+    changes match {
+      case Addr.Bound(addrs, _) => addrs.head shouldBe Address
+        .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+      case _ => fail("received unexpected Addr on timed out service discovery request")
+    }
+  }
+
 }
