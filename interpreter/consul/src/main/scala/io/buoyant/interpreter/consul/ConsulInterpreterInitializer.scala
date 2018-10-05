@@ -15,7 +15,7 @@ import io.buoyant.namer.{BackoffConfig, ConfiguredDtabNamer, InterpreterConfig, 
 class ConsulInterpreterInitializer extends InterpreterInitializer {
   val configClass = classOf[ConsulDtabInterpreterConfig]
 
-  override def configId: String = "io.l5d.consul.dtab"
+  override def configId: String = "io.l5d.consul.interpreter"
 }
 
 object ConsulInterpreterInitializer extends ConsulInterpreterInitializer
@@ -24,7 +24,7 @@ case class ConsulDtabInterpreterConfig(
   host: Option[String],
   port: Option[Port],
   pathPrefix: Option[Path],
-  namespace: String,
+  namespace: Option[String],
   token: Option[String] = None,
   datacenter: Option[String] = None,
   readConsistencyMode: Option[ConsistencyMode] = None,
@@ -37,7 +37,7 @@ case class ConsulDtabInterpreterConfig(
   import ConsulDtabInterpreterConfig._
 
   @JsonIgnore
-  private val api = {
+  private[this] val api = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
     val backoffs = backoff.map(_.mk).getOrElse(DefaultBackoff)
@@ -55,7 +55,7 @@ case class ConsulDtabInterpreterConfig(
   }
 
   @JsonIgnore
-  private val cache = new ConsulDtabCache(
+  private[this] val cache = new ConsulDtabCache(
     api,
     pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
     datacenter,
@@ -64,7 +64,7 @@ case class ConsulDtabInterpreterConfig(
   )
 
   @JsonIgnore
-  private val dtab = cache.observe(namespace).map {
+  private[this] val dtab = cache.observe(namespace.getOrElse(DefaultNamespace)).map {
     case None => Dtab.empty
     case Some(dtab) => dtab
   }
@@ -80,8 +80,9 @@ case class ConsulDtabInterpreterConfig(
 }
 
 object ConsulDtabInterpreterConfig {
-  val DefaultHost = "localhost"
-  val DefaultPort = Port(8500)
-  val DefaultBackoff = Backoff.decorrelatedJittered(1.millis, 1.minute)
+  private[consul] val DefaultHost = "localhost"
+  private[consul] val DefaultPort = Port(8500)
+  private[consul] val DefaultBackoff = Backoff.decorrelatedJittered(1.millis, 1.minute)
+  private[consul] val DefaultNamespace = "default"
 }
 

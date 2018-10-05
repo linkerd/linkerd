@@ -19,7 +19,7 @@ class ConsulDtabCache(
   implicit val _timer: Timer = DefaultTimer
 ) {
 
-  private[this] val log = Logger.get("ConsulIntepreter")
+  private[this] val log = Logger.get("ConsulInterpreter")
 
   private[this] val dtabCache = CacheBuilder.newBuilder()
     .build[String, Activity[Option[Dtab]]](
