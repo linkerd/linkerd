@@ -257,6 +257,7 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
+       |   ${GC_LOG_OPTION:-}                                            \
        |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
@@ -360,6 +361,31 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/namerd"
+         |fi
+         |
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
@@ -422,6 +448,31 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/namerd"
+         |fi
+         |
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|if read -t 0; then
@@ -630,6 +681,31 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/linkerd"
+         |fi
+         |
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
