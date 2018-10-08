@@ -1,9 +1,17 @@
 admin:
   ip: 0.0.0.0
   port: 9990
+namers:
+- kind: io.l5d.consul
+  includeTag: false
+  useHealthCheck: false
 routers:
 - protocol: http
+  servers:
+    - port: 4140
+      ip: 0.0.0.0
   interpreter:
-    kind: io.l5d.consul.dtab
+    kind: io.l5d.consul.interpreter
     host: localhost
     port: 8500
+    namespace: internal

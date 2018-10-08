@@ -5,7 +5,8 @@ import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.service.Backoff
 import com.twitter.io.Buf
 import com.twitter.util.{Activity, Duration, Future}
-import io.buoyant.consul.v1.KvApi
+import io.buoyant.consul.v1.{Indexed, KvApi}
+import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState
 import io.buoyant.test.FunSuite
 
 class ConsulDtabCacheTest extends FunSuite {
@@ -33,10 +34,11 @@ class ConsulDtabCacheTest extends FunSuite {
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      mkPollState[Indexed[String]]
     )
     @volatile var state: Activity.State[Option[Dtab]] = Activity.Pending
-    store.observe(namespace).states respond { state = _ }
+    store.observe(namespace).underlying.states respond { state = _ }
     assert(state == Activity.Ok(Some(Dtab.read(dtab))))
   }
 
@@ -61,10 +63,11 @@ class ConsulDtabCacheTest extends FunSuite {
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      mkPollState[Indexed[String]]
     )
     @volatile var state: Activity.State[Option[Dtab]] = Activity.Pending
-    store.observe(namespace).states respond { state = _ }
+    store.observe(namespace).underlying.states respond { state = _ }
     assert(state.isInstanceOf[Activity.Failed])
   }
 
@@ -88,10 +91,11 @@ class ConsulDtabCacheTest extends FunSuite {
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      mkPollState[Indexed[String]]
     )
     @volatile var state: Activity.State[Option[Dtab]] = Activity.Pending
-    store.observe(namespace).states respond { state = _ }
+    store.observe(namespace).underlying.states respond { state = _ }
     assert(state == Activity.Ok(None))
   }
 }

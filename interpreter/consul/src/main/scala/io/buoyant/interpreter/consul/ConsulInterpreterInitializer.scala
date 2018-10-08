@@ -1,15 +1,20 @@
 package io.buoyant.interpreter.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.{Dtab, Http, Path, Stack}
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.conversions.time._
+import com.twitter.finagle.http.{MediaType, Request, Response, Status}
+import com.twitter.util.Future
+import io.buoyant.admin.Admin
+import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
-import io.buoyant.consul.v1.{ConsistencyMode, KvApi}
+import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState
+import io.buoyant.consul.v1.{ConsistencyMode, Indexed, KvApi}
 import io.buoyant.namer.{BackoffConfig, ConfiguredDtabNamer, InterpreterConfig, InterpreterInitializer, Param}
 
 class ConsulInterpreterInitializer extends InterpreterInitializer {
@@ -37,6 +42,12 @@ case class ConsulDtabInterpreterConfig(
   import ConsulDtabInterpreterConfig._
 
   @JsonIgnore
+  private[this] val pollState = mkPollState[Indexed[String]]
+
+  @JsonIgnore
+  private[this] val adminUri = "/interpreter_state/io.l5d.consul.interpreter.json"
+
+  @JsonIgnore
   private[this] val api = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
@@ -60,21 +71,42 @@ case class ConsulDtabInterpreterConfig(
     pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
     datacenter,
     readConsistencyMode,
-    writeConsistencyMode
+    writeConsistencyMode,
+    pollState
   )
 
   @JsonIgnore
-  private[this] val dtab = cache.observe(namespace.getOrElse(DefaultNamespace)).map {
+  private[this] val dtab = cache.observe(namespace.getOrElse(DefaultNamespace)).underlying.map {
     case None => Dtab.empty
     case Some(dtab) => dtab
   }
 
   @JsonIgnore
-  override protected def newInterpreter(params: Stack.Params): NameInterpreter = {
+  private[this] val watchStateHandler = new Service[Request, Response] {
+    val mapper = Parser.jsonObjectMapper(Nil)
+
+    override def apply(request: Request): Future[Response] = {
+      val rep = Response(Status.Ok)
+      val watchState = Map(
+        "state" -> cache.observe(namespace.getOrElse(DefaultNamespace)).stateSnapshot(),
+        "poll" -> pollState
+      )
+
+      rep.contentString = mapper.writeValueAsString(watchState)
+      rep.mediaType = MediaType.Json
+      Future.value(rep)
+    }
+  }
+
+  private[this] val handlers = Seq(Admin.Handler(adminUri, watchStateHandler))
+
+  @JsonIgnore
+  override def newInterpreter(params: Stack.Params): NameInterpreter = {
     val Param.Namers(namers) = params[Param.Namers]
     ConfiguredDtabNamer(
       dtab,
-      namers
+      namers,
+      handlers
     )
   }
 }

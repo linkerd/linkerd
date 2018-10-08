@@ -6,9 +6,8 @@ import com.twitter.finagle.{Dtab, Failure, Path}
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._
-import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState
 import io.buoyant.consul.v1._
-import io.buoyant.namer.InstrumentedVar
+import io.buoyant.namer.{InstrumentedActivity, InstrumentedVar}
 
 class ConsulDtabCache(
   api: KvApi,
@@ -16,23 +15,23 @@ class ConsulDtabCache(
   datacenter: Option[String] = None,
   readConsistency: Option[ConsistencyMode] = None,
   writeConsistency: Option[ConsistencyMode] = None,
+  pollState: PollState[String, Indexed[String]],
   implicit val _timer: Timer = DefaultTimer
 ) {
 
   private[this] val log = Logger.get("ConsulInterpreter")
 
   private[this] val dtabCache = CacheBuilder.newBuilder()
-    .build[String, Activity[Option[Dtab]]](
-      new CacheLoader[String, Activity[Option[Dtab]]] {
-        override def load(key: String): Activity[Option[Dtab]] = _observe(key)
+    .build[String, InstrumentedActivity[Option[Dtab]]](
+      new CacheLoader[String, InstrumentedActivity[Option[Dtab]]] {
+        override def load(key: String): InstrumentedActivity[Option[Dtab]] = _observe(key)
       }
     )
 
-  def observe(ns: String): Activity[Option[Dtab]] = dtabCache.get(ns).stabilize
+  def observe(ns: String): InstrumentedActivity[Option[Dtab]] = dtabCache.get(ns)
 
-  private[this] def _observe(ns: String): Activity[Option[Dtab]] = {
+  private[this] def _observe(ns: String): InstrumentedActivity[Option[Dtab]] = {
     val key = s"${root.show}/$ns"
-    val pollState = mkPollState[Indexed[String]]
     val run = InstrumentedVar[Activity.State[Option[Dtab]]](Activity.Pending) { updates =>
       @volatile var running = true
 
@@ -87,6 +86,6 @@ class ConsulDtabCache(
         Future.Unit
       }
     }
-    Activity(run.underlying).stabilize
+    new InstrumentedActivity(run)
   }
 }
