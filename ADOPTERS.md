@@ -15,7 +15,6 @@ These organizations are publicly using Linkerd in production:
 - [NCBI](https://www.ncbi.nlm.nih.gov)
 - [NextVR](https://nextvr.com)
 - [Olark](https://www.olark.com)
-- [OZON.ru](https://www.ozon.ru)
 - [PayPal](https://www.paypal.com/)
 - [Planet Labs](https://www.planet.com/)
 - [Salesforce](https://www.salesforce.com/)
