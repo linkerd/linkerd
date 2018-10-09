@@ -5,7 +5,7 @@ import com.twitter.finagle.http.Request
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Addr, Address, Failure, IndividualRequestTimeoutException}
-import com.twitter.util.{Duration, Future, Promise, Timer, Var}
+import com.twitter.util._
 import io.buoyant.consul.v1._
 import io.buoyant.namer.consul.SvcAddr.Stats
 import io.buoyant.namer.InstrumentedVar
@@ -153,54 +153,81 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
 
   test("should use last known state on api timeout") {
     // given
-    val invoked = Promise[Unit]()
-    val secondInvoke = Promise[Unit]()
     val requestCounter = new AtomicInteger()
     val (initServiceUpdate, firstAddr) = service()
+    val (secondSvcUpdate, secondAddr) = service("9.9.9.9", 1024)
+    val ttl = 1.minute
     @volatile var changes: Addr = Addr.Pending
 
+    val timer = new MockTimer
+
     val api = apiStub { (_, _, _, _, _, _) =>
-      requestCounter.incrementAndGet() match {
+      val count = requestCounter.incrementAndGet()
+      count match {
         case 1 =>
-          invoked.setDone()
           val response = Indexed[Seq[ServiceNode]](Seq(initServiceUpdate), Some("1"))
-          Future.value(response)
+          Future.sleep(5.minutes)(timer).before(Future.value(response))
         case 2 =>
-          secondInvoke.setDone()
-          Future.exception(new IndividualRequestTimeoutException(1.minutes))
+          val rspF = Future.sleep(11.minutes)(timer)
+            .before(Future.exception(new IndividualRequestTimeoutException(10.minutes)))
+          rspF
+        case 3 =>
+          Future.sleep(1.minute)(timer)
+            .before(Future.value(Indexed[Seq[ServiceNode]](Seq(secondSvcUpdate), Some("2"))))
       }
     }
 
     // when
-    val addr: InstrumentedVar[Addr] = SvcAddr(
-      api,
-      hangForLongBackoff,
-      "dc1",
-      SvcKey("svc", None),
-      None,
-      None,
-      None,
-      Map.empty,
-      Stats(NullStatsReceiver),
-      new PollState
-    )
-    addr.underlying.changes.respond {
-      changes = _
-    }
+    Time.withCurrentTimeFrozen { tc =>
 
-    // then
-    await(invoked)
-    changes match {
-      case Addr.Bound(addrs, _) => addrs.head shouldBe Address
-        .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
-      case _ => fail("received unexpected Addr on initial service discovery")
-    }
-    await(secondInvoke)
-    changes match {
-      case Addr.Bound(addrs, _) => addrs.head shouldBe Address
-        .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
-      case _ => fail("received unexpected Addr on timed out service discovery request")
+      val addr: InstrumentedVar[Addr] = SvcAddr(
+        api,
+        Stream.fill(10)(ttl),
+        "dc1",
+        SvcKey("svc", None),
+        None,
+        None,
+        None,
+        Map.empty,
+        Stats(NullStatsReceiver),
+        new PollState
+      )(timer)
+
+      addr.underlying.changes.respond {
+        changes = _
+      }
+
+      // then
+      tc.advance(5.minutes)
+      timer.tick()
+      changes match {
+        case Addr.Bound(addrs, _) => addrs.head shouldBe Address
+          .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+        case _ => fail("received unexpected Addr on initial service discovery")
+      }
+
+      tc.advance(12.minutes)
+      timer.tick()
+      changes match {
+        case Addr.Bound(addrs, _) => addrs.head shouldBe Address
+          .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+        case _ => fail("received unexpected Addr on timed out service discovery request")
+      }
+
+      // Advance timer to go past backoff sleep future in SvcAddr
+      tc.advance(5.minutes)
+      timer.tick()
+
+      tc.advance(2.minutes)
+      timer.tick()
+
+      eventually {
+        changes match {
+          case Addr.Bound(addrs, _) => addrs.head shouldBe Address
+            .Inet(secondAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+          case _ => fail("received unexpected Addr on timed out service discovery request")
+        }
+      }
     }
   }
-
 }

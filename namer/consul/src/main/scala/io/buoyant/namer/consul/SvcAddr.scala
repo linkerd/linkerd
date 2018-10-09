@@ -85,11 +85,10 @@ private[consul] object SvcAddr {
             stats.errors.incr()
             log.log(
               failureLogLevel,
-              "consul datacenter '%s' service '%s' observation error %s." +
+              "consul datacenter '%s' service '%s' lookup request timed out %s." +
                 " Last known state is %s",
               datacenter, key.name, e, currentValueToLog
             )
-            state.update(currentValueToLog)
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
             Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
