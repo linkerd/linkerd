@@ -81,7 +81,7 @@ private[consul] object SvcAddr {
             stopped = true
             Future.Unit
           case Throw(e: IndividualRequestTimeoutException) =>
-            // update state with last known state if we receive a API request timeout
+            // catch request timeout exceptions for Consul API. Use last known good state.
             stats.errors.incr()
             log.log(
               failureLogLevel,

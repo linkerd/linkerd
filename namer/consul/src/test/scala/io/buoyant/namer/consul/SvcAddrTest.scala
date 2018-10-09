@@ -214,11 +214,11 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         case _ => fail("received unexpected Addr on timed out service discovery request")
       }
 
-      // Advance timer to go past backoff sleep future in SvcAddr
-      tc.advance(5.minutes)
+      // Advance timer to trigger Future.sleep(backoff) in SvcAddr
+      tc.advance(1.minutes)
       timer.tick()
 
-      tc.advance(2.minutes)
+      tc.advance(1.minutes)
       timer.tick()
 
       eventually {
