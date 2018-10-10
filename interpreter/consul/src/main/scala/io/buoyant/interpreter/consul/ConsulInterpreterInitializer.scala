@@ -49,7 +49,7 @@ case class ConsulDtabInterpreterConfig(
   private[this] val adminUri = "/interpreter_state/io.l5d.consul.interpreter.json"
 
   @JsonIgnore
-  private[this] val api = {
+  private[this] lazy val api = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
     val backoffs = backoff.map(_.mk).getOrElse(DefaultBackoff)
@@ -67,7 +67,7 @@ case class ConsulDtabInterpreterConfig(
   }
 
   @JsonIgnore
-  private[this] val cache = new ConsulDtabStore(
+  private[this] lazy val cache = new ConsulDtabStore(
     api,
     pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
     datacenter,
@@ -77,7 +77,7 @@ case class ConsulDtabInterpreterConfig(
   )
 
   @JsonIgnore
-  private[this] val dtab = cache.observe(dtabNamespace).map {
+  private[this] lazy val dtab = cache.observe(dtabNamespace).map {
     case None => Dtab.empty
     case Some(VersionedDtab(dtab, _)) => dtab
   }
