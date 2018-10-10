@@ -265,8 +265,8 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   @JsonIgnore
   override val sslServerEngine = Netty4ServerEngineFactory()
 
-  override def withEndpointParams(params: Stack.Params): Stack.Params = super.withEndpointParams(params)
-    .maybeWith(maxConcurrentStreamsPerConnection.map(c => Settings.MaxConcurrentStreams(Some(c.toLong))))
+  override def withEndpointParams(params: Stack.Params): Stack.Params = (super.withEndpointParams(params)
+    + Settings.MaxConcurrentStreams(maxConcurrentStreamsPerConnection.orElse(Some(1000)).map(_.toLong)))
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams
