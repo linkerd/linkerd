@@ -80,6 +80,18 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
+          case Throw(e: IndividualRequestTimeoutException) =>
+            // catch request timeout exceptions for Consul API. Use last known good state.
+            stats.errors.incr()
+            log.log(
+              failureLogLevel,
+              "consul datacenter '%s' service '%s' lookup request timed out %s." +
+                " Last known state is %s",
+              datacenter, key.name, e, currentValueToLog
+            )
+            val backoff #:: nextBackoffs = backoffs
+            // subsequent errors are logged as DEBUG
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
 
           case Throw(e) =>
             // update state with Addr.Neg, log error and continue polling with backoff
