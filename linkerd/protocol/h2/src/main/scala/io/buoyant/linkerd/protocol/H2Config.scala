@@ -255,7 +255,7 @@ case class RetryBufferSize(
 
 class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
-  var maxConcurrentStreamsPerConnection: Option[Long] = None
+  var maxConcurrentStreamsPerConnection: Option[Int] = None
   var addForwardedHeader: Option[AddForwardedHeaderConfig] = None
 
   @JsonIgnore
@@ -266,7 +266,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   override val sslServerEngine = Netty4ServerEngineFactory()
 
   override def withEndpointParams(params: Stack.Params): Stack.Params = (super.withEndpointParams(params)
-    + Settings.MaxConcurrentStreams(maxConcurrentStreamsPerConnection.orElse(Some(1000L))))
+    + Settings.MaxConcurrentStreams(maxConcurrentStreamsPerConnection.orElse(Some(1000)).map(_.toLong)))
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams
