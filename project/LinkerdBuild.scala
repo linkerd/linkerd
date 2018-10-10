@@ -570,7 +570,7 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val consul = projectDir("interpreter/consul")
-      .dependsOn(Namer.core, Namer.consul)
+      .dependsOn(Namer.core, Namer.consul, Namerd.Storage.consul)
       .withTests()
 
     val all = aggregateDir("interpreter", consul, fs, k8s, mesh, namerd, perHost, subnet)

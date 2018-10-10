@@ -23,6 +23,7 @@ class ConsulDtabStore(
   datacenter: Option[String] = None,
   readConsistency: Option[ConsistencyMode] = None,
   writeConsistency: Option[ConsistencyMode] = None,
+  overrideHandlerUrl: Option[String] = None,
   implicit val _timer: Timer = DefaultTimer
 ) extends DtabStore
   with Admin.WithHandlers {
@@ -231,12 +232,15 @@ class ConsulDtabStore(
 
   val handlerPrefix = root.show.drop(1) // drop leading "/"
 
-  override def adminHandlers: Seq[Admin.Handler] = Seq(
-    Admin.Handler(
-      s"/storage/${handlerPrefix}.json",
-      new ConsulDtabStoreHandler(dtabStatus.asScala.toMap)
+  override def adminHandlers: Seq[Admin.Handler] = {
+    val url = overrideHandlerUrl match {
+      case None => s"/storage/$handlerPrefix.json"
+      case Some(u) => u
+    }
+    Seq(
+      Admin.Handler(url, new ConsulDtabStoreHandler(dtabStatus.asScala.toMap))
     )
-  )
+  }
 }
 
 private[consul] case class InstrumentedDtab(
