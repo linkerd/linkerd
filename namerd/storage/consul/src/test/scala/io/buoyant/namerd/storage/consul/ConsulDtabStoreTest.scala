@@ -36,7 +36,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
 
     @volatile var state: Activity.State[Set[Ns]] = Activity.Pending
@@ -65,7 +66,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
 
     @volatile var state: Activity.State[Set[Ns]] = Activity.Pending
@@ -91,7 +93,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
 
     @volatile var state: Activity.State[Set[Ns]] = Activity.Pending
@@ -110,7 +113,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     assertThrows[DtabNamespaceInvalidException] {
       await(store.create("%2e%2e", Dtab.empty))
@@ -134,7 +138,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     assertThrows[DtabNamespaceAlreadyExistsException] {
       await(store.create("default", Dtab.empty))
@@ -159,7 +164,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     assertThrows[DtabNamespaceInvalidException] {
       await(store.delete(badNamespace))
@@ -184,7 +190,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     assertThrows[DtabNamespaceInvalidException] {
       await(store.update(badNamespace, Dtab.empty, Buf.Empty))
@@ -209,7 +216,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     assertThrows[DtabNamespaceInvalidException] {
       await(store.put(badNamespace, Dtab.empty))
@@ -228,7 +236,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     @volatile var state: Activity.State[Option[VersionedDtab]] = Activity.Pending
     store.observe(badNamespace).states respond { state = _ }
@@ -256,7 +265,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     @volatile var state: Activity.State[Option[VersionedDtab]] = Activity.Pending
     store.observe(namespace).states respond { state = _ }
@@ -288,7 +298,8 @@ class ConsulDtabStoreTest extends FunSuite with Awaits with Exceptions with Acti
       Path.read(namerdPrefix),
       None,
       readConsistency = None,
-      writeConsistency = None
+      writeConsistency = None,
+      "handler/"
     )
     @volatile var state: Activity.State[Option[VersionedDtab]] = Activity.Pending
     store.observe(namespace).states respond { state = _ }

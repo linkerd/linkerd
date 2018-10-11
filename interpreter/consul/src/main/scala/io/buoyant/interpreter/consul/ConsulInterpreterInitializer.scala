@@ -73,7 +73,7 @@ case class ConsulDtabInterpreterConfig(
     datacenter,
     readConsistencyMode,
     writeConsistencyMode,
-    Some(adminUri)
+    adminUri
   )
 
   @JsonIgnore
