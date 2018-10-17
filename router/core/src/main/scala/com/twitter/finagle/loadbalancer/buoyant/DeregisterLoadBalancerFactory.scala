@@ -6,14 +6,14 @@ import com.twitter.util.Activity
 
 /**
  * Wraps a load balancer factory implementation and unregisters it from the
- * Finagle global balancer registry.effectively disabling the use of the global registry.
+ * Finagle global balancer registry effectively disabling the use of the global registry.
  * This class was added to workaround a Finagle bug where the Balancer Registry leaked load balancer
  * instances. TODO: once https://github.com/twitter/finagle/issues/735 is fixed, we can get rid of
  * this workaround.
  *
  * @param lbf the actual Load Balancer instance that is wrapped by DeregisterLoadBalancerFactory
  */
-class DeregisterLoadBalancerFactory(lbf: LoadBalancerFactory) extends LoadBalancerFactory {
+case class DeregisterLoadBalancerFactory(lbf: LoadBalancerFactory) extends LoadBalancerFactory {
   private val globalBalancerRegistry = BalancerRegistry.get
 
   override def newBalancer[Req, Rep](

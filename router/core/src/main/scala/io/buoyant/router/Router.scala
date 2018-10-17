@@ -373,12 +373,12 @@ object StackRouter {
     stk.result
   }
 
-  val defaultParams: Stack.Params = {
+  val defaultParams: Stack.Params =
     StackClient.defaultParams +
-      LoadBalancerFactory.Param(new DeregisterLoadBalancerFactory(Balancers.p2c())) +
+      LoadBalancerFactory.Param(DeregisterLoadBalancerFactory(Balancers.p2c())) +
       FailFastFactory.FailFast(false) +
       param.Stats(DefaultStatsReceiver.scope("rt"))
-  }
+
   /**
    * Analagous to c.t.f.FactoryToService.module, but is applied
    * unconditionally.
