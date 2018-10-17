@@ -4,6 +4,8 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant._
 import com.twitter.finagle.client._
 import com.twitter.finagle.liveness.{FailureAccrualFactory => FFailureAccrualFactory}
+import com.twitter.finagle.loadbalancer.{Balancers, LoadBalancerFactory}
+import com.twitter.finagle.loadbalancer.buoyant._
 import com.twitter.finagle.naming.buoyant.{DstBindingFactory, RichConnectionFailedModule, RichConnectionFailedPathModule}
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
@@ -371,11 +373,12 @@ object StackRouter {
     stk.result
   }
 
-  val defaultParams: Stack.Params =
+  val defaultParams: Stack.Params = {
     StackClient.defaultParams +
+      LoadBalancerFactory.Param(new DeregisterLoadBalancerFactory(Balancers.p2c())) +
       FailFastFactory.FailFast(false) +
       param.Stats(DefaultStatsReceiver.scope("rt"))
-
+  }
   /**
    * Analagous to c.t.f.FactoryToService.module, but is applied
    * unconditionally.
