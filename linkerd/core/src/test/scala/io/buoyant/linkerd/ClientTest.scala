@@ -66,7 +66,6 @@ class ClientTest extends FunSuite {
     // bas, not configured, gets default values
     val basParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bas"))
     val Param(basBalancer) = basParams[LoadBalancerFactory.Param]
-    println(basBalancer)
     val basBal = basBalancer match {
       case DeregisterLoadBalancerFactory(lbf) => lbf
       case flb: LoadBalancerFactory => flb
