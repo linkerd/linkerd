@@ -28,6 +28,9 @@ case class ConsulConfig(
   import ConsulConfig._
 
   @JsonIgnore
+  private[this] val root = pathPrefix.getOrElse(Path.read("/namerd/dtabs"))
+
+  @JsonIgnore
   override def mkDtabStore(params: Stack.Params): DtabStore = {
     val serviceHost = host.getOrElse(DefaultHost)
     val servicePort = port.getOrElse(DefaultPort).port
@@ -44,10 +47,11 @@ case class ConsulConfig(
       .newService(s"/$$/inet/$serviceHost/$servicePort")
     new ConsulDtabStore(
       KvApi(service, backoffs),
-      pathPrefix.getOrElse(Path.read("/namerd/dtabs")),
+      root,
       datacenter = datacenter,
       readConsistency = readConsistencyMode,
-      writeConsistency = writeConsistencyMode
+      writeConsistency = writeConsistencyMode,
+      handlerUrl = s"storage/${root.show.drop(1)}.json"
     )
   }
 }

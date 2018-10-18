@@ -23,6 +23,7 @@ class ConsulDtabStore(
   datacenter: Option[String] = None,
   readConsistency: Option[ConsistencyMode] = None,
   writeConsistency: Option[ConsistencyMode] = None,
+  handlerUrl: String,
   implicit val _timer: Timer = DefaultTimer
 ) extends DtabStore
   with Admin.WithHandlers {
@@ -232,10 +233,7 @@ class ConsulDtabStore(
   val handlerPrefix = root.show.drop(1) // drop leading "/"
 
   override def adminHandlers: Seq[Admin.Handler] = Seq(
-    Admin.Handler(
-      s"/storage/${handlerPrefix}.json",
-      new ConsulDtabStoreHandler(dtabStatus.asScala.toMap)
-    )
+    Admin.Handler(handlerUrl, new ConsulDtabStoreHandler(dtabStatus.asScala.toMap))
   )
 }
 
