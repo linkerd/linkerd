@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.conversions.time._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.loadbalancer.LoadBalancerFactory.EnableProbation
+import com.twitter.finagle.loadbalancer.buoyant.DeregisterLoadBalancerFactory
 import com.twitter.finagle.loadbalancer.{Balancers, LoadBalancerFactory}
 import io.buoyant.config.PolymorphicConfig
 
@@ -22,7 +23,8 @@ abstract class LoadBalancerConfig extends PolymorphicConfig {
   val enableProbation: Option[Boolean] = None
 
   @JsonIgnore
-  def clientParams = Stack.Params.empty + LoadBalancerFactory.Param(factory) +
+  def clientParams = Stack.Params.empty +
+    LoadBalancerFactory.Param(new DeregisterLoadBalancerFactory(factory)) +
     LoadBalancerFactory.EnableProbation(enableProbation.getOrElse(false))
 }
 
