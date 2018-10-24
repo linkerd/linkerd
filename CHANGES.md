@@ -1,10 +1,8 @@
 ## 1.5.1 2018-10-24
 
-Linkerd 1.5.1 adds an exciting new interpreter to its suite of interpreter modules. The new 
-`io.l5d.consul.interpreter` now allows Linkerd to read dtabs directly from a Consul KV store agent
-instead of using Namerd. In addition, this release adds a number of critical bug fixes to the HTTP/2
-router that fixes an issue where Linkerd would sometimes get stuck handling HTTP/2 connections in 
-certain cases.
+Linkerd 1.5.1 adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from 
+a Consul KV store agent instead of using Namerd. In addition, this release fixes an issue in 
+the HTTP/2 router where Linkerd would get stuck handling connections in certain cases.
 
 This release features contributions from OfferUp, Planet Labs and Buoyant with a special shoutout
 to [Leo Liang](https://github.com/leozc) and [Chris Taylor](https://github.com/ccmtaylor) for their
