@@ -1,3 +1,34 @@
+## 1.5.1 2018-10-24
+
+Linkerd 1.5.1 adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from 
+a Consul KV store agent instead of using Namerd. In addition, this release fixes an issue in 
+the HTTP/2 router where Linkerd would get stuck handling connections in certain cases.
+
+This release features contributions from OfferUp, Planet Labs and Buoyant with a special shoutout
+to [Leo Liang](https://github.com/leozc) and [Chris Taylor](https://github.com/ccmtaylor) for their
+work on fixing a bug in the DNS SRV namer.
+
+Full release notes:
+
+* HTTP/2
+  * Fixes an HTTP/2 issue that causes Linkerd to stop processing incoming frames on an HTTP/2
+  connection after Linkerd sends a `RST_STREAM` frame to its remote peer. This was causing gRPC 
+  clients to experience timeout errors intermittently because connections between Linkerd and its
+  remote peers weren't being closed properly.
+  * Sets the `maxConcurrentStreamsPerConnection` config value for the `h2` router to `1000` by default
+  to prevent Linkerd from running out of memory when HTTP/2 clients leak connection streams.
+* Consul
+  * Adds a request timeout to `io.l5d.consul` namer HTTP polling requests to prevent an issue where
+  the namer holds on to stale service discovery information.
+  * Adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from a Consul
+  KV store.
+* DNS SRV
+  * Fixes an issue where the `io.l5d.dnssrv` namer would get into a bad state and fail to resolve
+  service names.
+* Adds support for configuring JVM GC logging in Linkerd and Namerd by default.
+* Fixes a memory leak issue caused by Finagle's `BalancerRegistry` failing to properly remove
+ `Balancer` objects.
+
 ## 1.5.0 2018-10-02
 
 Linkerd 1.5.0 adds the long awaited ability to make Linkerd config changes with
