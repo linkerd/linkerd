@@ -36,6 +36,10 @@ class BufferingChannelTransport(
   private case class WriteItem(msg: Any, done: Promise[Unit])
 
   // Always flush after this many messages.
+  // This value was cargo-culted from
+  // https://github.com/grpc/grpc-java/pull/431/files#diff-7f048858dab93d58f2bcac583626abddR49
+  // This is mostly just a safety net to ensure that we don't buffer up arbitrarily large writes
+  // without flushing. In most cases I would expect us to flush before hitting this limit.
   private[this] val MaxFlushSize = 128
   private[this] val flushScheduled = new AtomicBoolean(false)
   private[this] val writeQueue = new LinkedBlockingQueue[WriteItem]()
