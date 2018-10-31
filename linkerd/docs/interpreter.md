@@ -18,7 +18,7 @@ These parameters are available to the identifier regardless of kind. Identifiers
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | `default` | Either [`default`](#default), [`io.l5d.namerd`](#namerd-thrift), [`io.l5d.namerd.http`](#namerd-http), [`io.l5d.mesh`](#namerd-mesh), [`io.l5d.fs`](#file-system), or [`io.l5d.k8s.configMap`](#kubernetes-configmap).
+kind | `default` | Either [`default`](#default), [`io.l5d.namerd`](#namerd-thrift), [`io.l5d.namerd.http`](#namerd-http), [`io.l5d.mesh`](#namerd-mesh), [`io.l5d.fs`](#file-system), [`io.l5d.consul.interpreter`](#consul-interpreter) or [`io.l5d.k8s.configMap`](#kubernetes-configmap).
 transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
 
 ## Default
@@ -154,3 +154,37 @@ filename | _required_ | The ConfigMap key corresponding to the desired dtab
 host | `localhost` | The Kubernetes master host.
 port | `8001` | The Kubernetes master port.
 namespace | `default` | The Kubernetes [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) containing the ConfigMap
+
+## Consul Interpreter
+
+The Consul Interpreter uses dtabs read from a Consul KV store. The interpreter watches for
+changes to dtabs stored at the specified `pathPrefix`.
+
+The current state of Consul stored dtabs can be viewed at the
+admin endpoint: `/interpreter_state/io.l5d.consul.interpreter.json`.
+
+> Example configuration
+
+```yaml
+routers:
+- ...
+  interpreter:
+    kind: io.l5d.consul.interpreter
+    host: localhost
+    port: 8500
+    namespace: default
+
+``` 
+
+Key | Default value | Description
+--- | ------------- | -----------
+host | `localhost` | The location of the consul API.
+port | `8500` | The port used to connect to the consul API.
+pathPrefix | `/namerd/dtabs` | The key path under which dtabs should be stored.
+token | no auth | The auth token to use when making API calls.
+datacenter | uses agent's datacenter | The datacenter to forward requests to.
+readConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for reads.
+writeConsistencyMode | `default` | Select between [Consul API consistency modes](https://www.consul.io/docs/agent/http.html) such as `default`, `stale` and `consistent` for writes.
+failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
+backoff |  exponential backoff from 1ms to 1min | Object that determines which backoff algorithm should be used. See [retry backoff](https://linkerd.io/config/head/linkerd#retry-backoff-parameters)
+tls | no tls | Use TLS during connection with Consul. see [Consul Encryption](https://www.consul.io/docs/agent/encryption.html) and [Namer TLS](#namer-tls).
