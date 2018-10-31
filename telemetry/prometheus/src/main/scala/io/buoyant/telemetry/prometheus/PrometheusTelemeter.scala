@@ -81,8 +81,16 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
         (Seq("rt", "client"), labels0 :+ ("client" -> escapeLabelVal(id)))
       case Seq("rt", "client", "service", path) if !labelExists(labels0, "service") =>
         (Seq("rt", "client", "service"), labels0 :+ ("service" -> escapeLabelVal(path)))
+      case Seq("rt", "client", "failures", path) if !labelExists(labels0, "exception") =>
+        (Seq("rt", "client", "failures"), labels0 :+ ("exception" -> escapeLabelVal(path)))
+      case Seq("rt", "client", "exn", path) if !labelExists(labels0, "exception") =>
+        (Seq("rt", "client", "exn"), labels0 :+ ("exception" -> escapeLabelVal(path)))
       case Seq("rt", "server", srv) if !labelExists(labels0, "server") =>
         (Seq("rt", "server"), labels0 :+ ("server" -> escapeLabelVal(srv)))
+      case Seq("rt", "server", "failures", path) if !labelExists(labels0, "exception") =>
+        (Seq("rt", "server", "failures"), labels0 :+ ("exception" -> escapeLabelVal(path)))
+      case Seq("rt", "server", "exn", path) if !labelExists(labels0, "exception") =>
+        (Seq("rt", "server", "exn"), labels0 :+ ("exception" -> escapeLabelVal(path)))
       case _ => (prefix0, labels0)
     }
 
