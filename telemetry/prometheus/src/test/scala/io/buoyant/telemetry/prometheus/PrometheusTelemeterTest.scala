@@ -4,7 +4,6 @@ import com.twitter.finagle.http.Request
 import com.twitter.finagle.stats.buoyant.Metric
 import io.buoyant.telemetry.{MetricsTree, MetricsTreeStatsReceiver}
 import io.buoyant.test.FunSuite
-import jdk.nashorn.internal.ir.RuntimeNode
 
 class PrometheusTelemeterTest extends FunSuite {
 
@@ -146,24 +145,45 @@ class PrometheusTelemeterTest extends FunSuite {
     assert(rsp == "linkerd_rt:server:requests{rt=\"incoming\", server=\"127.0.0.1/4141\"} 1\n")
   }
 
-  test("exception stats are labelled") {
+  test("exception stats are labelled for client") {
     val (stats, handler) = statsAndHandler
     // Replicate stack trace for some exception foo:bar:baz
-    stats.scope("rt", "incoming", "client", "127.0.0.1/4141", "failures").counter("foo").incr()
-    stats.scope("rt", "incoming", "client", "127.0.0.1/4141", "failures").counter("foo:bar").incr()
-    stats.scope("rt", "incoming", "client", "127.0.0.1/4141", "failures").counter("foo:bar:baz").incr()
+    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar").incr()
+    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar:baz").incr()
+    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar:baz:qux").incr()
 
     // Replicate stack trace for some exception foo:bar:qux
-    stats.scope("rt", "incoming", "client", "127.0.0.1/4141", "failures").counter("foo").incr()
-    stats.scope("rt", "incoming", "client", "127.0.0.1/4141", "failures").counter("foo:bar").incr()
-    stats.scope("rt", "incoming", "client", "127.0.0.1/4141", "failures").counter("foo:bar:qux").incr()
+    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar").incr()
+    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar:baz").incr()
+    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar:baz:thud").incr()
 
 
     val rsp = await(handler(Request(prometheusPath))).contentString
-    assert(rsp == """linkerd_rt:client:failures{rt="incoming", client="127.0.0.1/4141", exception="foo:bar"} 2
-                    |linkerd_rt:client:failures{rt="incoming", client="127.0.0.1/4141", exception="foo:bar:baz"} 1
-                    |linkerd_rt:client:failures{rt="incoming", client="127.0.0.1/4141", exception="foo"} 2
-                    |linkerd_rt:client:failures{rt="incoming", client="127.0.0.1/4141", exception="foo:bar:qux"} 1
+    assert(rsp == """linkerd_rt:client:failures{rt="incoming", client="/#/foo", exception="bar"} 2
+                    |linkerd_rt:client:failures{rt="incoming", client="/#/foo", exception="bar:baz:qux"} 1
+                    |linkerd_rt:client:failures{rt="incoming", client="/#/foo", exception="bar:baz:thud"} 1
+                    |linkerd_rt:client:failures{rt="incoming", client="/#/foo", exception="bar:baz"} 2
+                    |""".stripMargin)
+  }
+
+  test("exception stats are labelled for server") {
+    val (stats, handler) = statsAndHandler
+    // Replicate stack trace for some exception foo:bar:baz
+    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo").incr()
+    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo:bar").incr()
+    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo:bar:baz").incr()
+
+    // Replicate stack trace for some exception foo:bar:qux
+    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo").incr()
+    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo:bar").incr()
+    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo:bar:qux").incr()
+
+
+    val rsp = await(handler(Request(prometheusPath))).contentString
+    assert(rsp == """linkerd_rt:server:failures{rt="incoming", server="127.0.0.1/4141", exception="foo:bar"} 2
+                    |linkerd_rt:server:failures{rt="incoming", server="127.0.0.1/4141", exception="foo:bar:baz"} 1
+                    |linkerd_rt:server:failures{rt="incoming", server="127.0.0.1/4141", exception="foo"} 2
+                    |linkerd_rt:server:failures{rt="incoming", server="127.0.0.1/4141", exception="foo:bar:qux"} 1
                     |""".stripMargin)
   }
 }
