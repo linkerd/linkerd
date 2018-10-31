@@ -13,10 +13,9 @@ class DnsSrvNamerIntegrationTest extends FunSuite with Awaits with Matchers {
   test("can resolve some public SRV record") {
     val namer = new DnsSrvNamer(
       Path.empty,
-      new DNS.ExtendedResolver,
+      () => new DNS.ExtendedResolver,
       Duration.Zero,
-      new NullStatsReceiver,
-      FuturePool.unboundedPool
+      new NullStatsReceiver
     )(DefaultTimer)
     await(namer.lookup(Path.read("/_http._tcp.mxtoolbox.com")).toFuture) match {
       case NameTree.Leaf(Name.Bound(varAddr)) => varAddr.sample() match {

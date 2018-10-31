@@ -15,9 +15,10 @@ may also have kind-specific parameters.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.thriftNameInterpreter`](#thrift-name-interpreter), [`io.l5d.mesh`](#grpc-mesh-interface), or [`io.l5d.httpController`](#http-controller).
+kind | _required_ | Either [`io.l5d.thriftNameInterpreter`](#thrift-name-interpreter), [`io.l5d.mesh`](#grpc-mesh-interface),[`io.l5d.destination`](#linkerd2-destination-interface) or [`io.l5d.httpController`](#http-controller).
 ip | interface dependent | The local IP address on which to serve the namer interface.
 port | interface dependent | The port number on which to serve the namer interface.
+socketOptions | none | Socket options for a configured interface. See [Socket Options](https://linkerd.io/config/head/linkerd/index.html#socket-options)
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
 ## Thrift Name Interpreter
@@ -32,6 +33,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
 port | `4100` | The port number on which to serve the namer interface.
+socketOptions | none | Socket options for the thrift name interpreter interface. See [Socket Options](https://linkerd.io/config/head/linkerd/index.html#socket-options)
 cache | see [cache](#cache) | Binding and address cache size configuration.
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
@@ -58,6 +60,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
 port | `4321` | The port number on which to serve the namer interface.
+socketOptions | none | Socket options for the mesh interface. See [Socket Options](https://linkerd.io/config/head/linkerd/index.html#socket-options)
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls). The server TLS key file must be in PKCS#8 format.
 
 ## Linkerd2 Destination Interface
@@ -71,6 +74,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback address | The local IP address on which to serve the destination interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
 port | `8086` | The port number on which to serve the destination interface.
+socketOptions | none | Socket options to set for the l5d2 destination interface. See [Socket Options](https://linkerd.io/config/head/linkerd/index.html#socket-options)
 prefix | /svc | The prefix to use when delegating Linkerd2 request paths to Namerd
 namespace | default | The namespace with which Namerd should use to retrieve a dtab
 
@@ -89,6 +93,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback address | The local IP address on which to serve the namer interface. A value like 0.0.0.0 configures Namerd to listen on all local IPv4 interfaces.
 port | `4180` | The port number on which to serve the namer interface.
+socketOptions | none | Socket options to set for the http controller interface. See [Socket Options](https://linkerd.io/config/head/linkerd/index.html#socket-options)
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls).
 
 ### GET /api/1/dtabs

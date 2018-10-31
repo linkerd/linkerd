@@ -84,7 +84,7 @@ Key | Default Value | Description
 windowUpdateRatio | `0.99` | A number between 0 and 1, exclusive, indicating the ratio at which window updates should be sent. With a value of 0.75, updates will be sent when the available window size is 75% of its capacity.
 headerTableBytes | none | Configures `SETTINGS_HEADER_TABLE_SIZE` on new streams.
 initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on streams.
-maxConcurrentStreamsPerConnection | unlimited | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
+maxConcurrentStreamsPerConnection | 1000 | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
 
@@ -411,8 +411,8 @@ The trace information in the header are serialized by Finagles `TraceId.serializ
 
 kind: `io.l5d.zipkin`.
 
-A trace propagator that writes Zipkin B3 trace headers to outgoing requests. Processes B3 Headers 
-received from upstream as well. 
+A trace propagator that writes Zipkin B3 trace headers to outgoing requests. Processes B3 Headers
+received from upstream as well.
 
 Header | Content
 ------ | -------

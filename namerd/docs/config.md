@@ -55,6 +55,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 ip | loopback address | IP for the admin interface. A value like 0.0.0.0 configures admin to listen on all local IPv4 interfaces.
 port | `9990` | Port for the admin interface.
+socketOptions | none | Socket options to set for the admin interface. See [Socket Options](https://linkerd.io/config/head/linkerd/index.html#socket-options)
 shutdownGraceMs | 10000 | maximum grace period before the Namerd process exits
 tls | no tls | The admin interface will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 workerThreads | 2 | The number of worker threads used to serve the admin interface.

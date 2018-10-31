@@ -86,6 +86,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 port | protocol dependent | The TCP port number. Protocols may provide default values. If no default is provided, the port parameter is required.
 ip | loopback address | The local IP address. A value like 0.0.0.0 configures the server to listen on all local IPv4 interfaces.
+socketOptions | none | Socket options to set for the router interface. See [Socket Options](#socket-options)
 tls | no tls | The server will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).

@@ -143,7 +143,10 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
               case null if id <= closedId.get =>
                 // The stream has been closed and should know better than
                 // to send us messages.
-                writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), Reset.Closed)
+                writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), Reset.Closed).before {
+                  if (closed.get) Future.Unit
+                  else transport.read().transform(loop)
+                }
 
               case null =>
                 demuxNewStream(f).before {

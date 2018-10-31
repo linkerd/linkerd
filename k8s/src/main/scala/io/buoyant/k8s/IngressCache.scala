@@ -15,7 +15,7 @@ case class IngressSpec(
   def getMatchingPath(hostHeader: Option[String], requestPath: String): Option[IngressPath] = {
     val matchingPath = rules.find(_.matches(hostHeader, requestPath))
     matchingPath match {
-      case Some(path) => log.info("ingress %s.%s: found rule matching %s %s: %s", name.getOrElse("unknown"), namespace.getOrElse("default"), hostHeader.getOrElse(""), requestPath, path)
+      case Some(path) => log.debug("ingress %s.%s: found rule matching %s %s: %s", name.getOrElse("unknown"), namespace.getOrElse("default"), hostHeader.getOrElse(""), requestPath, path)
       case None => log.debug("ingress %s.%s: no rules found matching %s %s", name.getOrElse("unknown"), namespace.getOrElse("default"), hostHeader.getOrElse(""), requestPath)
     }
     matchingPath

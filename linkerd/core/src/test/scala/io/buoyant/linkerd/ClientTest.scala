@@ -2,6 +2,8 @@ package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
 import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
+import com.twitter.finagle.loadbalancer.LoadBalancerFactory._
+import com.twitter.finagle.loadbalancer.buoyant.DeregisterLoadBalancerFactory
 import com.twitter.finagle.loadbalancer.{FlagBalancerFactory, LoadBalancerFactory}
 import com.twitter.finagle.ssl.client.SslClientConfiguration
 import com.twitter.finagle.transport.Transport
@@ -20,11 +22,19 @@ class ClientTest extends FunSuite {
                           |  kind: ewma""".stripMargin)
 
     val fooParams = client.clientParams.paramsFor(Path.read("/foo"))
-    val LoadBalancerFactory.Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
-    assert(fooBalancer.toString == "P2CPeakEwma")
+    val Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
+    val fooBal = fooBalancer match {
+      case DeregisterLoadBalancerFactory(lbf) => lbf
+      case _ => fail("Unexpected load balancer configured")
+    }
+    assert(fooBal.toString == "P2CPeakEwma")
     val barParams = client.clientParams.paramsFor(Path.read("/bar"))
-    val LoadBalancerFactory.Param(barBalancer) = barParams[LoadBalancerFactory.Param]
-    assert(barBalancer.toString == "P2CPeakEwma")
+    val Param(barBalancer) = barParams[LoadBalancerFactory.Param]
+    val barBal = barBalancer match {
+      case DeregisterLoadBalancerFactory(lbf) => lbf
+      case _ => fail("Unexpected load balancer configured")
+    }
+    assert(barBal.toString == "P2CPeakEwma")
   }
 
   test("per client config") {
@@ -38,17 +48,30 @@ class ClientTest extends FunSuite {
                           |    kind: aperture""".stripMargin)
 
     val fooParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/foo"))
-    val LoadBalancerFactory.Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
-    assert(fooBalancer.toString == "P2CPeakEwma")
+    val Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
+    val fooBal = fooBalancer match {
+      case DeregisterLoadBalancerFactory(lbf) => lbf
+      case _ => fail("Unexpected load balancer configured")
+    }
+    assert(fooBal.toString == "P2CPeakEwma")
 
     val barParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bar"))
-    val LoadBalancerFactory.Param(barBalancer) = barParams[LoadBalancerFactory.Param]
-    assert(barBalancer.toString == "ApertureLeastLoaded")
+    val Param(barBalancer) = barParams[LoadBalancerFactory.Param]
+    val barBal = barBalancer match {
+      case DeregisterLoadBalancerFactory(lbf) => lbf
+      case _ => fail("Unexpected load balancer configured")
+    }
+    assert(barBal.toString == "ApertureLeastLoaded")
 
     // bas, not configured, gets default values
     val basParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bas"))
-    val LoadBalancerFactory.Param(basBalancer) = basParams[LoadBalancerFactory.Param]
-    assert(basBalancer == FlagBalancerFactory)
+    val Param(basBalancer) = basParams[LoadBalancerFactory.Param]
+    val basBal = basBalancer match {
+      case DeregisterLoadBalancerFactory(lbf) => lbf
+      case flb: LoadBalancerFactory => flb
+      case _ => fail("Unexpected load balancer configured")
+    }
+    assert(basBal == FlagBalancerFactory)
   }
 
   test("later client configs override earlier ones") {
@@ -62,12 +85,20 @@ class ClientTest extends FunSuite {
                           |    kind: aperture""".stripMargin)
 
     val fooParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/foo"))
-    val LoadBalancerFactory.Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
-    assert(fooBalancer.toString == "P2CPeakEwma")
+    val Param(fooBalancer) = fooParams[LoadBalancerFactory.Param]
+    val fooBal = fooBalancer match {
+      case DeregisterLoadBalancerFactory(lbf) => lbf
+      case _ => fail("Unexpected load balancer configured")
+    }
+    assert(fooBal.toString == "P2CPeakEwma")
 
     val barParams = client.clientParams.paramsFor(Path.read("/#/io.l5d.fs/bar"))
-    val LoadBalancerFactory.Param(barBalancer) = barParams[LoadBalancerFactory.Param]
-    assert(barBalancer.toString == "ApertureLeastLoaded")
+    val Param(barBalancer) = barParams[LoadBalancerFactory.Param]
+    val barBal = barBalancer match {
+      case DeregisterLoadBalancerFactory(lbf) => lbf
+      case _ => fail("Unexpected load balancer configured")
+    }
+    assert(barBal.toString == "ApertureLeastLoaded")
   }
 
   test("variable capture from prefix") {

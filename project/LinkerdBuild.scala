@@ -257,6 +257,7 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
+       |   ${GC_LOG_OPTION:-}                                            \
        |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
@@ -360,6 +361,31 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/namerd"
+         |fi
+         |
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
@@ -422,6 +448,31 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/namerd"
+         |fi
+         |
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|if read -t 0; then
@@ -518,7 +569,11 @@ object LinkerdBuild extends Base {
       .dependsOn(Namer.core, LinkerdBuild.istio, perHost, subnet)
       .withTests()
 
-    val all = aggregateDir("interpreter", fs, k8s, mesh, namerd, perHost, subnet)
+    val consul = projectDir("interpreter/consul")
+      .dependsOn(Namer.core, Namer.consul, Namerd.Storage.consul)
+      .withTests()
+
+    val all = aggregateDir("interpreter", consul, fs, k8s, mesh, namerd, perHost, subnet)
   }
 
   object Linkerd {
@@ -630,6 +685,31 @@ object LinkerdBuild extends Base {
          |  done
          |fi
          |export MALLOC_ARENA_MAX=2
+         |
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/linkerd"
+         |fi
+         |
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         |  Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  GC_LOG_OPTION="
+         |   -XX:+PrintGCDetails
+         |   -XX:+PrintGCDateStamps
+         |   -XX:+PrintHeapAtGC
+         |   -XX:+PrintTenuringDistribution
+         |   -XX:+PrintGCApplicationStoppedTime
+         |   -XX:+PrintPromotionFailure
+         |   -Xloggc:${GC_LOG}/gc.log
+         |   -XX:+UseGCLogFileRotation
+         |   -XX:NumberOfGCLogFiles=10
+         |   -XX:GCLogFileSize=10M"
+         |fi
+         |
          |""" +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
@@ -650,7 +730,7 @@ object LinkerdBuild extends Base {
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
       Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
-      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet,
+      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet, Interpreter.consul,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
@@ -785,6 +865,7 @@ object LinkerdBuild extends Base {
   val namerdMain = Namerd.main
 
   val interpreter = Interpreter.all
+  val interpreterConsul = Interpreter.consul
   val interpreterFs = Interpreter.fs
   val interpreterK8s = Interpreter.k8s
   val interpreterIstio = Interpreter.istio

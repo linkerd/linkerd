@@ -5,8 +5,8 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Namer, Path}
 import io.buoyant.config.types.Port
-import io.buoyant.config.{PolymorphicConfig, ConfigInitializer}
-import com.twitter.finagle.buoyant.TlsServerConfig
+import io.buoyant.config.{ConfigInitializer, PolymorphicConfig}
+import com.twitter.finagle.buoyant.{SocketOptionsConfig, TlsServerConfig}
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -16,6 +16,7 @@ import java.net.{InetAddress, InetSocketAddress}
 abstract class InterfaceConfig extends PolymorphicConfig {
   var ip: Option[InetAddress] = None
   var port: Option[Port] = None
+  var socketOptions: Option[SocketOptionsConfig] = None
   var tls: Option[TlsServerConfig] = None
 
   @JsonIgnore
@@ -26,6 +27,9 @@ abstract class InterfaceConfig extends PolymorphicConfig {
 
   @JsonIgnore
   def tlsParams = tls.map(_.params(None, Netty4ServerEngineFactory())).getOrElse(Stack.Params.empty)
+
+  @JsonIgnore
+  def socketOptParams = socketOptions.map(_.params).getOrElse(Stack.Params.empty)
 
   @JsonIgnore
   protected def defaultAddr: InetSocketAddress

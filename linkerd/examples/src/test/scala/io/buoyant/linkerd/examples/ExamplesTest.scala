@@ -18,7 +18,7 @@ class ExamplesTest extends FunSuite {
   for (file <- files) {
     // Example tests are running out of memory in CI and so have been temporarily been disabled to
     // unblock CI.  This needs to be investigated and fixed.
-    ignore(file.getName) {
+    test(file.getName) {
       val source = Source.fromFile(file)
       try {
         val lines = source.getLines().toSeq

@@ -153,7 +153,12 @@ object Stream {
     override def onCancel: Future[Reset] = cancelP
 
     private[this] val endOnReleaseIfEnd: Try[Frame] => Unit = {
-      case Return(f) => if (f.isEnd) endP.become(f.onRelease)
+      case Return(f) =>
+        if (f.isEnd) {
+          f.onRelease.respond { k =>
+            endP.updateIfEmpty(k); ()
+          }
+        }; ()
       case Throw(e) => endP.updateIfEmpty(Throw(e)); ()
     }
 

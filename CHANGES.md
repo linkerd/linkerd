@@ -1,3 +1,59 @@
+## 1.5.1 2018-10-24
+
+Linkerd 1.5.1 adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from 
+a Consul KV store agent instead of using Namerd. In addition, this release fixes an issue in 
+the HTTP/2 router where Linkerd would get stuck handling connections in certain cases.
+
+This release features contributions from OfferUp, Planet Labs and Buoyant with a special shoutout
+to [Leo Liang](https://github.com/leozc) and [Chris Taylor](https://github.com/ccmtaylor) for their
+work on fixing a bug in the DNS SRV namer.
+
+Full release notes:
+
+* HTTP/2
+  * Fixes an HTTP/2 issue that causes Linkerd to stop processing incoming frames on an HTTP/2
+  connection after Linkerd sends a `RST_STREAM` frame to its remote peer. This was causing gRPC 
+  clients to experience timeout errors intermittently because connections between Linkerd and its
+  remote peers weren't being closed properly.
+  * Sets the `maxConcurrentStreamsPerConnection` config value for the `h2` router to `1000` by default
+  to prevent Linkerd from running out of memory when HTTP/2 clients leak connection streams.
+* Consul
+  * Adds a request timeout to `io.l5d.consul` namer HTTP polling requests to prevent an issue where
+  the namer holds on to stale service discovery information.
+  * Adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from a Consul
+  KV store.
+* DNS SRV
+  * Fixes an issue where the `io.l5d.dnssrv` namer would get into a bad state and fail to resolve
+  service names.
+* Adds support for configuring JVM GC logging in Linkerd and Namerd by default.
+* Fixes a memory leak issue caused by Finagle's `BalancerRegistry` failing to properly remove
+ `Balancer` objects.
+
+## 1.5.0 2018-10-02
+
+Linkerd 1.5.0 adds the long awaited ability to make Linkerd config changes with
+zero downtime! 🤯 This release adds the `socketOptions.reusePort` config property which allows
+multiple processes to bind to the same port.  In this way, you can start a new Linkerd process
+and wait for it to start serving requests before gracefully shutting down the old Linkerd process.
+Note that this feature is only available on Linux 3.9 distributions and newer.
+
+This release features contributions from [Applause](https://github.com/ApplauseAQI), ThreeComma,
+GuteFrage GmbH, and [Buoyant](https://github.com/buoyantio).  An extra special thank you to
+[Zack Angelo](https://github.com/zackangelo) for laying the groundwork in Finagle for the reusePort
+feature!
+
+Full release notes:
+
+* **Breaking Change**: The `threshold` and `windowSize` options have been removed from the `failureThreshold` config in the Namerd interpreter.  These options were of limited value and are no longer supported by Finagle.
+* Socket Options:
+  * Certain socket options may now be set on Linkerd servers by adding a `socketOptions` config in a server config.
+  * Add support for the `SO_REUSEPORT` socket option.  This allows multiple processes to bind to the same port and is a great way to do zero downtime Linkerd deploys.
+* Istio features are now marked as deprecated.
+* Marathon:
+  * Ensure traffic is not sent to Marathon services during their health-check grace period.
+* Use AsyncAppender for console logging so that logging does not impact Linkerd performance.
+* Upgrade to Finagle 18.9.1
+
 ## 1.4.6 2018-08-13
 
 Linkerd 1.4.6 adds even more watch state endpoints to Linkerd's debugging arsenal, allowing you to 
@@ -226,7 +282,7 @@ This release focuses on correctness and bug fixes. Much of the work was in servi
   * Fix namer client stats by using a single client for the entire `io.l5d.k8s` namer ([#1774](https://github.com/linkerd/linkerd/pull/1774)).
   * Log unexpected responses from the Kubernetes API ([#1790](https://github.com/linkerd/linkerd/pull/1790)).
 * Consul
-  * Fix namerd admin inteface hanging ([#1816](https://github.com/linkerd/linkerd/pull/1816)). Thanks to [@Ashald](https://github.com/Ashald), and also [@hynek](https://github.com/hynek) for testing!
+  * Fix namerd admin interface hanging ([#1816](https://github.com/linkerd/linkerd/pull/1816)). Thanks to [@Ashald](https://github.com/Ashald), and also [@hynek](https://github.com/hynek) for testing!
   * Do not rely on ConsulApi retries in `io.l5d.consul` namer  ([#1827](https://github.com/linkerd/linkerd/pull/1827)). Thanks to [@edio](https://github.com/edio).
 * TLS
   * Add test case to ensure `x-forwarded-client-cert` header can't be spoofed ([#1811](https://github.com/linkerd/linkerd/pull/1811)). Thanks to [@drichelson](https://github.com/drichelson)!
@@ -244,7 +300,7 @@ This release focuses on quality, and on improving the debugging process. It incl
 * 🎓 H2 router and `io.l5d.mesh` Namerd interface are no longer experimental ([#1782](https://github.com/linkerd/linkerd/pull/1782))! 🎓
 * Add an experimental namer for Rancher service discovery ([#1740](https://github.com/linkerd/linkerd/pull/1740)). A huge thank you to [@fangel](https://github.com/fangel) for contributing this namer!
 * Kubernetes
-  * Fix a bug that could cause the `io.l5d.k8s` namer to get "stuck" and fail to recieve updates from an endpoint ([#1755](https://github.com/linkerd/linkerd/pull/1755)). Contributed by [@obeattie](https://github.com/obeattie).
+  * Fix a bug that could cause the `io.l5d.k8s` namer to get "stuck" and fail to receive updates from an endpoint ([#1755](https://github.com/linkerd/linkerd/pull/1755)). Contributed by [@obeattie](https://github.com/obeattie).
 * Admin UI
   * Add a /client_state.json debugging endpoint to expose the current address set of each client, allowing you to easily inspect where Linkerd thinks it can send traffic to ([#1768](https://github.com/linkerd/linkerd/pull/1768)).
   * Fix an error when using the admin UI to perform delegations with a dtab stored in Namerd over the `io.l5d.thriftNameInterpreter` interface ([#1762](https://github.com/linkerd/linkerd/pull/1762)). Thanks to [@jackkleeman](https://github.com/jackkleeman)!
