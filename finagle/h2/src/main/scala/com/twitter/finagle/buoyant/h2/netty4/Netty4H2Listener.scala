@@ -3,6 +3,7 @@ package netty4
 
 import com.twitter.finagle.Stack
 import com.twitter.finagle.netty4.Netty4Listener
+import com.twitter.finagle.netty4.transport.buoyant.BufferingChannelTransport
 import com.twitter.finagle.server.Listener
 import com.twitter.finagle.transport.{Transport, TransportContext}
 import io.netty.channel._
@@ -31,7 +32,9 @@ object Netty4H2Listener {
 
       Netty4Listener(
         pipelineInit = pipelineInit(codec),
-        params = params + Netty4Listener.BackPressure(false)
+        params = params + Netty4Listener.BackPressure(false),
+        setupMarshalling = identity,
+        transportFactory = new BufferingChannelTransport(_)
       )
     }
 

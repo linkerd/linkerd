@@ -5,6 +5,7 @@ import com.twitter.finagle.Stack
 import com.twitter.finagle.client.Transporter
 import com.twitter.finagle.netty4.Netty4Transporter
 import com.twitter.finagle.netty4.buoyant.BufferingConnectDelay
+import com.twitter.finagle.netty4.transport.buoyant.BufferingChannelTransport
 import com.twitter.finagle.transport.{Transport, TransportContext}
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.http2._
@@ -56,7 +57,7 @@ object Netty4H2Transporter {
         }
       }
 
-    Netty4Transporter.raw(pipelineInit, addr, params)
+    Netty4Transporter.raw(pipelineInit, addr, params, new BufferingChannelTransport(_))
   }
 
   private val FramerKey = "h2 framer"
