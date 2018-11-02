@@ -1,6 +1,7 @@
 package com.twitter.finagle.buoyant
 
-import com.twitter.util.{Activity, Updatable, Var}
+import com.twitter.logging.Logger
+import com.twitter.util._
 
 /**
  * Extensions to `Var`/`Activity` allowing a `Var` containing an `Option` to be split
@@ -11,7 +12,9 @@ object ExistentialStability {
 
   type VarUp[T] = Var[T] with Updatable[T]
 
-  implicit class ExistentialVar[T](val unstable: Var[Option[T]])
+  val logger = Logger()
+
+  implicit class ExistentialVar[T <: AnyRef](val unstable: Var[Option[T]])
     extends AnyVal {
     /**
      * We can stabilize this by changing the type to Var[Option[Var[T]]].
@@ -20,80 +23,57 @@ object ExistentialStability {
      * will update.
      */
     def stabilizeExistence: Var[Option[Var[T]]] = {
-      val init = unstable.sample().map(Var(_))
-      Var.async[Option[VarUp[T]]](init) { update =>
-        // the current inner Var, null if the outer Var is None
-        @volatile var current: VarUp[T] = null
-        @volatile var exists = false
-        val mu = new {}
+
+      val init = unstable.sample()
+      val initT = init.getOrElse(null.asInstanceOf[T])
+
+      val inner: Var[T] = Var.async(initT) { update =>
         unstable.changes.respond {
-          case Some(t) if current == null => mu.synchronized {
-            // T created
-            exists = true
-            current = Var(t)
-            update() = Some(current)
-          }
-          case Some(t) if !exists => mu.synchronized {
-            // T re-created
-            exists = true
-            current() = t
-            update() = Some(current)
-          }
-          case Some(t) => mu.synchronized {
-            // T modified
-            current() = t
-          }
-          case None => mu.synchronized {
-            // T deleted
-            exists = false
+          case Some(t) => update() = t
+          case _ =>
+        }
+      }
+
+      val initOuter = init.map(_ => inner)
+      Var.async[Option[Var[T]]](initOuter) { update =>
+        unstable.changes.respond {
+          case Some(_) =>
+            update() = Some(inner)
+          case None =>
             update() = None
-          }
         }
       }
     }
   }
 
-  implicit class ExistentialAct[T](val unstable: Activity[Option[T]])
+  implicit class ExistentialAct[T <: AnyRef](val unstable: Activity[Option[T]])
     extends AnyVal {
     def stabilizeExistence: Activity[Option[Var[T]]] = {
-      val inner = Var.async[Activity.State[Option[VarUp[T]]]](Activity.Pending) { update =>
-        // the current inner Var, null if the outer Var is None
-        @volatile var current: VarUp[T] = null
-        @volatile var exists = false
-        val mu = new {}
+
+      val inner: Var[T] = Var.async(null.asInstanceOf[T]) { update =>
         unstable.states.respond {
-          case Activity.Ok(Some(t)) if current == null => mu.synchronized {
-            // T created
-            current = Var(t)
-            exists = true
-            update() = Activity.Ok(Some(current))
-          }
-          case Activity.Ok(Some(t)) if !exists => mu.synchronized {
-            // T recreated
-            exists = true
-            current() = t
-            update() = Activity.Ok(Some(current))
-          }
-          case Activity.Ok(Some(t)) => mu.synchronized {
-            // T modified
-            current() = t
-          }
-          case Activity.Ok(None) => mu.synchronized {
-            // T deleted
-            exists = false
-            update() = Activity.Ok(None)
-          }
-          case Activity.Pending => mu.synchronized {
-            update() = Activity.Pending
-            exists = false
-          }
-          case Activity.Failed(e) => mu.synchronized {
-            update() = Activity.Failed(e)
-            exists = false
-          }
+          case Activity.Ok(Some(t)) => update() = t
+          case _ =>
         }
       }
-      Activity(inner)
+
+      val outer = Var.async[Activity.State[Option[Var[T]]]](Activity.Pending) { update =>
+        val closable = unstable.states.respond {
+          case Activity.Ok(Some(_)) =>
+            update() = Activity.Ok(Some(inner))
+          case Activity.Ok(None) =>
+            update() = Activity.Ok(None)
+          case Activity.Pending =>
+            update() = Activity.Pending
+          case Activity.Failed(e) =>
+            update() = Activity.Failed(e)
+        }
+        Closable.all(closable, Closable.make { _ =>
+          Future.Unit
+        })
+      }
+
+      Activity(outer)
     }
   }
 }
