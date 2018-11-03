@@ -11,7 +11,7 @@ object ExistentialStability {
 
   type VarUp[T] = Var[T] with Updatable[T]
 
-  implicit class ExistentialVar[T <: AnyRef](val unstable: Var[Option[T]])
+  implicit class ExistentialVar[T](val unstable: Var[Option[T]])
     extends AnyVal {
     /**
      * We can stabilize this by changing the type to Var[Option[Var[T]]].
