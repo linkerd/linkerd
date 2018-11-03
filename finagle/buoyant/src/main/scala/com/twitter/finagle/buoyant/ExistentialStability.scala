@@ -1,6 +1,5 @@
 package com.twitter.finagle.buoyant
 
-import com.twitter.logging.Logger
 import com.twitter.util._
 
 /**
@@ -12,8 +11,6 @@ object ExistentialStability {
 
   type VarUp[T] = Var[T] with Updatable[T]
 
-  val logger = Logger()
-
   implicit class ExistentialVar[T <: AnyRef](val unstable: Var[Option[T]])
     extends AnyVal {
     /**
@@ -24,53 +21,99 @@ object ExistentialStability {
      */
     def stabilizeExistence: Var[Option[Var[T]]] = {
 
-      val init = unstable.sample()
-      val initT = init.getOrElse(null.asInstanceOf[T])
+      // The inner Var is null until the first time unstable becomes a Some.
+      @volatile var inner: Var[T] = null
 
-      val inner: Var[T] = Var.async(initT) { update =>
+      def makeInner(init: T) = Var.async(init) { update =>
         unstable.changes.respond {
           case Some(t) => update() = t
           case _ =>
         }
       }
 
-      val initOuter = init.map(_ => inner)
-      Var.async[Option[Var[T]]](initOuter) { update =>
-        unstable.changes.respond {
-          case Some(_) =>
-            update() = Some(inner)
-          case None =>
-            update() = None
+      // Initial value for outer Var.
+      val init = unstable.sample().map { t =>
+        if (inner == null) {
+          inner = makeInner(t)
+        }
+        inner
+      }
+
+      @volatile var exists = init.isDefined
+      val mu = new {}
+
+      Var.async[Option[Var[T]]](init) { update =>
+        unstable.changes.respond { state =>
+          mu.synchronized {
+            state match {
+              case Some(_) if exists =>
+              // Do nothing.
+              case Some(t) if !exists =>
+                exists = true
+                if (inner == null) {
+                  inner = makeInner(t)
+                }
+                update() = Some(inner)
+              case None if !exists =>
+              // Do nothing.
+              case None if exists =>
+                exists = false
+                update() = None
+            }
+          }
         }
       }
     }
   }
 
-  implicit class ExistentialAct[T <: AnyRef](val unstable: Activity[Option[T]])
+  implicit class ExistentialAct[T](val unstable: Activity[Option[T]])
     extends AnyVal {
     def stabilizeExistence: Activity[Option[Var[T]]] = {
 
-      val inner: Var[T] = Var.async(null.asInstanceOf[T]) { update =>
-        unstable.states.respond {
-          case Activity.Ok(Some(t)) => update() = t
-          case _ =>
-        }
-      }
+      // The inner Var is null until the first time unstable becomes a Some.
+      @volatile var inner: Var[T] = null
+
+      // This keeps track of the state of the outer Var:
+      // None means the state was not Activity.Ok
+      // Some(false) means the state was Activity.Ok(Some)
+      // Some(true) means the state was Activity.Ok(None)
+      //
+      // We need to track these three states because we only want to update the outer Var when we
+      // transition between states.
+      @volatile var exists: Option[Boolean] = None
+      val mu = new {}
 
       val outer = Var.async[Activity.State[Option[Var[T]]]](Activity.Pending) { update =>
-        val closable = unstable.states.respond {
-          case Activity.Ok(Some(_)) =>
-            update() = Activity.Ok(Some(inner))
-          case Activity.Ok(None) =>
-            update() = Activity.Ok(None)
-          case Activity.Pending =>
-            update() = Activity.Pending
-          case Activity.Failed(e) =>
-            update() = Activity.Failed(e)
+        unstable.states.respond { state =>
+          mu.synchronized {
+            state match {
+              case Activity.Ok(Some(_)) if exists == Some(true) =>
+              // Do nothing.
+              case Activity.Ok(Some(t)) if exists != Some(true) =>
+                exists = Some(true)
+                if (inner == null) {
+                  inner = Var.async(t) { update =>
+                    unstable.states.respond {
+                      case Activity.Ok(Some(tt)) => update() = tt
+                      case _ =>
+                    }
+                  }
+                }
+                update() = Activity.Ok(Some(inner))
+              case Activity.Ok(None) if exists == Some(false) =>
+              // Do nothing.
+              case Activity.Ok(None) if exists != Some(false) =>
+                exists = Some(false)
+                update() = Activity.Ok(None)
+              case Activity.Pending =>
+                exists = None
+                update() = Activity.Pending
+              case Activity.Failed(e) =>
+                exists = None
+                update() = Activity.Failed(e)
+            }
+          }
         }
-        Closable.all(closable, Closable.make { _ =>
-          Future.Unit
-        })
       }
 
       Activity(outer)
