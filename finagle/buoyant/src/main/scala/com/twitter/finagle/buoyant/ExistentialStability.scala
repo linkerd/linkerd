@@ -79,10 +79,6 @@ object ExistentialStability {
       // This keeps track of the state of the outer Var.
       // We need to track these three states because we only want to update the outer Var when we
       // transition between states.
-      sealed trait State
-      object DoesExist extends State
-      object DoesNotExist extends State
-      object NotOk extends State
       var exists: State = NotOk
 
       val mu = new {}
@@ -126,3 +122,8 @@ object ExistentialStability {
     }
   }
 }
+
+sealed trait State
+object DoesExist extends State
+object DoesNotExist extends State
+object NotOk extends State
