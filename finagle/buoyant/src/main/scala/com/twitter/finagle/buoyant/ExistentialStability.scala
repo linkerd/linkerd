@@ -76,14 +76,15 @@ object ExistentialStability {
         }
       }
 
-      // This keeps track of the state of the outer Var:
-      // None means the state was not Activity.Ok
-      // Some(false) means the state was Activity.Ok(Some)
-      // Some(true) means the state was Activity.Ok(None)
-      //
+      // This keeps track of the state of the outer Var.
       // We need to track these three states because we only want to update the outer Var when we
       // transition between states.
-      var exists: Option[Boolean] = None
+      sealed trait State
+      object DoesExist extends State
+      object DoesNotExist extends State
+      object NotOk extends State
+      var exists: State = NotOk
+
       val mu = new {}
 
       val outer = Var.async[Activity.State[Option[Var[T]]]](Activity.Pending) { update =>
@@ -93,28 +94,28 @@ object ExistentialStability {
               case Activity.Ok(Some(t)) if inner == null =>
                 // T created.
                 inner = makeInner(t)
-                exists = Some(true)
+                exists = DoesExist
                 update() = Activity.Ok(Some(inner))
-              case Activity.Ok(Some(_)) if exists != Some(true) =>
+              case Activity.Ok(Some(_)) if exists != DoesExist =>
                 // T re-created.
-                exists = Some(true)
+                exists = DoesExist
                 update() = Activity.Ok(Some(inner))
-              case Activity.Ok(Some(_)) if exists == Some(true) =>
+              case Activity.Ok(Some(_)) if exists == DoesExist =>
               // T modified.
               // Existence has not changed so the outer Var should not be updated.
-              case Activity.Ok(None) if exists != Some(false) =>
+              case Activity.Ok(None) if exists != DoesNotExist =>
                 // T deleted.
-                exists = Some(false)
+                exists = DoesNotExist
                 update() = Activity.Ok(None)
-              case Activity.Ok(None) if exists == Some(false) =>
+              case Activity.Ok(None) if exists == DoesNotExist =>
               // Spurious update in None state.  We can just ignore it.
               case Activity.Pending =>
                 // Pending.
-                exists = None
+                exists = NotOk
                 update() = Activity.Pending
               case Activity.Failed(e) =>
                 // Failed.
-                exists = None
+                exists = NotOk
                 update() = Activity.Failed(e)
             }
           }
