@@ -76,19 +76,19 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
       case Seq("rt", router) if !labelExists(labels0, "rt") =>
         (Seq("rt"), labels0 :+ ("rt" -> escapeLabelVal(router)))
 
-      // Add label for peer { "service", "client", "server" }
-      case Seq("rt", peer, identifier) if !labelExists(labels0, peer) =>
-        (Seq("rt", peer), labels0 :+ (peer -> escapeLabelVal(identifier)))
+      // Add label for stack { "service", "client", "server" }
+      case Seq("rt", stack, identifier) if !labelExists(labels0, stack) =>
+        (Seq("rt", stack), labels0 :+ (stack -> escapeLabelVal(identifier)))
 
       // Handle client service case
       case Seq("rt", "client", "service", path) if !labelExists(labels0, "service") =>
         (Seq("rt", "client", "service"), labels0 :+ ("service" -> escapeLabelVal(path)))
 
       // Add label for exception { "failures", "exn" }
-      case Seq("rt", peer, "failures", path) if !labelExists(labels0, "exception") =>
-        (Seq("rt", peer, "failures"), labels0 :+ ("exception" -> escapeLabelVal(path)))
-      case Seq("rt", peer, "exn", path) if !labelExists(labels0, "exception") =>
-        (Seq("rt", peer, "exceptions"), labels0 :+ ("exception" -> escapeLabelVal(path)))
+      case Seq("rt", stack, "failures", path) if !labelExists(labels0, "exception") =>
+        (Seq("rt", stack, "failures"), labels0 :+ ("exception" -> escapeLabelVal(path)))
+      case Seq("rt", stack, "exn", path) if !labelExists(labels0, "exception") =>
+        (Seq("rt", stack, "exceptions"), labels0 :+ ("exception" -> escapeLabelVal(path)))
 
       case _ => (prefix0, labels0)
     }
