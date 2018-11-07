@@ -38,9 +38,6 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
   private[this] val metricNameDisallowedChars = "[^a-zA-Z0-9:]".r
   private[this] def escapeKey(key: String) = metricNameDisallowedChars.replaceAllIn(key, "_")
 
-  private[this] val labelKeyDisallowedChars = "[^a-zA-Z0-9_]".r
-  private[this] def escapeLabelKey(key: String) = labelKeyDisallowedChars.replaceAllIn(key, "_")
-
   // https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details
   private[this] val labelValDisallowedChars = """(\\|\"|\n)""".r
   private[this] def escapeLabelVal(key: String) = labelValDisallowedChars.replaceAllIn(key, """\\\\""")
@@ -64,6 +61,16 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
   private[this] def labelExists(labels: Seq[(String, String)], name: String) =
     labels.toIterator.map(first).contains(name)
 
+  private[this] def addException(labels: Seq[(String, String)], name: String) = {
+    val index = labels.map(first).indexOf("exception")
+    if (index == -1) {
+      labels :+ ("exception" -> escapeLabelVal(name))
+    } else {
+      val nested = labels(index)._2
+      labels.updated(index, "exception" -> (nested ++ ":" ++ escapeLabelVal(name)))
+    }
+  }
+
   private[this] def writeMetrics(
     tree: MetricsTree,
     sb: StringBuilder,
@@ -85,10 +92,10 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
         (Seq("rt", "client", "service"), labels0 :+ ("service" -> escapeLabelVal(path)))
 
       // Add label for exception { "failures", "exn" }
-      case Seq("rt", stack, "failures", path) if !labelExists(labels0, "exception") =>
-        (Seq("rt", stack, "failures"), labels0 :+ ("exception" -> escapeLabelVal(path)))
-      case Seq("rt", stack, "exn", path) if !labelExists(labels0, "exception") =>
-        (Seq("rt", stack, "exceptions"), labels0 :+ ("exception" -> escapeLabelVal(path)))
+      case Seq("rt", stack, "failures", exception) =>
+        (Seq("rt", stack, "failures"), addException(labels0, exception))
+      case Seq("rt", stack, "exn", exception) =>
+        (Seq("rt", stack, "exceptions"), addException(labels0, exception))
 
       case _ => (prefix0, labels0)
     }

@@ -153,7 +153,7 @@ class PrometheusTelemeterTest extends FunSuite {
 
     // Replicate stack trace for some failure bar:qux
     stats.scope("rt", "incoming", "service", "/#/foo", "failures").counter("bar").incr()
-    stats.scope("rt", "incoming", "service", "/#/foo", "failures").counter("bar:qux").incr()
+    stats.scope("rt", "incoming", "service", "/#/foo", "failures").counter("bar", "qux").incr()
 
     // Replicate stack trace for some some exception thud
     stats.scope("rt", "incoming", "service", "/#/foo", "exn").counter("thud").incr()
@@ -174,7 +174,7 @@ class PrometheusTelemeterTest extends FunSuite {
 
     // Replicate stack trace for some failure bar:qux
     stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar").incr()
-    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar:qux").incr()
+    stats.scope("rt", "incoming", "client", "/#/foo", "failures").counter("bar", "qux").incr()
 
     // Replicate stack trace for some some exception thud
     stats.scope("rt", "incoming", "client", "/#/foo", "exn").counter("thud").incr()
@@ -195,7 +195,7 @@ class PrometheusTelemeterTest extends FunSuite {
 
     // Replicate stack trace for some failure foo:baz
     stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo").incr()
-    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo:baz").incr()
+    stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "failures").counter("foo", "baz").incr()
 
     // Replicate stack trace for some some exception qux
     stats.scope("rt", "incoming", "server", "127.0.0.1/4141", "exn").counter("qux").incr()
