@@ -1165,20 +1165,22 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     val timer = new MockTimer
     val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
 
-    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    @volatile var state: Set[Address] = Set.empty
 
     val activity = namer.lookup(Path.read("/srv/http/sessions"))
 
-    eventually {
-      val addrs = await(activity.toFuture.map {
-        case NameTree.Leaf(Name.Bound(vaddr)) => vaddr.sample() match {
-          case Addr.Bound(addrs, _) => addrs
-          case a => fail("unexpected Addr type: " + a)
-        }
-      })
+    val closable = activity.values.collect {
+      case Return(NameTree.Leaf(Name.Bound(vaddr))) => vaddr
+    }.mergeMap { vaddr =>
+      vaddr.changes
+    }.respond { addr =>
+      val Addr.Bound(addrs, _) = addr
+      state = addrs
+    }
 
+    eventually {
       assert(
-        addrs == Set(
+        state == Set(
           Address("10.248.4.9", 8083),
           Address("10.248.7.11", 8083),
           Address("10.248.8.9", 8083),
@@ -1186,6 +1188,8 @@ class EndpointsNamerTest extends FunSuite with Awaits {
         )
       )
     }
+
+    closable.close()
   }
 
   test("existing Vars are updated when a service goes away and comes back") {

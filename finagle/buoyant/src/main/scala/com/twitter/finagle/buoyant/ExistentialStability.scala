@@ -1,6 +1,6 @@
 package com.twitter.finagle.buoyant
 
-import com.twitter.util.{Activity, Updatable, Var}
+import com.twitter.util._
 
 /**
  * Extensions to `Var`/`Activity` allowing a `Var` containing an `Option` to be split
@@ -20,33 +20,42 @@ object ExistentialStability {
      * will update.
      */
     def stabilizeExistence: Var[Option[Var[T]]] = {
-      val init = unstable.sample().map(Var(_))
-      Var.async[Option[VarUp[T]]](init) { update =>
-        // the current inner Var, null if the outer Var is None
-        @volatile var current: VarUp[T] = null
-        @volatile var exists = false
-        val mu = new {}
+
+      // The inner Var is null until the first time unstable becomes a Some.
+      @volatile var inner: Var[T] = null
+
+      def makeInner(init: T) = Var.async(init) { update =>
         unstable.changes.respond {
-          case Some(t) if current == null => mu.synchronized {
-            // T created
-            exists = true
-            current = Var(t)
-            update() = Some(current)
-          }
-          case Some(t) if !exists => mu.synchronized {
-            // T re-created
-            exists = true
-            current() = t
-            update() = Some(current)
-          }
-          case Some(t) => mu.synchronized {
-            // T modified
-            current() = t
-          }
-          case None => mu.synchronized {
-            // T deleted
-            exists = false
-            update() = None
+          case Some(t) => update() = t
+          case _ =>
+        }
+      }
+
+      var exists = false
+      val mu = new {}
+
+      Var.async[Option[Var[T]]](None) { update =>
+        unstable.changes.respond { state =>
+          mu.synchronized {
+            state match {
+              case Some(t) if inner == null =>
+                // T created.
+                inner = makeInner(t)
+                exists = true
+                update() = Some(inner)
+              case Some(_) if !exists =>
+                // T re-created.
+                update() = Some(inner)
+              case Some(_) if exists =>
+              // T modified.
+              // Existence has not changed so the outer Var should not be updated.
+              case None if exists =>
+                // T deleted.
+                exists = false
+                update() = None
+              case None if !exists =>
+              // Spurious update in None state.  We can just ignore it.
+            }
           }
         }
       }
@@ -56,44 +65,65 @@ object ExistentialStability {
   implicit class ExistentialAct[T](val unstable: Activity[Option[T]])
     extends AnyVal {
     def stabilizeExistence: Activity[Option[Var[T]]] = {
-      val inner = Var.async[Activity.State[Option[VarUp[T]]]](Activity.Pending) { update =>
-        // the current inner Var, null if the outer Var is None
-        @volatile var current: VarUp[T] = null
-        @volatile var exists = false
-        val mu = new {}
+
+      // The inner Var is null until the first time unstable becomes a Some.
+      @volatile var inner: Var[T] = null
+
+      def makeInner(init: T) = Var.async(init) { update =>
         unstable.states.respond {
-          case Activity.Ok(Some(t)) if current == null => mu.synchronized {
-            // T created
-            current = Var(t)
-            exists = true
-            update() = Activity.Ok(Some(current))
-          }
-          case Activity.Ok(Some(t)) if !exists => mu.synchronized {
-            // T recreated
-            exists = true
-            current() = t
-            update() = Activity.Ok(Some(current))
-          }
-          case Activity.Ok(Some(t)) => mu.synchronized {
-            // T modified
-            current() = t
-          }
-          case Activity.Ok(None) => mu.synchronized {
-            // T deleted
-            exists = false
-            update() = Activity.Ok(None)
-          }
-          case Activity.Pending => mu.synchronized {
-            update() = Activity.Pending
-            exists = false
-          }
-          case Activity.Failed(e) => mu.synchronized {
-            update() = Activity.Failed(e)
-            exists = false
+          case Activity.Ok(Some(tt)) => update() = tt
+          case _ =>
+        }
+      }
+
+      // This keeps track of the state of the outer Var.
+      // We need to track these three states because we only want to update the outer Var when we
+      // transition between states.
+      var exists: State = NotOk
+
+      val mu = new {}
+
+      val outer = Var.async[Activity.State[Option[Var[T]]]](Activity.Pending) { update =>
+        unstable.states.respond { state =>
+          mu.synchronized {
+            state match {
+              case Activity.Ok(Some(t)) if inner == null =>
+                // T created.
+                inner = makeInner(t)
+                exists = DoesExist
+                update() = Activity.Ok(Some(inner))
+              case Activity.Ok(Some(_)) if exists != DoesExist =>
+                // T re-created.
+                exists = DoesExist
+                update() = Activity.Ok(Some(inner))
+              case Activity.Ok(Some(_)) if exists == DoesExist =>
+              // T modified.
+              // Existence has not changed so the outer Var should not be updated.
+              case Activity.Ok(None) if exists != DoesNotExist =>
+                // T deleted.
+                exists = DoesNotExist
+                update() = Activity.Ok(None)
+              case Activity.Ok(None) if exists == DoesNotExist =>
+              // Spurious update in None state.  We can just ignore it.
+              case Activity.Pending =>
+                // Pending.
+                exists = NotOk
+                update() = Activity.Pending
+              case Activity.Failed(e) =>
+                // Failed.
+                exists = NotOk
+                update() = Activity.Failed(e)
+            }
           }
         }
       }
-      Activity(inner)
+
+      Activity(outer)
     }
   }
 }
+
+sealed trait State
+object DoesExist extends State
+object DoesNotExist extends State
+object NotOk extends State
