@@ -133,7 +133,7 @@ trait HttpClientConfig extends ClientConfig {
   }
 
   @JsonIgnore
-  private[this] val requestAuthorizerParam: Option[param.RequestAuthorizer] = requestAuthorizers.map { configs =>
+  private[this] def requestAuthorizerParam: Option[param.RequestAuthorizer] = requestAuthorizers.map { configs =>
     val authorizerStack =
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)
