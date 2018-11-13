@@ -18,6 +18,7 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.tracing.TraceInitializerFilter
 import com.twitter.finagle.{ServiceFactory, Stack, param => fparam}
 import com.twitter.logging.Policy
+import io.buoyant.linkerd.protocol.HttpRequestAuthorizerConfig.param
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter, TimestampHeaderFilter}
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
@@ -121,12 +122,23 @@ class HttpStaticClient(val configs: Seq[HttpPrefixConfig]) extends HttpClient wi
 class HttpPrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with HttpClientConfig
 
 trait HttpClientConfig extends ClientConfig {
+  var requestAuthorizers: Option[Seq[HttpRequestAuthorizerConfig]] = None
   var forwardClientCert: Option[Boolean] = None
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params = {
     super.params(vars)
       .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
+      .maybeWith(loggerParam)
+  }
+
+  @JsonIgnore
+  private[this] val loggerParam: Option[param.RequestAuthorizer] = requestAuthorizers.map { configs =>
+    val authorizerStack =
+      configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
+        config.module.toStack(next)
+      }
+    HttpRequestAuthorizerConfig.param.RequestAuthorizer(authorizerStack)
   }
 }
 
@@ -199,7 +211,6 @@ case class HttpConfig(
   httpAccessLogAppend: Option[Boolean],
   httpAccessLogRotateCount: Option[Int],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
-  requestAuthorizers: Option[Seq[HttpRequestAuthorizerConfig]],
   maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
@@ -228,15 +239,6 @@ case class HttpConfig(
   )
 
   @JsonIgnore
-  private[this] val loggerParam = requestAuthorizers.map { configs =>
-    val authorizerStack =
-      configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
-        config.module.toStack(next)
-      }
-    HttpRequestAuthorizerConfig.param.RequestAuthorizer(authorizerStack)
-  }
-
-  @JsonIgnore
   private[this] def combinedIdentifier(params: Stack.Params) = identifier.map { configs =>
     Http.param.HttpIdentifier { (prefix, dtab) =>
       RoutingFactory.Identifier.compose(configs.map(_.newIdentifier(prefix, dtab, params)))
@@ -249,7 +251,6 @@ case class HttpConfig(
     .maybeWith(httpAccessLogRollPolicy.map(Policy.parse _ andThen AccessLogger.param.RollPolicy.apply))
     .maybeWith(httpAccessLogAppend.map(AccessLogger.param.Append.apply))
     .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
-    .maybeWith(loggerParam)
     .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
     .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))

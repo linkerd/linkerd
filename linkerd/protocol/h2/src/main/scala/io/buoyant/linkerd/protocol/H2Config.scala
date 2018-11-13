@@ -92,7 +92,6 @@ class H2Initializer extends ProtocolInitializer.Simple {
 object H2Initializer extends H2Initializer
 
 case class H2Config(
-  requestAuthorizers: Option[Seq[H2RequestAuthorizerConfig]] = None,
   h2AccessLog: Option[String],
   h2AccessLogRollPolicy: Option[String],
   h2AccessLogAppend: Option[Boolean],
@@ -111,22 +110,12 @@ case class H2Config(
   override val protocol: ProtocolInitializer = H2Initializer
 
   @JsonIgnore
-  private[this] def loggerParam = requestAuthorizers.map { configs =>
-    val authorizerStack =
-      configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
-        config.module.toStack(next)
-      }
-    H2RequestAuthorizerConfig.param.RequestAuthorizer(authorizerStack)
-  }
-
-  @JsonIgnore
   override def routerParams(params: Stack.Params): Stack.Params =
     (super.routerParams(params) + identifierParam)
       .maybeWith(h2AccessLog.map(H2AccessLogger.param.File.apply))
       .maybeWith(h2AccessLogRollPolicy.map(Policy.parse _ andThen H2AccessLogger.param.RollPolicy.apply))
       .maybeWith(h2AccessLogAppend.map(H2AccessLogger.param.Append.apply))
       .maybeWith(h2AccessLogRotateCount.map(H2AccessLogger.param.RotateCount.apply))
-      .maybeWith(loggerParam)
       .maybeWith(tracePropagator.map(tp => H2TracePropagatorConfig.Param(tp.mk(params))))
 
   private[this] def identifierParam: H2.Identifier = identifier match {
@@ -177,11 +166,22 @@ class H2PrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with H2Cl
 
 trait H2ClientConfig extends ClientConfig with H2EndpointConfig {
   var forwardClientCert: Option[Boolean] = None
+  var requestAuthorizers: Option[Seq[H2RequestAuthorizerConfig]] = None
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params =
     withEndpointParams(super.params(vars))
       .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
+      .maybeWith(loggerParam)
+
+  @JsonIgnore
+  private[this] def loggerParam = requestAuthorizers.map { configs =>
+    val authorizerStack =
+      configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
+        config.module.toStack(next)
+      }
+    H2RequestAuthorizerConfig.param.RequestAuthorizer(authorizerStack)
+  }
 }
 
 @JsonTypeInfo(
