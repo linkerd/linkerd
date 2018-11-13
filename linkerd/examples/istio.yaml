@@ -16,8 +16,9 @@ routers:
     experimental: true
     discoveryHost: localhost
     apiserverHost: localhost
-  requestAuthorizers:
-  - kind: io.l5d.k8s.istio
-    mixerHost: localhost
   servers:
   - port: 4140
+  client:
+    requestAuthorizers:
+    - kind: io.l5d.k8s.istio
+      mixerHost: localhost
