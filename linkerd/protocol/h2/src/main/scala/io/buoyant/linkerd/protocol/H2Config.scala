@@ -172,10 +172,10 @@ trait H2ClientConfig extends ClientConfig with H2EndpointConfig {
   override def params(vars: Map[String, String]): Stack.Params =
     withEndpointParams(super.params(vars))
       .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
-      .maybeWith(loggerParam)
+      .maybeWith(requestAuthorizerParam)
 
   @JsonIgnore
-  private[this] def loggerParam = requestAuthorizers.map { configs =>
+  private[this] def requestAuthorizerParam = requestAuthorizers.map { configs =>
     val authorizerStack =
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)

@@ -129,11 +129,11 @@ trait HttpClientConfig extends ClientConfig {
   override def params(vars: Map[String, String]): Stack.Params = {
     super.params(vars)
       .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
-      .maybeWith(loggerParam)
+      .maybeWith(requestAuthorizerParam)
   }
 
   @JsonIgnore
-  private[this] val loggerParam: Option[param.RequestAuthorizer] = requestAuthorizers.map { configs =>
+  private[this] val requestAuthorizerParam: Option[param.RequestAuthorizer] = requestAuthorizers.map { configs =>
     val authorizerStack =
       configs.foldRight[Stack[ServiceFactory[Request, Response]]](nilStack) { (config, next) =>
         config.module.toStack(next)
