@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.twitter.finagle.Path
+import com.twitter.logging.{Level, Logger}
 import com.twitter.util._
 import io.buoyant.admin.{App, Build}
 import io.buoyant.linkerd.admin.LinkerdAdmin
@@ -32,6 +33,9 @@ object Main extends App {
   def main() {
     val build = Build.load("/io/buoyant/linkerd/build.properties")
     log.info("linkerd %s (rev=%s) built at %s", build.version, build.revision, build.name)
+
+    // twitter/finagle#739 -- Linkerd logs incorrect message about Content-Length for HTTP 204 responses
+    Logger.get("com.twitter.finagle.http.codec.ResponseConformanceFilter$").setLevel(Level.OFF)
 
     args match {
       case Array(path) =>
