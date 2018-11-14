@@ -38,9 +38,6 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
   private[this] val metricNameDisallowedChars = "[^a-zA-Z0-9:]".r
   private[this] def escapeKey(key: String) = metricNameDisallowedChars.replaceAllIn(key, "_")
 
-  private[this] val labelKeyDisallowedChars = "[^a-zA-Z0-9_]".r
-  private[this] def escapeLabelKey(key: String) = labelKeyDisallowedChars.replaceAllIn(key, "_")
-
   // https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details
   private[this] val labelValDisallowedChars = """(\\|\"|\n)""".r
   private[this] def escapeLabelVal(key: String) = labelValDisallowedChars.replaceAllIn(key, """\\\\""")
@@ -64,6 +61,16 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
   private[this] def labelExists(labels: Seq[(String, String)], name: String) =
     labels.toIterator.map(first).contains(name)
 
+  private[this] def addException(labels: Seq[(String, String)], name: String) = {
+    val index = labels.map(first).indexOf("exception")
+    if (index == -1) {
+      labels :+ ("exception" -> escapeLabelVal(name))
+    } else {
+      val nested = labels(index)._2
+      labels.updated(index, "exception" -> (nested ++ ":" ++ escapeLabelVal(name)))
+    }
+  }
+
   private[this] def writeMetrics(
     tree: MetricsTree,
     sb: StringBuilder,
@@ -75,14 +82,21 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
     val (prefix1, labels1) = prefix0 match {
       case Seq("rt", router) if !labelExists(labels0, "rt") =>
         (Seq("rt"), labels0 :+ ("rt" -> escapeLabelVal(router)))
-      case Seq("rt", "service", path) if !labelExists(labels0, "service") =>
-        (Seq("rt", "service"), labels0 :+ ("service" -> escapeLabelVal(path)))
-      case Seq("rt", "client", id) if !labelExists(labels0, "client") =>
-        (Seq("rt", "client"), labels0 :+ ("client" -> escapeLabelVal(id)))
+
+      // Add label for stack { "service", "client", "server" }
+      case Seq("rt", stack, identifier) if !labelExists(labels0, stack) =>
+        (Seq("rt", stack), labels0 :+ (stack -> escapeLabelVal(identifier)))
+
+      // Handle client service case
       case Seq("rt", "client", "service", path) if !labelExists(labels0, "service") =>
         (Seq("rt", "client", "service"), labels0 :+ ("service" -> escapeLabelVal(path)))
-      case Seq("rt", "server", srv) if !labelExists(labels0, "server") =>
-        (Seq("rt", "server"), labels0 :+ ("server" -> escapeLabelVal(srv)))
+
+      // Add label for exception { "failures", "exn" }
+      case Seq("rt", stack, "failures", exception) =>
+        (Seq("rt", stack, "failures"), addException(labels0, exception))
+      case Seq("rt", stack, "exn", exception) =>
+        (Seq("rt", stack, "exceptions"), addException(labels0, exception))
+
       case _ => (prefix0, labels0)
     }
 
