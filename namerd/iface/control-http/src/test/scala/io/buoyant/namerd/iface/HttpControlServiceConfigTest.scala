@@ -51,7 +51,7 @@ class HttpControlServiceConfigTest extends FunSuite {
   }
 
   test("socket options"){
-    val expectedOpts = SocketOptionsConfig(reusePort = true, readTimeoutMs = Some(60000), keepAlive = Some(true))
+    val expectedOpts = SocketOptionsConfig(reusePort = true, readTimeoutMs = Some(60000), writeTimeoutMs = Some(2000), keepAlive = Some(true))
     val yaml = """
       |kind: io.l5d.httpController
       |socketOptions:
@@ -59,6 +59,7 @@ class HttpControlServiceConfigTest extends FunSuite {
       |  reuseAddr: true
       |  reusePort: true
       |  readTimeoutMs: 60000
+      |  writeTimeoutMs: 2000
       |  keepAlive: true
     """.stripMargin
 
