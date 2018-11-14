@@ -8,18 +8,18 @@ case class SocketOptionsConfig(
   noDelay: Boolean = true,
   reuseAddr: Boolean = true,
   reusePort: Boolean = false,
-  writeTimeoutSeconds: Option[Integer] = None,
-  readTimeoutSeconds: Option[Integer] = None,
+  writeTimeoutMs: Option[Long] = None,
+  readTimeoutMs: Option[Long] = None,
   keepAlive: Option[Boolean] = None
 ) {
   def params: Stack.Params = {
-    val writeTimeout: Duration = writeTimeoutSeconds match {
-      case Some(seconds) => Duration.fromSeconds(seconds)
+    val writeTimeout: Duration = writeTimeoutMs match {
+      case Some(seconds) => Duration.fromMilliseconds(seconds)
       case _ => Duration.Top
     }
 
-    val readTimeout: Duration = readTimeoutSeconds match {
-      case Some(seconds) => Duration.fromSeconds(seconds)
+    val readTimeout: Duration = readTimeoutMs match {
+      case Some(seconds) => Duration.fromMilliseconds(seconds)
       case _ => Duration.Top
     }
 

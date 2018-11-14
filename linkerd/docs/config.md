@@ -283,6 +283,6 @@ Key | Default Value | Description
 noDelay | true | If set to true, enables the use of `TCP_NODELAY` on a socket interface
 reuseAddr | true | If set to true, enables the `SO_REUSEADDR` option
 reusePort | false | If set to true, enables the `SO_REUSEPORT` option, which can be used to bind another Linkerd process to the same interface port.
-readTimeoutSeconds | Unbounded | Configures this client or server with given transport-level socket read timeout.
-writeTimeoutSeconds | Unbounded | Configures this client or server with given transport-level socket write timeout.
+readTimeoutMs | unbounded | Configures this client or server with given transport-level socket read timeout in milliseconds.
+writeTimeoutMs | unbounded | Configures this client or server with given transport-level socket write timeout in milliseconds.
 keepAlive | false | If set to true, enables the `SO_KEEPALIVE` option, which will enable keep alive on the socket.
