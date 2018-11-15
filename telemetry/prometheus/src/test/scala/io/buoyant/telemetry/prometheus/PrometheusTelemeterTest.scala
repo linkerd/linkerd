@@ -113,6 +113,15 @@ class PrometheusTelemeterTest extends FunSuite {
 """)
   }
 
+  test("metric label keys are escaped") {
+    val (stats, handler) = statsAndHandler
+    val counter = stats.scope("rt", "incoming", "interpreter/io.buoyant.namerd.iface.NamerdInterpreterConfig", "namer").counter("requests")
+    counter.incr()
+    val rsp = await(handler(Request(prometheusPath))).contentString
+    assert(rsp == """linkerd_rt:interpreter_io_buoyant_namerd_iface_NamerdInterpreterConfig:requests{rt="incoming", interpreter_io_buoyant_namerd_iface_NamerdInterpreterConfig="namer"} 1
+""")
+  }
+
   test("path stats are labelled") {
     val (stats, handler) = statsAndHandler
     val counter = stats.scope("rt", "incoming", "service", "/svc/foo").counter("requests")
