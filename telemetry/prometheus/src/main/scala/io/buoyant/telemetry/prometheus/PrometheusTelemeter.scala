@@ -84,7 +84,8 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
         (Seq("rt"), labels0 :+ ("rt" -> escapeLabelVal(router)))
 
       // Add label for stack { "service", "client", "server" }
-      case Seq("rt", stack, identifier) if !labelExists(labels0, stack) =>
+      case Seq("rt", stack, identifier) if Seq("service", "client", "server").contains(stack)
+        && !labelExists(labels0, stack) =>
         (Seq("rt", stack), labels0 :+ (stack -> escapeLabelVal(identifier)))
 
       // Handle client service case
