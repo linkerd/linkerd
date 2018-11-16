@@ -14,12 +14,12 @@ case class SocketOptionsConfig(
 ) {
   def params: Stack.Params = {
     val writeTimeout: Duration = writeTimeoutMs match {
-      case Some(seconds) => Duration.fromMilliseconds(seconds)
+      case Some(milliseconds) => Duration.fromMilliseconds(milliseconds)
       case _ => Duration.Top
     }
 
     val readTimeout: Duration = readTimeoutMs match {
-      case Some(seconds) => Duration.fromMilliseconds(seconds)
+      case Some(milliseconds) => Duration.fromMilliseconds(milliseconds)
       case _ => Duration.Top
     }
 
