@@ -208,4 +208,16 @@ class PrometheusTelemeterTest extends FunSuite {
                     |linkerd_rt:server:exceptions{rt="incoming", server="127.0.0.1/4141", exception="qux"} 1
                     |""".stripMargin)
   }
+
+  test("exception stats do not match for all stack values") {
+    val (stats, handler) = statsAndHandler
+
+    stats.scope("rt", "foo", "non_stack_match", "bar", "additional_path").counter("qux").incr()
+    stats.scope("rt", "foo", "non_stack_match", "bar", "exception").counter("quux").incr()
+
+    val rsp = await(handler(Request(prometheusPath))).contentString
+    assert(rsp == """linkerd_rt:non_stack_match:bar:exception:quux{rt="foo"} 1
+                    |linkerd_rt:non_stack_match:bar:additional_path:qux{rt="foo"} 1
+                    |""".stripMargin)
+  }
 }
