@@ -1,4 +1,4 @@
-## 1.5.2 2018-11-16
+## 1.5.2 2018-11-19
 
 Linkerd 1.5.2 adds performance improvements to HTTP/2, dramatically improving throughput when
 sending many small frames as is common when using unary gRPC methods.  It also fixes a long standing
