@@ -1,3 +1,22 @@
+## 1.5.2 2018-11-19
+
+Linkerd 1.5.2 adds performance improvements to HTTP/2, dramatically improving throughput when
+sending many small frames as is common when using unary gRPC methods.  It also fixes a long standing
+race condition where Linkerd could get stuck using out of date endpoint data from the Kubernetes
+API.
+
+Full release notes:
+
+* HTTP/2
+  * Adds buffering to the channel transport which improves throughput by up to 30% when sending many small messages.
+* HTTP
+  * Removes an incorrect log line about the Content-Length header when receiving a 204 response.
+* Kubernetes
+  * Fixes a race condition where Kubernetes endpoint sets could get stuck indefinitely with stale data.
+* Prometheus
+  * Moves exception names out of the metric names and into an `exception` label.
+* Adds the `keepAlive` property in the server socket options config.  This allows you to enable the SO_KEEPALIVE socket option which removes dead connections that did not close properly and can therefore help prevent connection leaks. Big thanks to [Jonathan Reichhold](https://github.com/jreichhold) for this!
+
 ## 1.5.1 2018-10-24
 
 Linkerd 1.5.1 adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from 
