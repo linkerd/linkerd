@@ -1,16 +1,16 @@
 namers:
-  - kind: io.l5d.fs
-    rootDir: linkerd/examples/io.l5d.fs
+- kind: io.l5d.fs
+  rootDir: linkerd/examples/io.l5d.fs
 routers:
-  - protocol: http
-    dtab: |
-      /svc => /#/io.l5d.fs ;
-    servers:
-      - port: 4140
-        socketOptions:
-          noDelay: true
-          reuseAddr: true
-          reusePort: true
-          readTimeoutMs: 61000
-          writeTimeoutMs: 61000
-          keepAlive: true
+- protocol: http
+  dtab: |
+    /svc => /#/io.l5d.fs ;
+  servers:
+  - port: 4140
+    socketOptions:
+      noDelay: true
+      reuseAddr: true
+      reusePort: true
+      readTimeoutMs: 61000
+      writeTimeoutMs: 61000
+      keepAlive: true
