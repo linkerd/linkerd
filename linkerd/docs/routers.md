@@ -260,6 +260,7 @@ requeueBudget | see [retry budget](#retry-budget-parameters) | A [requeue budget
 failureAccrual | 5 consecutive failures | a [failure accrual policy](#failure-accrual) for all clients created by this router.
 requestAttemptTimeoutMs | no timeout | The timeout, in milliseconds, for each attempt (original or retry) of the request made by this client.
 clientSession | An empty object | see [clientSession](#client-session)
+requestAuthorizers | none | A list of request authorizers.  See [Http/1.1-specific request authorizers](#http-1-1-request-authorizers) or [HTTP/2-specific request authorizers](#http-2-request-authorizers).
 
 #### Host Connection Pool
 

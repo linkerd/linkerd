@@ -64,7 +64,6 @@ h2AccessLogRollPolicy | never | When to roll the logfile. Possible values: Never
 h2AccessLogAppend | true | Append to an existing logfile, or truncate it?
 h2AccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers. See [H2-specific identifiers](#http-2-identifiers).
-requestAuthorizers | none | A list of request authorizers.  See [H2-specific request authorizers](#http-2-request-authorizers).
 tracePropagator | `io.l5d.default` | A trace propagator.  See [H2-specific trace propagator](#http-2-trace-propagators).
 
 
@@ -116,6 +115,7 @@ initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on s
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
 forwardClientCert | false | Determines if client certificates are forwarded through the `x-forwarded-client-cert` header of a request.
+requestAuthorizers | none | A list of request authorizers.  See [H2-specific request authorizers](#http-2-request-authorizers).
 
 <aside class="notice">
 `forwardClientCert` makes Linkerd forward client certificates using the `x-forwarded-client-cert` header to let destination services make authorization decisions on the requests
