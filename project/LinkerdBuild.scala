@@ -234,12 +234,12 @@ object LinkerdBuild extends Base {
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
   val execScriptJvmOptions =
-    """|DEFAULT_JVM_OPTIONS="-Djava.net.preferIPv4Stack=true             \
+    """|DEFAULT_JVM_OPTIONS="$DEFAULT_JVM_OPTIONS                        \
+       |   -Djava.net.preferIPv4Stack=true                               \
        |   -Dsun.net.inetaddr.ttl=60                                     \
        |   -Xms${JVM_HEAP_MIN:-32M}                                      \
        |   -Xmx${JVM_HEAP_MAX:-1024M}                                    \
        |   -XX:+AggressiveOpts                                           \
-       |   -XX:+UseConcMarkSweepGC                                       \
        |   -XX:+CMSParallelRemarkEnabled                                 \
        |   -XX:+CMSClassUnloadingEnabled                                 \
        |   -XX:+ScavengeBeforeFullGC                                     \
@@ -363,39 +363,36 @@ object LinkerdBuild extends Base {
          |
          |export MALLOC_ARENA_MAX=2
          |
-         |version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/namerd"
+         |fi
          |
-         |case "$version" in
-         |  9.*)
-         |    echo "GC logging feature not available for Linkerd with Java SE 9. Consider setting\
-         | JAVA_HOME environment variable to an upgraded SE, or upgrading to JAVA SE 10."
-         |    ;;
-         |  *)
-         |    # Configure GC logging directory
-         |    if [ -z "$GC_LOG" ]; then
-         |      GC_LOG="/var/log/linkerd"
-         |    fi
-         |  
-         |    mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
-         |  
-         |    if [ $? -ne 0 ]; then
-         |      echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
-         |      Unable to use [$GC_LOG] for GC logging."
-         |    else
-         |      GC_LOG_OPTION="
-         |       -XX:+PrintGCDetails
-         |       -XX:+PrintGCDateStamps
-         |       -XX:+PrintHeapAtGC
-         |       -XX:+PrintTenuringDistribution
-         |       -XX:+PrintGCApplicationStoppedTime
-         |       -XX:+PrintPromotionFailure
-         |       -Xloggc:${GC_LOG}/gc.log
-         |       -XX:+UseGCLogFileRotation
-         |       -XX:NumberOfGCLogFiles=10
-         |       -XX:GCLogFileSize=10M"
-         |    fi
-         |    ;;
-         |esac
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         | Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |
+         |  if [ "$version" -ge 9 ]; then
+         |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
+         |  else
+         |    GC_LOG_OPTION="
+         |      -XX:+PrintGCDetails
+         |      -XX:+PrintGCDateStamps
+         |      -XX:+PrintHeapAtGC
+         |      -XX:+PrintTenuringDistribution
+         |      -XX:+PrintGCApplicationStoppedTime
+         |      -XX:+PrintPromotionFailure
+         |      -Xloggc:${GC_LOG}/gc.log
+         |      -XX:+UseGCLogFileRotation
+         |      -XX:NumberOfGCLogFiles=10
+         |      -XX:GCLogFileSize=10M"
+         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
+         |  fi
+         |fi
          |
          |""" +
       execScriptJvmOptions +
@@ -461,39 +458,36 @@ object LinkerdBuild extends Base {
          |
          |export MALLOC_ARENA_MAX=2
          |
-         |version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/namerd"
+         |fi
          |
-         |case "$version" in
-         |  9.*)
-         |    echo "GC logging feature not available for Linkerd with Java SE 9. Consider setting\
-         | JAVA_HOME environment variable to an upgraded SE, or upgrading to JAVA SE 10."
-         |    ;;
-         |  *)
-         |    # Configure GC logging directory
-         |    if [ -z "$GC_LOG" ]; then
-         |      GC_LOG="/var/log/linkerd"
-         |    fi
-         |  
-         |    mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
-         |  
-         |    if [ $? -ne 0 ]; then
-         |      echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
-         |      Unable to use [$GC_LOG] for GC logging."
-         |    else
-         |      GC_LOG_OPTION="
-         |       -XX:+PrintGCDetails
-         |       -XX:+PrintGCDateStamps
-         |       -XX:+PrintHeapAtGC
-         |       -XX:+PrintTenuringDistribution
-         |       -XX:+PrintGCApplicationStoppedTime
-         |       -XX:+PrintPromotionFailure
-         |       -Xloggc:${GC_LOG}/gc.log
-         |       -XX:+UseGCLogFileRotation
-         |       -XX:NumberOfGCLogFiles=10
-         |       -XX:GCLogFileSize=10M"
-         |    fi
-         |    ;;
-         |esac
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         | Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |
+         |  if [ "$version" -ge 9 ]; then
+         |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
+         |  else
+         |    GC_LOG_OPTION="
+         |      -XX:+PrintGCDetails
+         |      -XX:+PrintGCDateStamps
+         |      -XX:+PrintHeapAtGC
+         |      -XX:+PrintTenuringDistribution
+         |      -XX:+PrintGCApplicationStoppedTime
+         |      -XX:+PrintPromotionFailure
+         |      -Xloggc:${GC_LOG}/gc.log
+         |      -XX:+UseGCLogFileRotation
+         |      -XX:NumberOfGCLogFiles=10
+         |      -XX:GCLogFileSize=10M"
+         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
+         |  fi
+         |fi
          |
          |""" +
       execScriptJvmOptions +
@@ -709,39 +703,36 @@ object LinkerdBuild extends Base {
          |
          |export MALLOC_ARENA_MAX=2
          |
-         |version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+         |# Configure GC logging directory
+         |if [ -z "$GC_LOG" ]; then
+         |  GC_LOG="/var/log/linkerd"
+         |fi
          |
-         |case "$version" in
-         |  9.*)
-         |    echo "GC logging feature not available for Linkerd with Java SE 9. Consider setting\
-         | JAVA_HOME environment variable to an upgraded SE, or upgrading to JAVA SE 10."
-         |    ;;
-         |  *)
-         |    # Configure GC logging directory
-         |    if [ -z "$GC_LOG" ]; then
-         |      GC_LOG="/var/log/linkerd"
-         |    fi
-         |  
-         |    mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
-         |  
-         |    if [ $? -ne 0 ]; then
-         |      echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
-         |      Unable to use [$GC_LOG] for GC logging."
-         |    else
-         |      GC_LOG_OPTION="
-         |       -XX:+PrintGCDetails
-         |       -XX:+PrintGCDateStamps
-         |       -XX:+PrintHeapAtGC
-         |       -XX:+PrintTenuringDistribution
-         |       -XX:+PrintGCApplicationStoppedTime
-         |       -XX:+PrintPromotionFailure
-         |       -Xloggc:${GC_LOG}/gc.log
-         |       -XX:+UseGCLogFileRotation
-         |       -XX:NumberOfGCLogFiles=10
-         |       -XX:GCLogFileSize=10M"
-         |    fi
-         |    ;;
-         |esac
+         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
+         |
+         |if [ $? -ne 0 ]; then
+         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+         | Unable to use [$GC_LOG] for GC logging."
+         |else
+         |  version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |
+         |  if [ "$version" -ge 9 ]; then
+         |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
+         |  else
+         |    GC_LOG_OPTION="
+         |      -XX:+PrintGCDetails
+         |      -XX:+PrintGCDateStamps
+         |      -XX:+PrintHeapAtGC
+         |      -XX:+PrintTenuringDistribution
+         |      -XX:+PrintGCApplicationStoppedTime
+         |      -XX:+PrintPromotionFailure
+         |      -Xloggc:${GC_LOG}/gc.log
+         |      -XX:+UseGCLogFileRotation
+         |      -XX:NumberOfGCLogFiles=10
+         |      -XX:GCLogFileSize=10M"
+         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
+         |  fi
+         |fi
          |
          |""" +
       execScriptJvmOptions +
