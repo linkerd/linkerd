@@ -27,7 +27,7 @@ object Upstream {
           trustCredentials = TrustCredentials.CertCollection(caCert)
         )))
       )
-      .transformed(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
+      .withStack(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
       .newClient(name, "upstream").toService
   }
 
@@ -38,7 +38,7 @@ object Upstream {
     FinagleHttp.client
       .configured(param.Stats(NullStatsReceiver))
       .configured(param.Tracer(NullTracer))
-      .transformed(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
+      .withStack(_.remove(TlsFilter.role)) // do NOT rewrite Host headers using tlsName
       .newClient(name, "upstream").toService
   }
 }

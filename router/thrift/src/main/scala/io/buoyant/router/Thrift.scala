@@ -26,8 +26,8 @@ object Thrift extends Router[ThriftClientRequest, Array[Byte]]
 
     val client: StackClient[ThriftClientRequest, Array[Byte]] =
       FinagleThrift.client
-        .transformed(StackRouter.Client.mkStack(_))
-        .transformed(_.replace(TracingFilter.role, TracingFilter.module))
+        .withStack(StackRouter.Client.mkStack(_))
+        .withStack(_.replace(TracingFilter.role, TracingFilter.module))
 
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +
