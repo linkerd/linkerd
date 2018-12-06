@@ -9,7 +9,6 @@ import io.buoyant.consul.v1
 import io.buoyant.consul.v1.UnexpectedResponse
 import io.buoyant.namer.{InstrumentedVar, Metadata}
 import java.net.{InetAddress, InetSocketAddress}
-import java.rmi.UnexpectedException
 import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -83,6 +82,9 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
+            // this exception case checks if we queried for a service in a datacenter that
+            // doesn't exist. We capture this case so that we can return Addr.Neg to prevent
+            // service name resolution from timing out.
           case Throw(e: UnexpectedResponse) if e.rsp.contentString == DatacenterErrorMessage =>
             log.log(
               failureLogLevel,
