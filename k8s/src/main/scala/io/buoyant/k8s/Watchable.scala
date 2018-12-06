@@ -10,9 +10,8 @@ import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Failure, FailureFlags, Filter, http}
-import com.twitter.io.Reader
-import com.twitter.io.Reader.ReaderDiscarded
-import com.twitter.util.TimeConversions._
+import com.twitter.io.ReaderDiscardedException
+import com.twitter.conversions.time._
 import com.twitter.util._
 import io.buoyant.namer.InstrumentedActivity
 import scala.util.control.NonFatal
@@ -44,7 +43,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       // Don't retry on interruption
       case (_, Throw(e: Failure)) if e.isFlagged(FailureFlags.Interrupted) => false
       // Don't retry on reader discarded
-      case (_, Throw(_: ReaderDiscarded)) => false
+      case (_, Throw(_: ReaderDiscardedException)) => false
       case (_, Throw(NonFatal(ex))) =>
         log.warning("retrying k8s request to %s on error %s", path, ex)
         true
@@ -146,7 +145,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
               Future {
                 rsp.reader.discard()
               } handle {
-                case _: Reader.ReaderDiscarded =>
+                case _: ReaderDiscardedException =>
               }
             })
 

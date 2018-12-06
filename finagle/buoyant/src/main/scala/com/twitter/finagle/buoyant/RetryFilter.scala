@@ -5,7 +5,7 @@ import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.{Filter, Service}
-import com.twitter.io.Reader
+import com.twitter.io.ReaderDiscardedException
 import com.twitter.util._
 
 /**
@@ -69,7 +69,7 @@ class RetryFilter[Req, Rep](
             // we will retry, discard the current response (if there is one)
             rep.foreach { r =>
               Try(discard(r)) match {
-                case Throw(_: Reader.ReaderDiscarded) | Return(_) =>
+                case Throw(_: ReaderDiscardedException) | Return(_) =>
                 case Throw(e) => throw e
               }
             }

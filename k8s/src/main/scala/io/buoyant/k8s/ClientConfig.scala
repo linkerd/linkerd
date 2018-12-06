@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.finagle.{Http, Stack}
-import com.twitter.io.Reader.ReaderDiscarded
+import com.twitter.io.ReaderDiscardedException
 import com.twitter.util.Monitor
 
 /**
@@ -16,7 +16,7 @@ trait ClientConfig {
   protected val DefaultPort = 8001
 
   protected val ReaderDiscardedMonitor = Monitor.mk {
-    case _: ReaderDiscarded => true
+    case _: ReaderDiscardedException => true
   }
 
   def host: Option[String]
