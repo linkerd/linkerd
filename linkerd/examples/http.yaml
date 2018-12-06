@@ -9,7 +9,6 @@ routers:
   httpAccessLogRollPolicy: daily
   httpAccessLogAppend: true
   httpAccessLogRotateCount: -1
-  maxChunkKB: 16
   maxHeadersKB: 16
   maxInitialLineKB: 16
   maxRequestKB: 102400 # 100MB

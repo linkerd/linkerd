@@ -138,7 +138,6 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
   }
 
   test("server has codec parameters from router") {
-    val maxChunkSize = hparam.MaxChunkSize(10.kilobytes)
     val maxHeaderSize = hparam.MaxHeaderSize(20.kilobytes)
     val maxInitLineSize = hparam.MaxInitialLineSize(30.kilobytes)
     val maxReqSize = hparam.MaxRequestSize(40.kilobytes)
@@ -147,14 +146,13 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     val compression = hparam.CompressionLevel(3)
 
     val router = HttpInitializer.router
-      .configured(maxChunkSize).configured(maxHeaderSize).configured(maxInitLineSize)
+      .configured(maxHeaderSize).configured(maxInitLineSize)
       .configured(maxReqSize).configured(maxRspSize)
       .configured(streaming).configured(compression)
       .serving(HttpServerConfig(None, None).mk(HttpInitializer, "yolo"))
       .initialize()
     assert(router.servers.size == 1)
     val sparams = router.servers.head.params
-    assert(sparams[hparam.MaxChunkSize] == maxChunkSize)
     assert(sparams[hparam.MaxHeaderSize] == maxHeaderSize)
     assert(sparams[hparam.MaxInitialLineSize] == maxInitLineSize)
     assert(sparams[hparam.MaxRequestSize] == maxReqSize)
