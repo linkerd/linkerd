@@ -45,7 +45,11 @@ object ThriftClientPrep {
     service: Service[ThriftClientRequest, Array[Byte]]
   ): Future[Service[ThriftClientRequest, Array[Byte]]] = {
     val payloadSize = new PayloadSizeFilter[ThriftClientRequest, Array[Byte]](
-      stats, _.message.length, _.length
+      stats,
+      PayloadSizeFilter.ClientReqTraceKey,
+      PayloadSizeFilter.ClientRepTraceKey,
+      _.message.length,
+      _.length
     )
     val payloadSizeService = payloadSize.andThen(service)
     val upgradedService =
