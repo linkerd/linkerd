@@ -95,7 +95,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
   }
 
-  test("Namer returns Neg if the consul api cannot be reached") {
+  test("Namer stays pending if the consul api cannot be reached") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -115,7 +115,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         state = _
       }
 
-      assert(state == Activity.Ok(NameTree.Neg))
+      assert(state == Activity.Pending)
       assert(
         stats.counters == Map(
           Seq("service", "updates") -> 0,
@@ -539,7 +539,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
-  test("Namer returns Neg on serviceNodes failure") {
+  test("Namer falls back to last observed good state on serviceNodes failure") {
     class TestApi extends CatalogApi(null, "/v1") {
       @volatile var alreadyFailed = false
       override def serviceNodes(
@@ -573,72 +573,10 @@ class ConsulNamerTest extends FunSuite with Awaits {
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assert(state == Activity.Ok(NameTree.Neg))
-  }
-
-  test("Namer state returns Neg then Bound then Neg when a datacenter becomes available and then becomes unavailable") {
-    val datacenterWillBeUnavailable = new Promise[Unit]
-    val datacenterIsAvailable = new Promise[Unit]
-    @volatile var datacenterIsUp = false
-    class TestApi extends CatalogApi(null, "/v1") {
-      override def serviceNodes(
-        serviceName: String,
-        datacenter: Option[String],
-        tag: Option[String],
-        blockingIndex: Option[String],
-        consistency: Option[ConsistencyMode],
-        retry: Boolean
-      ): ApiCall[IndexedServiceNodes] = testCall{
-        blockingIndex match {
-        case Some("0") | None =>
-          if (datacenterIsUp)
-            datacenterIsAvailable before Future.value(
-              Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("1"))
-            )
-          else {
-            datacenterIsUp = true
-            Future.exception(new Exception("datacenter does not exist yet"))
-          }
-        case Some("1") =>
-          datacenterWillBeUnavailable before Future.exception(new Exception("datacenter was deleted"))
-        case _ =>
-          Future.never
-      }
-      }
-    }
-
-    val stats = new InMemoryStatsReceiver
-    val namer = ConsulNamer.untagged(
-      Path.read("/test"),
-      new TestApi(),
-      new TestAgentApi("consul.acme.co"),
-      setHost = false,
-      stats = stats
-    )
-    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
-    @volatile var nameTreeUpdates: Int = 0
-    namer.lookup(Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond { s =>
-      nameTreeUpdates += 1
-      state = s
-    }
-
-    withClue("before datacenter is available") {
-      eventually {
-        assert(state == Activity.Ok(NameTree.Neg))
-      }
-
-      datacenterIsAvailable.setDone()
-      eventually {
-        assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
-      }
-
-    }
-
-    withClue("during datacenter crash") {
-      datacenterWillBeUnavailable.setDone()
-      eventually {
-        assert(state == Activity.Ok(NameTree.Neg))
-      }
+    assertOnAddrs(state){(addrs, metadata) =>
+      assert(addrs.size == 1)
+      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+      ()
     }
   }
 
@@ -703,14 +641,11 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     withClue("after failure") {
       doFail.setDone()
-      assert(state == Activity.Ok(NameTree.Neg))
+      assertOnAddrs(state){ (addrs, _) => assert(addrs.size == 2); () }
 
       scaleToEmpty.setDone()
       await(scenarioComplete)
-      assert(
-        state == Activity.Ok(NameTree.Neg),
-        "namer did not update after falling back"
-      )
+      assert(state == Activity.Ok(NameTree.Neg)) // address list is empty so resolve to neg
     }
   }
 
