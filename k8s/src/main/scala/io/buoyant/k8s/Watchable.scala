@@ -150,7 +150,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
             })
 
             _processEventStream(
-              () => Json.readStream[W](rsp.reader, Api.BufSize),
+              () => Json.readStream[W](rsp.reader),
               resourceVersion
             )
 

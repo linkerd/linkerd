@@ -5,7 +5,7 @@ import com.twitter.finagle.http
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.Trace
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import com.twitter.util.{Closable, _}
 
 /**
