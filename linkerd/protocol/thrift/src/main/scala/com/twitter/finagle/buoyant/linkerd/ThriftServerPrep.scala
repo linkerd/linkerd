@@ -25,7 +25,11 @@ object ThriftServerPrep {
 
       next.map { service =>
         val payloadSize = new PayloadSizeFilter[Array[Byte], Array[Byte]](
-          params[param.Stats].statsReceiver, _.length, _.length
+          params[param.Stats].statsReceiver,
+          PayloadSizeFilter.ClientReqTraceKey,
+          PayloadSizeFilter.ClientRepTraceKey,
+          _.length,
+          _.length
         )
         val ttwitter = new TTwitterServerFilter(label, pf)
         payloadSize.andThen(ttwitter).andThen(uncaughtExceptionsFilter).andThen(service)

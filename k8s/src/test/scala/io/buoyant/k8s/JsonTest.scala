@@ -84,12 +84,10 @@ class JsonTest extends FunSuite {
     assert(Await.result(decoded) == objs)
   }
 
-  test("stream: messages exceeding buffer size") {
-    val bufsize = 8 * 1024
+  test("stream: large messages") {
     val obj = TestType("foo" * 10000, Some(TestType("inner")))
     val buf = Json.writeBuf(obj)
-    assert(buf.length > bufsize)
-    val stream = Json.readStream[TestType](Reader.fromBuf(buf), bufsize)
+    val stream = Json.readStream[TestType](Reader.fromBuf(buf))
     val decoded = Await.result(stream.toSeq())
     assert(decoded == Seq(obj))
   }

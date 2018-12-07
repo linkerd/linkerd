@@ -48,7 +48,7 @@ object Api {
   }
 
   private[k8s] def dechunk(reader: Reader[Buf], init: Buf = Buf.Empty): Future[Buf] =
-    reader.read(BufSize).flatMap {
+    reader.read().flatMap {
       case Some(chunk) =>
         dechunk(reader, init.concat(chunk))
       case None =>

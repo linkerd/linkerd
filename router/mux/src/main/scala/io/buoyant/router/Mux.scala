@@ -22,7 +22,7 @@ object Mux extends Router[Request, Response] with Server[Request, Response] {
 
     val client: StackClient[Request, Response] =
       FinagleMux.client
-        .transformed(StackRouter.Client.mkStack(_))
+        .withStack(StackRouter.Client.mkStack(_))
 
     val defaultParams: Stack.Params =
       StackRouter.defaultParams +

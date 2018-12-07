@@ -29,7 +29,6 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |httpAccessLogRotateCount: -1
                   |identifier:
                   |  kind: io.l5d.methodAndHost
-                  |maxChunkKB: 8
                   |maxHeadersKB: 8
                   |maxInitialLineKB: 4
                   |maxRequestKB: 5120
@@ -42,7 +41,6 @@ class HttpConfigTest extends FunSuite with Awaits {
     assert(config.httpAccessLogRollPolicy.get == "daily")
     assert(config.httpAccessLogAppend.get)
     assert(config.httpAccessLogRotateCount.get == -1)
-    assert(config.maxChunkKB.get == 8)
     assert(config.maxHeadersKB.get == 8)
     assert(config.maxInitialLineKB.get == 4)
     assert(config.maxRequestKB.get == 5120)

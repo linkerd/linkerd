@@ -40,7 +40,7 @@ class Netty4ServerDispatcher(
     s"S L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
   private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
 
-  transport.context.onClose.onSuccess(onTransportClose)
+  transport.onClose.onSuccess(onTransportClose)
 
   override def close(deadline: Time): Future[Unit] = {
     streamsGauge.remove()

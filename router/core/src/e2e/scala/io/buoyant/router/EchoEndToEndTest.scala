@@ -213,7 +213,7 @@ object Echo extends Router[String, String] with Server[String, String] {
 
     val client: StackClient[String, String] =
       FinagleEcho.client
-        .transformed(StackRouter.Client.mkStack(_))
+        .withStack(StackRouter.Client.mkStack(_))
 
     val defaultParams: Stack.Params =
       StackClient.defaultParams +

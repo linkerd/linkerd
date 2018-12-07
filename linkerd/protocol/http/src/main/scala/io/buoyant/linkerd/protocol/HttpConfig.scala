@@ -61,7 +61,6 @@ class HttpInitializer extends ProtocolInitializer.Simple {
    */
   override protected def configureServer(router: Router, server: Server): Server =
     super.configureServer(router, server)
-      .configured(router.params[hparam.MaxChunkSize])
       .configured(router.params[hparam.MaxHeaderSize])
       .configured(router.params[hparam.MaxInitialLineSize])
       .configured(router.params[hparam.MaxRequestSize])
@@ -211,7 +210,6 @@ case class HttpConfig(
   httpAccessLogAppend: Option[Boolean],
   httpAccessLogRotateCount: Option[Int],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
-  maxChunkKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
   maxRequestKB: Option[Int],
@@ -251,7 +249,6 @@ case class HttpConfig(
     .maybeWith(httpAccessLogRollPolicy.map(Policy.parse _ andThen AccessLogger.param.RollPolicy.apply))
     .maybeWith(httpAccessLogAppend.map(AccessLogger.param.Append.apply))
     .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
-    .maybeWith(maxChunkKB.map(kb => hparam.MaxChunkSize(kb.kilobytes)))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
     .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
     .maybeWith(maxRequestKB.map(kb => hparam.MaxRequestSize(kb.kilobytes)))

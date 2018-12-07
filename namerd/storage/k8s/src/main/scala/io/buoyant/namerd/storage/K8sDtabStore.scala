@@ -111,8 +111,6 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
   def update(ns: String, dtab: FDtab, version: Buf): Future[Unit] = {
     val versionStr = version match {
       case Buf.Utf8(str) => str
-      case _ =>
-        throw new IllegalArgumentException(s"invalid or non-UTF8 version string: ${version.toString}")
     }
 
     api.dtabs.named(ns).put(namedDtab(ns, dtab, Some(versionStr))).unit.rescue {
