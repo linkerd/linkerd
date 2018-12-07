@@ -1,6 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.finagle._
+import com.twitter.finagle.http.{Response, Status}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.logging.Level
@@ -579,6 +580,73 @@ class ConsulNamerTest extends FunSuite with Awaits {
       ()
     }
   }
+
+  test("Namer state returns Pending then Bound then Neg when a datacenter becomes available and then becomes unavailable") {
+    val datacenterWillBeUnavailable = new Promise[Unit]
+    val datacenterIsAvailable = new Promise[Unit]
+    @volatile var datacenterIsUp = false
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String],
+        blockingIndex: Option[String],
+        consistency: Option[ConsistencyMode],
+        retry: Boolean
+      ): ApiCall[IndexedServiceNodes] = testCall{
+        blockingIndex match {
+          case Some("0") | None =>
+            if (datacenterIsUp)
+              datacenterIsAvailable before Future.value(
+                Indexed[Seq[ServiceNode]](Seq(testServiceNode, testServiceNode2), Some("1"))
+              )
+            else {
+              datacenterIsUp = true
+              Future.exception(new Exception("datacenter does not exist yet"))
+            }
+          case Some("1") =>
+            val rsp = Response(Status.InternalServerError)
+            rsp.contentString = "No path to datacenter"
+            datacenterWillBeUnavailable before Future.exception(UnexpectedResponse(rsp))
+          case _ =>
+            Future.never
+        }
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      setHost = false,
+      stats = stats
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/#/io.l5d.consul/dc1/servicename/residual")).states respond { s =>
+      state = s
+    }
+
+    withClue("before datacenter is available") {
+      eventually {
+        assert(state == Activity.Pending)
+      }
+
+      datacenterIsAvailable.setDone()
+      eventually {
+        assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
+      }
+
+    }
+
+    withClue("during datacenter crash") {
+      datacenterWillBeUnavailable.setDone()
+      eventually {
+        assert(state == Activity.Ok(NameTree.Neg))
+      }
+    }
+  }
+
 
   test("Namer falls to Neg state on serviceNodes failure after preceding successful serviceNode requests") {
     val scaleUp = new Promise[Unit]

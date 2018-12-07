@@ -84,12 +84,14 @@ private[consul] object SvcAddr {
             Future.Unit
             // this exception case checks if we queried for a service in a datacenter that
             // doesn't exist. We capture this case so that we can return Addr.Neg to prevent
-            // service name resolution from timing out.
+            // service name resolution from timing out. Since Consul's HTTP 5xx API response is
+            // overloaded and represents different error states, its necessary for us to capture this
+            // exception and resolve to Addr.Neg see https://github.com/hashicorp/consul/issues/4901
           case Throw(e: UnexpectedResponse) if e.rsp.contentString == DatacenterErrorMessage =>
             log.log(
               failureLogLevel,
               s"consul datacenter $datacenter service ${key.name} " +
-                s"lookup request timed out due to invalid dc error $e."
+                s"lookup request received invalid dc error $e."
             )
             state.update(Addr.Neg)
             val backoff #:: nextBackoffs = backoffs
