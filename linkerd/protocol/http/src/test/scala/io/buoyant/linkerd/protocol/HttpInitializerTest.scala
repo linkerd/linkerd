@@ -78,7 +78,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     bodyP.setDone()
     assert(!closedP.isDefined)
 
-    assert(await(rsp.reader.read(1)) == None)
+    assert(await(rsp.reader.read()) == None)
     eventually { assert(closedP.isDefined) }
   }
 

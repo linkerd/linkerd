@@ -43,7 +43,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
 
   def readAndAssert(reader: Reader[Buf], value: Buf): Assertion = {
     val buf = value.concat(HttpControlService.newline)
-    val res = await(reader.read(buf.length)).flatMap(Buf.Utf8.unapply)
+    val res = await(reader.read()).flatMap(Buf.Utf8.unapply)
     assert(res == Some(buf).flatMap(Buf.Utf8.unapply))
   }
 
@@ -387,7 +387,7 @@ class HttpControlServiceTest extends FunSuite with Awaits {
     witness.notify(Throw(new Exception("error")))
     readAndAssert(resp.reader, "error")
 
-    assert(await(resp.reader.read(0)) == None)
+    assert(await(resp.reader.read()) == None)
 
     resp.reader.discard()
   }
