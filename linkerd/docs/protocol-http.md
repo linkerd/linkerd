@@ -36,6 +36,7 @@ httpAccessLogRollPolicy | never | When to roll the logfile. Possible values: Nev
 httpAccessLogAppend | true | Append to an existing logfile, or truncate it?
 httpAccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 identifier | The `io.l5d.header.token` identifier | An identifier or list of identifiers.  See [Http-specific identifiers](#http-1-1-identifiers).
+streamAfterContentLengthKB | 5 | The threshold at which HTTP messages will be streamed if exceeded.
 maxHeadersKB | 8 | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.
 maxRequestKB | 5120 | The maximum size of a non-chunked HTTP request payload.
