@@ -24,13 +24,14 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
         Request(Headers.empty, FStream.empty()),
         Return(Response(status.toTrailers, FStream.empty()))
       )
-      assert(Compliant.responseClassifier.isDefinedAt(reqrep))
+      val compliant = new Compliant
+      assert(compliant.responseClassifier.isDefinedAt(reqrep))
       if (status.code != 0) {
-        assert(Compliant.responseClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+        assert(compliant.responseClassifier(reqrep) == ResponseClass.NonRetryableFailure)
       } else if (status.code == 14) {
-        assert(Compliant.responseClassifier(reqrep) == ResponseClass.RetryableFailure)
+        assert(compliant.responseClassifier(reqrep) == ResponseClass.RetryableFailure)
       } else {
-        assert(Compliant.responseClassifier(reqrep) == ResponseClass.Success)
+        assert(compliant.responseClassifier(reqrep) == ResponseClass.Success)
       }
     }
   }
@@ -40,8 +41,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
       Request(Headers.empty, FStream.empty()),
       Throw(Reset.Refused)
     )
-    assert(Compliant.responseClassifier.isDefinedAt(reqrep))
-    assert(Compliant.responseClassifier(reqrep) == ResponseClass.RetryableFailure)
+    val compliant = new Compliant
+    assert(compliant.responseClassifier.isDefinedAt(reqrep))
+    assert(compliant.responseClassifier(reqrep) == ResponseClass.RetryableFailure)
   }
 
   test("Compliant classifies Reset:Other as non-retryable") {
@@ -49,8 +51,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
       Request(Headers.empty, FStream.empty()),
       Throw(Reset.EnhanceYourCalm)
     )
-    assert(Compliant.responseClassifier.isDefinedAt(reqrep))
-    assert(Compliant.responseClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+    val compliant = new Compliant
+    assert(compliant.responseClassifier.isDefinedAt(reqrep))
+    assert(compliant.responseClassifier(reqrep) == ResponseClass.NonRetryableFailure)
   }
 
   test("Compliant classifies retryable http responses") {
@@ -60,8 +63,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
         Request(Headers.empty, FStream.empty()),
         Return(Response(status, FStream.empty()))
       )
-      assert(Compliant.responseClassifier.isDefinedAt(reqrep))
-      assert(Compliant.responseClassifier(reqrep) == ResponseClass.RetryableFailure)
+      val compliant = new Compliant
+      assert(compliant.responseClassifier.isDefinedAt(reqrep))
+      assert(compliant.responseClassifier(reqrep) == ResponseClass.RetryableFailure)
     })
   }
 
@@ -71,8 +75,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
         Request(Headers.empty, FStream.empty()),
         Return(Response(status, FStream.empty()))
       )
-      assert(Compliant.responseClassifier.isDefinedAt(reqrep))
-      assert(Compliant.responseClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+      val compliant = new Compliant
+      assert(compliant.responseClassifier.isDefinedAt(reqrep))
+      assert(compliant.responseClassifier(reqrep) == ResponseClass.NonRetryableFailure)
     })
   }
 
@@ -87,13 +92,14 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
           Some(Return(trailers))
         ))
       )
-      assert(Compliant.streamClassifier.isDefinedAt(reqrep))
+      val compliant = new Compliant
+      assert(compliant.streamClassifier.isDefinedAt(reqrep))
       if (status.code != 0) {
-        assert(Compliant.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+        assert(compliant.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
       } else if (status.code == 14) {
-        assert(Compliant.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
+        assert(compliant.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
       } else {
-        assert(Compliant.streamClassifier(reqrep) == ResponseClass.Success)
+        assert(compliant.streamClassifier(reqrep) == ResponseClass.Success)
       }
     }
   }
@@ -106,8 +112,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
         Some(Throw(Reset.Refused))
       ))
     )
-    assert(Compliant.streamClassifier.isDefinedAt(reqrep))
-    assert(Compliant.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
+    val compliant = new Compliant
+    assert(compliant.streamClassifier.isDefinedAt(reqrep))
+    assert(compliant.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
   }
 
   test("Compliant classifies Reset:Other stream as non-retryable") {
@@ -118,8 +125,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
         Some(Throw(Reset.EnhanceYourCalm))
       ))
     )
-    assert(Compliant.streamClassifier.isDefinedAt(reqrep))
-    assert(Compliant.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+    val compliant = new Compliant
+    assert(compliant.streamClassifier.isDefinedAt(reqrep))
+    assert(compliant.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
   }
 
   test("Compliant classifies retryable stream http responses") {
@@ -132,8 +140,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
           Some(Return(Trailers()))
         ))
       )
-      assert(Compliant.streamClassifier.isDefinedAt(reqrep))
-      assert(Compliant.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
+      val compliant = new Compliant
+      assert(compliant.streamClassifier.isDefinedAt(reqrep))
+      assert(compliant.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
     })
   }
 
@@ -146,8 +155,9 @@ class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyC
           Some(Return(Trailers()))
         ))
       )
-      assert(Compliant.streamClassifier.isDefinedAt(reqrep))
-      assert(Compliant.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+      val compliant = new Compliant
+      assert(compliant.streamClassifier.isDefinedAt(reqrep))
+      assert(compliant.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
     })
   }
 }

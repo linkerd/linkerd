@@ -1,11 +1,16 @@
-target/
 dist/
 logs/
 project/boot/
 project/plugins/project/
 project/plugins/src_managed/
+target/
+
+ensime-langserver.log
 http.pid
 npm-debug.log
+pc.stdout.log
+
+.ensime*
 .sbt-launch.jar
 .protoc
 .idea

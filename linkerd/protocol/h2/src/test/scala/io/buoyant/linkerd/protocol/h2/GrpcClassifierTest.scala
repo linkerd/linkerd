@@ -30,11 +30,12 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
           Some(Return(trailers))
         ))
       )
-      assert(AlwaysRetryable.streamClassifier.isDefinedAt(reqrep))
+      val alwaysRetryable = new AlwaysRetryable
+      assert(alwaysRetryable.streamClassifier.isDefinedAt(reqrep))
       if (status.code != 0) {
-        assert(AlwaysRetryable.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
+        assert(alwaysRetryable.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
       } else {
-        assert(AlwaysRetryable.streamClassifier(reqrep) == ResponseClass.Success)
+        assert(alwaysRetryable.streamClassifier(reqrep) == ResponseClass.Success)
       }
     }
   }
@@ -49,11 +50,12 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
           Some(Return(trailers))
         ))
       )
-      assert(NeverRetryable.streamClassifier.isDefinedAt(reqrep))
+      val neverRetryable = new NeverRetryable
+      assert(neverRetryable.streamClassifier.isDefinedAt(reqrep))
       if (status.code != 0) {
-        assert(NeverRetryable.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+        assert(neverRetryable.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
       } else {
-        assert(NeverRetryable.streamClassifier(reqrep) == ResponseClass.Success)
+        assert(neverRetryable.streamClassifier(reqrep) == ResponseClass.Success)
       }
     }
   }
@@ -74,6 +76,28 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.Success)
       } else if (codes.contains(status.code)) {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.RetryableFailure)
+      } else {
+        assert(classifier.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
+      }
+    }
+  }
+
+  test("TestCaseClass classifies specific codes as Success") {
+    forAll("status", "retryable statuses") { (status: GrpcStatus, codes: Set[Int]) =>
+      val trailers = status.toTrailers
+      val reqrep = H2ReqRepFrame(
+        Request(Headers.empty, FStream.empty()),
+        Return((
+          Response(Headers.empty, FStream.empty()),
+          Some(Return(trailers))
+        ))
+      )
+      val classifier = new NeverRetryable(codes)
+      assert(classifier.streamClassifier.isDefinedAt(reqrep))
+      if (status.code == 0) {
+        assert(classifier.streamClassifier(reqrep) == ResponseClass.Success)
+      } else if (codes.contains(status.code)) {
+        assert(classifier.streamClassifier(reqrep) == ResponseClass.Success)
       } else {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
       }

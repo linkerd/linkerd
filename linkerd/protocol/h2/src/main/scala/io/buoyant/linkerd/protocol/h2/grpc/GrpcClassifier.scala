@@ -10,6 +10,8 @@ import io.buoyant.grpc.runtime.GrpcStatus.{Ok, Unavailable}
 
 trait GrpcClassifier extends H2Classifier {
 
+  val nonAccruableStatusCodes: Set[Int] = Set.empty
+
   def retryable(status: GrpcStatus): Boolean
   def retryable(status: Status): Boolean = false
   def retryable(throwable: Throwable): Boolean = false
@@ -24,12 +26,14 @@ trait GrpcClassifier extends H2Classifier {
     case H2ReqRep(_, Throw(throwable)) =>
       if (retryable(throwable)) ResponseClass.RetryableFailure
       else ResponseClass.NonRetryableFailure
+
     // Classify gRPC responses
-    case H2ReqRep(_, Return(GrpcStatus(Ok(_)))) =>
-      ResponseClass.Success
+    case H2ReqRep(_, Return(GrpcStatus(Ok(_)))) => ResponseClass.Success
     case H2ReqRep(_, Return(GrpcStatus(status))) =>
-      if (retryable(status)) ResponseClass.RetryableFailure
+      if (nonAccruableStatusCodes(status.code)) ResponseClass.Success
+      else if (retryable(status)) ResponseClass.RetryableFailure
       else ResponseClass.NonRetryableFailure
+
     // Classify HTTP/2 responses
     case H2ReqRep(_, Return(Response(ClientError(status)))) =>
       if (retryable(status)) ResponseClass.RetryableFailure
@@ -44,11 +48,14 @@ trait GrpcClassifier extends H2Classifier {
     case H2ReqRepFrame(_, Return((_, Some(Throw(throwable))))) =>
       if (retryable(throwable)) ResponseClass.RetryableFailure
       else ResponseClass.NonRetryableFailure
+
     // Classify gRPC responses
     case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(Ok(_))))))) => ResponseClass.Success
     case H2ReqRepFrame(_, Return((_, Some(Return(GrpcStatus(status)))))) =>
-      if (retryable(status)) ResponseClass.RetryableFailure
+      if (nonAccruableStatusCodes(status.code)) ResponseClass.Success
+      else if (retryable(status)) ResponseClass.RetryableFailure
       else ResponseClass.NonRetryableFailure
+
     // Classify HTTP/2 responses
     case H2ReqRepFrame(_, Return((Response(ClientError(status)), _))) =>
       if (retryable(status)) ResponseClass.RetryableFailure
@@ -56,6 +63,7 @@ trait GrpcClassifier extends H2Classifier {
     case H2ReqRepFrame(_, Return((Response(ServerError(status)), _))) =>
       if (retryable(status)) ResponseClass.RetryableFailure
       else ResponseClass.NonRetryableFailure
+
     // Otherwise
     case _ => ResponseClass.NonRetryableFailure
   }
@@ -70,7 +78,7 @@ object GrpcClassifiers {
    * H2Classifier that classifies all error status
    * codes as ResponseClass.RetryableFailure
    */
-  object AlwaysRetryable extends GrpcClassifier {
+  class AlwaysRetryable(override val nonAccruableStatusCodes: Set[Int] = Set.empty) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = true
   }
 
@@ -78,7 +86,7 @@ object GrpcClassifiers {
    * H2Classifier that classifies all error status
    * codes as ResponseClass.NonRetryableFailure
    */
-  object NeverRetryable extends GrpcClassifier {
+  class NeverRetryable(override val nonAccruableStatusCodes: Set[Int] = Set.empty) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = false
   }
 
@@ -88,7 +96,7 @@ object GrpcClassifiers {
    * Unavailable is marked as retryable, and all other
    * failures are marked as non-retryable.
    */
-  object Default extends GrpcClassifier {
+  class Default(override val nonAccruableStatusCodes: Set[Int] = Set.empty) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = status match {
       case Unavailable(_) => true
       case _ => false
@@ -106,7 +114,7 @@ object GrpcClassifiers {
    * See: https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#errors
    * See: https://github.com/grpc/grpc/blob/master/doc/http-grpc-status-mapping.md
    */
-  object Compliant extends GrpcClassifier {
+  class Compliant(override val nonAccruableStatusCodes: Set[Int] = Set.empty) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = status match {
       case Unavailable(_) => true
       case _ => false
@@ -129,7 +137,7 @@ object GrpcClassifiers {
    * as ResponseClass.RetryableFailure, and the rest as ResponseClass.NonRetryableFailure
    * @param retryableCodes a set of status codes which should be marked retryable
    */
-  class RetryableStatusCodes(val retryableCodes: Set[Int]) extends GrpcClassifier {
+  class RetryableStatusCodes(val retryableCodes: Set[Int], override val nonAccruableStatusCodes: Set[Int] = Set.empty) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = retryableCodes(status.code)
   }
 }
