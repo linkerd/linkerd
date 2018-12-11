@@ -5,11 +5,11 @@ import io.buoyant.linkerd.ResponseClassifierInitializer
 import io.buoyant.linkerd.protocol.h2._
 
 abstract class GrpcClassifierConfig extends H2ClassifierConfig {
-  var nonAccrualCodes: Option[Set[Int]] = None
+  var nonAccruableStatusCodes: Option[Set[Int]] = None
 }
 
 class NeverRetryableConfig extends GrpcClassifierConfig {
-  override def mk: H2Classifier = new GrpcClassifiers.NeverRetryable(nonAccrualCodes.getOrElse(Set.empty))
+  override def mk: H2Classifier = new GrpcClassifiers.NeverRetryable(nonAccruableStatusCodes.getOrElse(Set.empty))
 }
 
 class NeverRetryableInitializer extends ResponseClassifierInitializer {
@@ -20,7 +20,7 @@ class NeverRetryableInitializer extends ResponseClassifierInitializer {
 object NeverRetryableInitializer extends NeverRetryableInitializer
 
 class AlwaysRetryableConfig extends GrpcClassifierConfig {
-  override def mk: H2Classifier = new GrpcClassifiers.AlwaysRetryable(nonAccrualCodes.getOrElse(Set.empty))
+  override def mk: H2Classifier = new GrpcClassifiers.AlwaysRetryable(nonAccruableStatusCodes.getOrElse(Set.empty))
 }
 
 class AlwaysRetryableInitializer extends ResponseClassifierInitializer {
@@ -31,7 +31,7 @@ class AlwaysRetryableInitializer extends ResponseClassifierInitializer {
 object AlwaysRetryableInitializer extends AlwaysRetryableInitializer
 
 class DefaultConfig extends GrpcClassifierConfig {
-  override def mk: H2Classifier = new GrpcClassifiers.Default(nonAccrualCodes.getOrElse(Set.empty))
+  override def mk: H2Classifier = new GrpcClassifiers.Default(nonAccruableStatusCodes.getOrElse(Set.empty))
 }
 
 class DefaultInitializer extends ResponseClassifierInitializer {
@@ -42,7 +42,7 @@ class DefaultInitializer extends ResponseClassifierInitializer {
 object DefaultInitializer extends DefaultInitializer
 
 class CompliantConfig extends GrpcClassifierConfig {
-  override def mk: H2Classifier = new GrpcClassifiers.Compliant(nonAccrualCodes.getOrElse(Set.empty))
+  override def mk: H2Classifier = new GrpcClassifiers.Compliant(nonAccruableStatusCodes.getOrElse(Set.empty))
 }
 
 class CompliantInitializer extends ResponseClassifierInitializer {
@@ -54,7 +54,7 @@ object CompliantInitializer extends CompliantInitializer
 
 // TODO: support parsing the status codes by name rather than by number?
 class RetryableStatusCodesConfig(val retryableStatusCodes: Set[Int]) extends GrpcClassifierConfig {
-  override def mk: H2Classifier = new GrpcClassifiers.RetryableStatusCodes(retryableStatusCodes, nonAccrualCodes.getOrElse(Set.empty))
+  override def mk: H2Classifier = new GrpcClassifiers.RetryableStatusCodes(retryableStatusCodes, nonAccruableStatusCodes.getOrElse(Set.empty))
 }
 
 class RetryableStatusCodesInitializer extends ResponseClassifierInitializer {

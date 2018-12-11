@@ -82,8 +82,8 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
     }
   }
 
-  test("TestCaseClass classifies specific codes as Success") {
-    forAll("status", "retryable statuses") { (status: GrpcStatus, codes: Set[Int]) =>
+  test("Non-accruable status codes classify specific codes as success") {
+    forAll("status", "non-accruable status codes") { (status: GrpcStatus, codes: Set[Int]) =>
       val trailers = status.toTrailers
       val reqrep = H2ReqRepFrame(
         Request(Headers.empty, FStream.empty()),
@@ -124,6 +124,10 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
             |service:
             |  responseClassifier:
             |    kind: $kind
+            |    nonAccruableStatusCodes:
+            |    - 1
+            |    - 2
+            |    - 3
             |servers:
             |- port: 0
             |""".stripMargin
@@ -150,6 +154,9 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
           |    - 1
           |    - 2
           |    - 3
+          |    nonAccruableStatusCodes:
+          |    - 4
+          |    - 5
           |servers:
           |- port: 0
           |""".stripMargin
