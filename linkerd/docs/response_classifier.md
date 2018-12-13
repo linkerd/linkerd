@@ -80,7 +80,25 @@ All responses are considered to be successful, regardless of status code.
 
 # gRPC Response Classifiers
 
-For HTTP/2 routers that handle gRPC traffic, four additional response classifiers are available to categorize responses based on [gRPC status codes](https://github.com/grpc/grpc/blob/master/doc/statuscodes.md) in the stream's trailers frame. Status code 0 (`OK`) is always considered successful, while all other gRPC status codes are considered failures.
+For HTTP/2 routers that handle gRPC traffic, one optional parameter and four
+additional response classifiers are available to categorize responses based on
+[gRPC status codes](https://github.com/grpc/grpc/blob/master/doc/statuscodes.md)
+in the stream's trailers frame.
+
+By default, status code 0 (`OK`) is always considered successful, while all
+other gRPC status codes are considered failures. There exists an optional
+parameter `nonAccruableStatusCodes` that accepts a user-defined list of error
+status codes that should not count towards the total failure count for a
+router.
+
+```yaml
+nonAccruableStatusCodes:
+- 3
+- 5
+```
+
+Status code 3 (`InvalidArgument`) and 5 (`NotFound`) will not be counted
+towards the total failure count for this router.
 
 <aside class="notice">
 Since H2 routing is experimental, all gRPC response classifiers are also marked as experimental and require `experimental: true` in the router configuration.
