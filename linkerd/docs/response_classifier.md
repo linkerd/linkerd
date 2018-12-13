@@ -92,9 +92,15 @@ status codes that should not count towards the total failure count for a
 router.
 
 ```yaml
-nonAccruableStatusCodes:
-- 3
-- 5
+routers:
+- protocol: h2
+  experimental: true
+  service:
+    responseClassifier:
+      kind: io.l5d.h2.grpc.default
+      nonAccruableStatusCodes:
+      - 3
+      - 5
 ```
 
 Status code 3 (`InvalidArgument`) and 5 (`NotFound`) will not be counted
