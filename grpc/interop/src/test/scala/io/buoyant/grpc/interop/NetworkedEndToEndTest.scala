@@ -1,7 +1,7 @@
 package io.buoyant.grpc.interop
 
 import java.net.InetSocketAddress
-import com.twitter.conversions.storage._
+import com.twitter.conversions.StorageUnitOps._
 import com.twitter.finagle.buoyant.{H2, h2}
 import com.twitter.util.Future
 import grpc.{testing => pb}

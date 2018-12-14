@@ -1,6 +1,6 @@
 package com.twitter.finagle.buoyant
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace

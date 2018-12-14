@@ -1,6 +1,6 @@
 package io.buoyant.namerd.storage
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Dtab
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.io.Buf

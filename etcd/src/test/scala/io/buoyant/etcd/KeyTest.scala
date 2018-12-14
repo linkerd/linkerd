@@ -1,6 +1,6 @@
 package io.buoyant.etcd
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.{Filter, Path, Service}
 import com.twitter.finagle.http.{Message, Method, Request, Response, Status}
 import com.twitter.io.Buf

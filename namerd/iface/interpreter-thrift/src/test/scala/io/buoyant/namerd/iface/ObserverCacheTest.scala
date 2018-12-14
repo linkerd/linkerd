@@ -1,6 +1,6 @@
 package io.buoyant.namerd.iface
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.util._

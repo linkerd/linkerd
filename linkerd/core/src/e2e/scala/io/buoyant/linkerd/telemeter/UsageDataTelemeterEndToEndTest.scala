@@ -1,7 +1,7 @@
 package io.buoyant.linkerd.telemeter
 
 import com.google.protobuf.CodedInputStream
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Address.Inet
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response}

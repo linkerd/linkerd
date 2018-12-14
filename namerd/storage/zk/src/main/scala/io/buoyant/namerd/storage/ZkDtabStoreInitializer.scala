@@ -1,7 +1,7 @@
 package io.buoyant.namerd.storage
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.serverset2.buoyant.ZkDtabStore
 import io.buoyant.config.types.HostAndPort

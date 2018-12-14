@@ -1,6 +1,6 @@
 package io.buoyant.linkerd
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Path
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.service.TimeoutFilter

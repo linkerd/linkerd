@@ -1,6 +1,6 @@
 package io.buoyant.namer.consul
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}

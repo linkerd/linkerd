@@ -1,6 +1,6 @@
 package io.buoyant.test
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.util.{Await, Duration, Future, TimeoutException}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.exceptions.TestFailedException

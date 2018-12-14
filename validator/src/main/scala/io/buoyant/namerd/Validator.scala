@@ -1,6 +1,6 @@
 package io.buoyant.namerd
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.http.Method
 import com.twitter.finagle.util.DefaultTimer

@@ -6,7 +6,7 @@ import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState

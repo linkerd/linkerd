@@ -2,7 +2,7 @@ package io.buoyant.namerd.iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.liveness.FailureDetector

@@ -8,7 +8,7 @@ import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1.{ConsistencyMode, KvApi}
 import io.buoyant.namer.BackoffConfig
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.TlsClientConfig
 import io.buoyant.namerd.{DtabStore, DtabStoreConfig, DtabStoreInitializer}

@@ -1,6 +1,6 @@
 package io.buoyant.linkerd
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Path
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.util.Duration

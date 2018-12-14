@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.util.DefaultTimer

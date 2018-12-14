@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.{Method, Request, Response}
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
@@ -529,7 +529,7 @@ class RetriesEndToEndTest extends FunSuite {
       rsp
     })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}
@@ -581,7 +581,7 @@ class RetriesEndToEndTest extends FunSuite {
       rsp
     })
 
-    val config = 
+    val config =
       s"""|routers:
           |- protocol: http
           |  dtab: /svc/* => /$$/inet/127.1/${downstream.port}

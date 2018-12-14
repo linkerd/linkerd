@@ -1,13 +1,12 @@
 package io.buoyant.router.h2
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util._
-import scala.util.control.NoStackTrace
 import scala.{Stream => SStream}
 
 /**

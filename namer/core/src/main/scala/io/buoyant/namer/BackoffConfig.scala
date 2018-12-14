@@ -3,7 +3,7 @@ package io.buoyant.namer
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes}
 import com.twitter.finagle.service.Backoff
 import com.twitter.util.Duration
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import io.buoyant.config.PolymorphicConfig
 
 @JsonSubTypes(Array(

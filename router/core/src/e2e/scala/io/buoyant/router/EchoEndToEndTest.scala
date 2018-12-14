@@ -1,6 +1,6 @@
 package io.buoyant.router
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.{Echo => FinagleEcho, _}
 import com.twitter.finagle.client.StackClient

@@ -1,7 +1,7 @@
 package io.buoyant.interpreter
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
 import com.twitter.finagle.naming.NameInterpreter

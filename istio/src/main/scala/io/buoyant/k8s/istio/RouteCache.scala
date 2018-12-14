@@ -1,6 +1,6 @@
 package io.buoyant.k8s.istio
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Http
 import com.twitter.finagle.param.Label
 import com.twitter.finagle.tracing.NullTracer

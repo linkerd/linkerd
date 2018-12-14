@@ -1,6 +1,6 @@
 package io.buoyant.namer
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 

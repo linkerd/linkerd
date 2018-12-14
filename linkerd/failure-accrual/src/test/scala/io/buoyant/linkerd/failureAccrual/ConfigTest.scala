@@ -4,7 +4,7 @@ import io.buoyant.config.Parser
 import io.buoyant.linkerd.FailureAccrualConfig
 import io.buoyant.test.FunSuite
 import org.scalatest.OptionValues
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import io.buoyant.namer.{ConstantBackoffConfig, JitteredBackoffConfig}
 import org.scalatest.prop.PropertyChecks
 import org.scalacheck.Gen

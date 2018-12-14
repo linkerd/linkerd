@@ -1,6 +1,6 @@
 package io.buoyant.k8s
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.http.{Request, Response, Status => HttpStatus}
 import com.twitter.io.{Buf, Writer}

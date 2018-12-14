@@ -2,7 +2,7 @@ package io.buoyant.namer.marathon
 
 import com.twitter.finagle.util.LoadService
 import com.twitter.finagle.{Path, Stack}
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import io.buoyant.config.Parser
 import io.buoyant.config.types.Port
 import io.buoyant.namer.{NamerConfig, NamerInitializer}

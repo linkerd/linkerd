@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 package protocol
 
 import com.twitter.concurrent.AsyncStream
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.{Http => FinagleHttp, Status => _, http => _, _}
 import com.twitter.finagle.buoyant.linkerd.Headers
 import com.twitter.finagle.http.Method._

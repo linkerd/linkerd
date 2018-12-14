@@ -1,7 +1,7 @@
 package io.buoyant.router
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.{ServiceFactory, Stack}
 import com.twitter.finagle.service.{Backoff, Retries, RetryBudget}
 import com.twitter.util.Duration

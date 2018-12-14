@@ -1,15 +1,12 @@
 package io.buoyant.linkerd.protocol
 
-import com.twitter.conversions.storage._
-import com.twitter.conversions.time._
+import com.twitter.conversions.StorageUnitOps._
 import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
 import com.twitter.finagle.http.{param => hparam}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
-import com.twitter.finagle.service.Retries
-import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.io.{Pipe, Reader}
-import com.twitter.util.{Future, MockTimer, Promise, Time}
+import com.twitter.io.Pipe
+import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.linkerd.protocol.http.ResponseClassifiers
 import io.buoyant.router.RetryBudgetConfig
 import io.buoyant.router.RetryBudgetModule.{param => ev}

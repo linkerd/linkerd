@@ -2,7 +2,7 @@ package io.buoyant.namerd.iface
 
 import java.net.InetSocketAddress
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
 import com.twitter.finagle.naming.NameInterpreter

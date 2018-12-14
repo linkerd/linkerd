@@ -1,7 +1,7 @@
 package com.twitter.finagle.naming
 package buoyant
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.factory.ServiceFactoryCache

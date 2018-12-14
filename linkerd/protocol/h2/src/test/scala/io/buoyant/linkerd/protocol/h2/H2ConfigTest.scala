@@ -1,15 +1,14 @@
 package io.buoyant.linkerd.protocol
 package h2
 
-import com.twitter.conversions.storage._
-import com.twitter.conversions.time._
-import com.twitter.finagle.{Path, Stack}
+import com.twitter.conversions.StorageUnitOps._
+import com.twitter.conversions.DurationOps._
+import com.twitter.finagle.Path
 import com.twitter.finagle.buoyant.h2.param.FlowControl._
 import com.twitter.finagle.buoyant.h2.param.Settings._
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.ssl.server.SslServerEngineFactory
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.RouterConfig
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
 import io.buoyant.test.FunSuite
 

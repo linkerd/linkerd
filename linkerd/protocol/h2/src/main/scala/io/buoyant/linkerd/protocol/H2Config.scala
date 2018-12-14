@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
-import com.twitter.conversions.storage._
-import com.twitter.conversions.time._
+import com.twitter.conversions.StorageUnitOps._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.buoyant.h2.service.H2Classifier
 import com.twitter.finagle.buoyant.h2.{param => h2Param, _}

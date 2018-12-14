@@ -1,6 +1,6 @@
 package io.buoyant.etcd
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Path
 import com.twitter.io.Buf
 import com.twitter.util.{Events => _}

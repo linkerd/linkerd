@@ -11,7 +11,7 @@ import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Failure, FailureFlags, Filter, http}
 import com.twitter.io.ReaderDiscardedException
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.util._
 import io.buoyant.namer.InstrumentedActivity
 import scala.util.control.NonFatal

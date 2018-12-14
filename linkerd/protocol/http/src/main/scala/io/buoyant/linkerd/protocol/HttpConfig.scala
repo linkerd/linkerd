@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
-import com.twitter.conversions.storage._
+import com.twitter.conversions.StorageUnitOps._
 import com.twitter.finagle.buoyant.linkerd.{DelayedRelease, Headers}
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
