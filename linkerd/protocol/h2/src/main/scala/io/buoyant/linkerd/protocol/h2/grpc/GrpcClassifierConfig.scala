@@ -3,9 +3,16 @@ package io.buoyant.linkerd.protocol.h2.grpc
 import com.twitter.finagle.buoyant.h2.service.H2Classifier
 import io.buoyant.linkerd.ResponseClassifierInitializer
 import io.buoyant.linkerd.protocol.h2._
+import io.buoyant.grpc.runtime.GrpcStatus
+import io.buoyant.grpc.runtime.GrpcStatus.Ok
 
-class NeverRetryableConfig extends H2ClassifierConfig {
-  override def mk: H2Classifier = GrpcClassifiers.NeverRetryable
+abstract class GrpcClassifierConfig extends H2ClassifierConfig {
+  var successStatusCodes: Option[Set[Int]] = None
+  def _successStatusCodes = successStatusCodes.getOrElse(Set(0))
+}
+
+class NeverRetryableConfig extends GrpcClassifierConfig {
+  override def mk: H2Classifier = new GrpcClassifiers.NeverRetryable(_successStatusCodes)
 }
 
 class NeverRetryableInitializer extends ResponseClassifierInitializer {
@@ -15,8 +22,8 @@ class NeverRetryableInitializer extends ResponseClassifierInitializer {
 
 object NeverRetryableInitializer extends NeverRetryableInitializer
 
-class AlwaysRetryableConfig extends H2ClassifierConfig {
-  override def mk: H2Classifier = GrpcClassifiers.AlwaysRetryable
+class AlwaysRetryableConfig extends GrpcClassifierConfig {
+  override def mk: H2Classifier = new GrpcClassifiers.AlwaysRetryable(_successStatusCodes)
 }
 
 class AlwaysRetryableInitializer extends ResponseClassifierInitializer {
@@ -26,8 +33,8 @@ class AlwaysRetryableInitializer extends ResponseClassifierInitializer {
 
 object AlwaysRetryableInitializer extends AlwaysRetryableInitializer
 
-class DefaultConfig extends H2ClassifierConfig {
-  override def mk: H2Classifier = GrpcClassifiers.Default
+class DefaultConfig extends GrpcClassifierConfig {
+  override def mk: H2Classifier = new GrpcClassifiers.Default(_successStatusCodes)
 }
 
 class DefaultInitializer extends ResponseClassifierInitializer {
@@ -37,8 +44,8 @@ class DefaultInitializer extends ResponseClassifierInitializer {
 
 object DefaultInitializer extends DefaultInitializer
 
-class CompliantConfig extends H2ClassifierConfig {
-  override def mk: H2Classifier = GrpcClassifiers.Compliant
+class CompliantConfig extends GrpcClassifierConfig {
+  override def mk: H2Classifier = new GrpcClassifiers.Compliant(_successStatusCodes)
 }
 
 class CompliantInitializer extends ResponseClassifierInitializer {
@@ -49,8 +56,8 @@ class CompliantInitializer extends ResponseClassifierInitializer {
 object CompliantInitializer extends CompliantInitializer
 
 // TODO: support parsing the status codes by name rather than by number?
-class RetryableStatusCodesConfig(val retryableStatusCodes: Set[Int]) extends H2ClassifierConfig {
-  override def mk: H2Classifier = new GrpcClassifiers.RetryableStatusCodes(retryableStatusCodes)
+class RetryableStatusCodesConfig(val retryableStatusCodes: Set[Int]) extends GrpcClassifierConfig {
+  override def mk: H2Classifier = new GrpcClassifiers.RetryableStatusCodes(retryableStatusCodes, _successStatusCodes)
 }
 
 class RetryableStatusCodesInitializer extends ResponseClassifierInitializer {
