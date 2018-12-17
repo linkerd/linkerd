@@ -78,13 +78,13 @@ class K8sDtabStore(client: Http.Client, dst: String, namespace: String)
       (nsMap: NsMap, watchEvent) =>
         watchEvent match {
           case DtabAdded(a) =>
-            log.warning(s"k8s watch received DtabAdded: ${name(a)}")
+            log.debug(s"k8s watch received DtabAdded: ${name(a)}")
             nsMap + toDtabMap(a)
           case DtabModified(m) =>
-            log.warning(s"k8s watch received DtabModified: ${name(m)}")
+            log.debug(s"k8s watch received DtabModified: ${name(m)}")
             nsMap + toDtabMap(m)
           case DtabDeleted(d) =>
-            log.warning(s"k8s watch received DtabDeleted: ${name(d)}")
+            log.debug(s"k8s watch received DtabDeleted: ${name(d)}")
             nsMap - name(d)
           case DtabError(e) =>
             log.error("k8s watch error: %s", e)
