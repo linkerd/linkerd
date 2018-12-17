@@ -11,6 +11,7 @@ import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter, StatsFilter}
+import com.twitter.finagle.http.param.FixedLengthStreamedAfter
 import com.twitter.finagle.http.{Request, Response, param => hparam}
 import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
@@ -210,6 +211,7 @@ case class HttpConfig(
   httpAccessLogAppend: Option[Boolean],
   httpAccessLogRotateCount: Option[Int],
   @JsonDeserialize(using = classOf[HttpIdentifierConfigDeserializer]) identifier: Option[Seq[HttpIdentifierConfig]],
+  streamAfterContentLengthKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
   maxRequestKB: Option[Int],
@@ -250,6 +252,7 @@ case class HttpConfig(
     .maybeWith(httpAccessLogAppend.map(AccessLogger.param.Append.apply))
     .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
+    .maybeWith(streamAfterContentLengthKB.map(kb => hparam.FixedLengthStreamedAfter(kb.kilobytes)))
     .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
     .maybeWith(maxRequestKB.map(kb => hparam.MaxRequestSize(kb.kilobytes)))
     .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
