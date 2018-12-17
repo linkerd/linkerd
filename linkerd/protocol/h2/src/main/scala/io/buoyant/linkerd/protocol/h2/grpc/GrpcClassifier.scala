@@ -10,12 +10,10 @@ import io.buoyant.grpc.runtime.GrpcStatus.{Ok, Unavailable}
 
 trait GrpcClassifier extends H2Classifier {
 
-  val successStatusCodes: Set[Int]
-
   def retryable(status: GrpcStatus): Boolean
   def retryable(status: Status): Boolean = false
   def retryable(throwable: Throwable): Boolean = false
-  def success(status: GrpcStatus): Boolean = successStatusCodes(status.code)
+  def success(status: GrpcStatus): Boolean
 
   /**
    * Since GRPC sends status codes in the
@@ -79,8 +77,9 @@ object GrpcClassifiers {
    *
    * @param successStatusCodes a set of status codes which should be marked as success
    */
-  class AlwaysRetryable(override val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
+  class AlwaysRetryable(val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = true
+    override def success(status: GrpcStatus): Boolean = successStatusCodes(status.code)
   }
 
   /**
@@ -89,8 +88,9 @@ object GrpcClassifiers {
    *
    * @param successStatusCodes a set of status codes which should be marked as success
    */
-  class NeverRetryable(override val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
+  class NeverRetryable(val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = false
+    override def success(status: GrpcStatus): Boolean = successStatusCodes(status.code)
   }
 
   /**
@@ -101,11 +101,13 @@ object GrpcClassifiers {
    *
    * @param successStatusCodes a set of status codes which should be marked as success
    */
-  class Default(override val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
+  class Default(val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = status match {
       case Unavailable(_) => true
       case _ => false
     }
+
+    override def success(status: GrpcStatus): Boolean = successStatusCodes(status.code)
   }
 
   /**
@@ -121,7 +123,7 @@ object GrpcClassifiers {
    *
    * @param successStatusCodes a set of status codes which should be marked as success
    */
-  class Compliant(override val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
+  class Compliant(val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = status match {
       case Unavailable(_) => true
       case _ => false
@@ -137,6 +139,8 @@ object GrpcClassifiers {
       case Reset.Refused => true
       case _ => false
     }
+
+    override def success(status: GrpcStatus): Boolean = successStatusCodes(status.code)
   }
 
   /**
@@ -146,7 +150,8 @@ object GrpcClassifiers {
    * @param retryableStatusCodes a set of status codes which should be marked retryable
    * @param successStatusCodes a set of status codes which should be marked as success
    */
-  class RetryableStatusCodes(val retryableStatusCodes: Set[Int], override val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
+  class RetryableStatusCodes(val retryableStatusCodes: Set[Int], val successStatusCodes: Set[Int] = Set(0)) extends GrpcClassifier {
     override def retryable(status: GrpcStatus): Boolean = retryableStatusCodes(status.code)
+    override def success(status: GrpcStatus): Boolean = successStatusCodes(status.code)
   }
 }
