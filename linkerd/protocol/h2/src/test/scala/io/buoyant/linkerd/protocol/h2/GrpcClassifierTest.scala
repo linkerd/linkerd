@@ -82,8 +82,8 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
     }
   }
 
-  test("Non-accruable status codes classify specific codes as success") {
-    forAll("status", "non-accruable status codes") { (status: GrpcStatus, codes: Set[Int]) =>
+  test("Success status codes classify specific codes as success") {
+    forAll("status", "success status codes") { (status: GrpcStatus, codes: Set[Int]) =>
       val trailers = status.toTrailers
       val reqrep = H2ReqRepFrame(
         Request(Headers.empty, FStream.empty()),
@@ -94,9 +94,7 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
       )
       val classifier = new NeverRetryable(codes)
       assert(classifier.streamClassifier.isDefinedAt(reqrep))
-      if (status.code == 0) {
-        assert(classifier.streamClassifier(reqrep) == ResponseClass.Success)
-      } else if (codes.contains(status.code)) {
+      if (codes.contains(status.code)) {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.Success)
       } else {
         assert(classifier.streamClassifier(reqrep) == ResponseClass.NonRetryableFailure)
@@ -124,7 +122,8 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
             |service:
             |  responseClassifier:
             |    kind: $kind
-            |    nonAccruableStatusCodes:
+            |    successStatusCodes:
+            |    - 0
             |    - 1
             |    - 2
             |    - 3
@@ -154,7 +153,8 @@ class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
           |    - 1
           |    - 2
           |    - 3
-          |    nonAccruableStatusCodes:
+          |    successStatusCodes:
+          |    - 0
           |    - 4
           |    - 5
           |servers:
