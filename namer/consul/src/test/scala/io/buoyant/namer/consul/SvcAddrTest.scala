@@ -53,29 +53,32 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     val invoked = Promise[Unit]()
     val (serviceNode, serviceAddr) = service()
     val response = Indexed[Seq[ServiceNode]](Seq(serviceNode), Some("1"))
-    @volatile var stateReturned = false
+    val backoffs: Stream[Duration] = Stream.fill(10)(10.millis)
+    @volatile var changes: Addr = Addr.Pending
+    @volatile var requestCount = new AtomicInteger()
     val api = apiStub { (_, _, _, _, _, _) =>
       synchronized {
-        if (!stateReturned) {
-          stateReturned = true
-          Future.value(response)
-        } else {
-          invoked.setDone()
-          Future.exception(new Throwable("whatever is thrown we catch"))
+        requestCount.getAndIncrement() match {
+          case 0 => Future.value(response)
+          case 1 => Future.exception(new Throwable("whatever is thrown we catch"))
+          case _ =>
+            invoked.setDone()
+            Future.never
         }
       }
     }
 
     // when
-    val addr: InstrumentedVar[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
 
     // then
-    await(addr.underlying.changes.toFuture)
-    addr.running shouldBe false
+    addr.underlying.changes.respond(changes = _)
+    await(invoked)
+    addr.running shouldBe true
     addr.lastStartedAt shouldBe 'defined
-    addr.lastStoppedAt shouldBe 'defined
+    addr.lastStoppedAt should not be 'defined
     addr.lastUpdatedAt shouldBe 'defined
-    addr.underlying.sample() match {
+    changes match {
       case Addr.Bound(addrSet, _) =>
         addrSet should have size 1
         addrSet.head should matchPattern { case Address.Inet(addr, _) if addr == serviceAddr => }
@@ -131,7 +134,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     extracted should be(Some(cause))
   }
 
-  test("should be Addr.Neg unexpected error occurs") {
+  test("should be Addr.Pending when unexpected error occurs initially") {
     // given
     val invoked = Promise[Unit]()
     val api = apiStub { (_, _, _, _, _, _) =>
@@ -147,8 +150,8 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     addr.running shouldBe false
     addr.lastStartedAt shouldBe 'defined
     addr.lastStoppedAt shouldBe 'defined
-    addr.lastUpdatedAt shouldBe 'defined
-    addr.underlying.sample() should matchPattern { case Addr.Neg => }
+    addr.lastUpdatedAt should not be 'defined
+    addr.underlying.sample() should matchPattern { case Addr.Pending => }
   }
 
   test("should use last known state on api timeout") {

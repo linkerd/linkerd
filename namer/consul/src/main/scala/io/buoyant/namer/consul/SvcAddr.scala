@@ -6,9 +6,9 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1
-import io.buoyant.namer.{Metadata, InstrumentedVar}
+import io.buoyant.consul.v1.UnexpectedResponse
+import io.buoyant.namer.{InstrumentedVar, Metadata}
 import java.net.{InetAddress, InetSocketAddress}
-
 import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -22,6 +22,8 @@ private[consul] object SvcAddr {
 
   private[this] val ServiceRelease =
     new Exception("service observation released") with NoStackTrace
+
+  private[this] val DatacenterErrorMessage = "No path to datacenter"
 
   case class Stats(stats: StatsReceiver) {
     val opens = stats.counter("opens")
@@ -80,6 +82,21 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
+            // this exception case checks if we queried for a service in a datacenter that
+            // doesn't exist. We capture this case so that we can return Addr.Neg to prevent
+            // service name resolution from timing out. Since Consul's HTTP 5xx API response is
+            // overloaded and represents different error states, its necessary for us to capture this
+            // exception and resolve to Addr.Neg see https://github.com/hashicorp/consul/issues/4901
+          case Throw(e: UnexpectedResponse) if e.rsp.contentString == DatacenterErrorMessage =>
+            log.log(
+              failureLogLevel,
+              s"consul datacenter $datacenter service ${key.name} " +
+                s"lookup request received invalid dc error $e."
+            )
+            state.update(Addr.Neg)
+            val backoff #:: nextBackoffs = backoffs
+            // subsequent errors are logged as DEBUG
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
           case Throw(e: IndividualRequestTimeoutException) =>
             // catch request timeout exceptions for Consul API. Use last known good state.
             stats.errors.incr()
@@ -94,7 +111,7 @@ private[consul] object SvcAddr {
             Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
 
           case Throw(e) =>
-            // update state with Addr.Neg, log error and continue polling with backoff
+            // do not update state, log error and continue polling with backoff
             stats.errors.incr()
             log.log(
               failureLogLevel,
@@ -102,7 +119,6 @@ private[consul] object SvcAddr {
                 " Last known state is %s",
               datacenter, key.name, e, currentValueToLog
             )
-            state.update(Addr.Neg)
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
             Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
