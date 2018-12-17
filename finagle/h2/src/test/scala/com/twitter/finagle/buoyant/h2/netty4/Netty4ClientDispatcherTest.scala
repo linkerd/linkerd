@@ -4,7 +4,7 @@ package netty4
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.{Status => SvcStatus}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.finagle.transport.{LegacyContext, Transport, TransportContext}
+import com.twitter.finagle.transport.{SimpleTransportContext, Transport, TransportContext}
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
 import io.netty.buffer.Unpooled
@@ -20,7 +20,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
     val closeP = new Promise[Throwable]
     val transport = new Transport[Http2Frame, Http2Frame] {
       type Context = TransportContext
-      def context: Context = new LegacyContext(this)
+      def context: Context = new SimpleTransportContext()
       def status = ???
       def localAddress = new SocketAddress {}
       def remoteAddress = new SocketAddress {}
