@@ -1,7 +1,7 @@
 package io.buoyant.telemetry.statsd
 
 import com.timgroup.statsd.{NoOpStatsDClient, StatsDClient}
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.util.{Time, MockTimer}
 import org.scalatest._
 

@@ -2,7 +2,7 @@ package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.concurrent.AsyncSemaphore
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, SocketOptionsConfig, TlsServerConfig}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory

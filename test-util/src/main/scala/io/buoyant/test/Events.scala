@@ -1,6 +1,6 @@
 package io.buoyant.test
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.util._
 import org.scalatest._
 import scala.collection.JavaConverters._

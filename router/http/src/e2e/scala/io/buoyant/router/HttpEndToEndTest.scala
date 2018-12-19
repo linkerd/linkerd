@@ -1,6 +1,6 @@
 package io.buoyant.router
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.http.{Request, Response, Status, Version}

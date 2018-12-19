@@ -1,6 +1,6 @@
 package io.buoyant.telemetry.statsd
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.util.{Awaitable, Closable, CloseAwaitably, Future, Time, Timer}
 import io.buoyant.telemetry.Telemeter

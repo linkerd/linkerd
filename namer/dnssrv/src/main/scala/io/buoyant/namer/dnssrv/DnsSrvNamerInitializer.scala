@@ -3,7 +3,7 @@ package io.buoyant.namer.dnssrv
 import java.util.Collections
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
 import io.buoyant.namer.{NamerConfig, NamerInitializer}

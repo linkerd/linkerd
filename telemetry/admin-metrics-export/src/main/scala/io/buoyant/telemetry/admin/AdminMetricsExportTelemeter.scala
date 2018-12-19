@@ -3,7 +3,7 @@ package io.buoyant.telemetry.admin
 import com.fasterxml.jackson.core.{JsonFactory, JsonGenerator}
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.twitter.app.GlobalFlag
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.http.{MediaType, Request, Response, Status}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.tracing.NullTracer

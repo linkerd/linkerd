@@ -1,7 +1,7 @@
 package io.buoyant.router.h2
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Service
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.buoyant.h2.{Frame, Headers, Request, Response, Status, Stream}

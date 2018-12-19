@@ -1,6 +1,6 @@
 package io.buoyant.linkerd.protocol.http.istio
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.{Request => FRequest, Response => FResponse}
 import com.twitter.finagle.{Dtab, Path, Service}

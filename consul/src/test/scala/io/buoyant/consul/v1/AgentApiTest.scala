@@ -1,6 +1,5 @@
 package io.buoyant.consul.v1
 
-import com.twitter.conversions.time._
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.io.Buf

@@ -1,6 +1,6 @@
 package io.buoyant.namer.fs
 
-import com.twitter.conversions.storage._
+import com.twitter.conversions.StorageUnitOps._
 import com.twitter.io.Buf
 import com.twitter.logging.Logger
 import com.twitter.util._

@@ -1,6 +1,6 @@
 package io.buoyant.telemetry.admin
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.http.Request
 import com.twitter.util.{MockTimer, Time}
 import io.buoyant.telemetry.{MetricsTree, MetricsTreeStatsReceiver}

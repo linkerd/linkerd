@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.liveness.{FailureAccrualFactory, FailureAccrualPolicy}
 import com.twitter.finagle.service.Backoff
 import com.twitter.util.Duration

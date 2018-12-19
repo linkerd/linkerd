@@ -5,8 +5,7 @@ import com.fasterxml.jackson.annotation._
 import com.fasterxml.jackson.core.{JsonParser, TreeNode}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer, JsonNode}
-import com.twitter.conversions.storage._
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.h2.param._
 import com.twitter.finagle.buoyant.h2.service.H2Classifier
 import com.twitter.finagle.buoyant.h2.{param => h2Param, _}
@@ -18,7 +17,7 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.tracing.TraceInitializerFilter
 import com.twitter.finagle.{ServiceFactory, Stack, param}
 import com.twitter.logging.Policy
-import com.twitter.util.Monitor
+import com.twitter.util.{Monitor, StorageUnit}
 import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2._
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
@@ -139,10 +138,10 @@ trait H2EndpointConfig {
 
   def withEndpointParams(params: Stack.Params): Stack.Params = params
     .maybeWith(windowUpdateRatio.map(r => FlowControl.WindowUpdateRatio(r.toFloat)))
-    .maybeWith(headerTableBytes.map(s => Settings.HeaderTableSize(Some(s.bytes))))
-    .maybeWith(initialStreamWindowBytes.map(s => Settings.InitialStreamWindowSize(Some(s.bytes))))
-    .maybeWith(maxFrameBytes.map(s => Settings.MaxFrameSize(Some(s.bytes))))
-    .maybeWith(maxHeaderListBytes.map(s => Settings.MaxHeaderListSize(Some(s.bytes))))
+    .maybeWith(headerTableBytes.map(s => Settings.HeaderTableSize(Some(StorageUnit.fromBytes(s.toLong)))))
+    .maybeWith(initialStreamWindowBytes.map(s => Settings.InitialStreamWindowSize(Some(StorageUnit.fromBytes(s.toLong)))))
+    .maybeWith(maxFrameBytes.map(s => Settings.MaxFrameSize(Some(StorageUnit.fromBytes(s.toLong)))))
+    .maybeWith(maxHeaderListBytes.map(s => Settings.MaxHeaderListSize(Some(StorageUnit.fromBytes(s.toLong)))))
 }
 
 @JsonTypeInfo(
@@ -239,7 +238,7 @@ trait H2SvcConfig extends SvcConfig {
   override def params(vars: Map[String, String]): Stack.Params =
     super.params(vars)
       .maybeWith(h2Classifier.map(h2Param.H2Classifier(_)))
-      .maybeWith(classificationTimeoutMs.map { t => ClassificationTimeout(t.millis) })
+      .maybeWith(classificationTimeoutMs.map { t => ClassificationTimeout(t.milliseconds) })
       .maybeWith(retryBufferSize.map(_.param))
 }
 

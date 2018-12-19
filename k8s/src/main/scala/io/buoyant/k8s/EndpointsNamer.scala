@@ -2,7 +2,7 @@ package io.buoyant.k8s
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import java.net.{InetAddress, InetSocketAddress}
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle.http.{MediaType, Request, Response}
 import com.twitter.finagle.service.Backoff

@@ -1,15 +1,14 @@
 package io.buoyant.linkerd.protocol
 package h2
 
-import com.twitter.conversions.storage._
-import com.twitter.conversions.time._
-import com.twitter.finagle.{Path, Stack}
+import com.twitter.conversions.DurationOps._
+import com.twitter.finagle.Path
 import com.twitter.finagle.buoyant.h2.param.FlowControl._
 import com.twitter.finagle.buoyant.h2.param.Settings._
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.ssl.server.SslServerEngineFactory
+import com.twitter.util.StorageUnit
 import io.buoyant.config.Parser
-import io.buoyant.linkerd.RouterConfig
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
 import io.buoyant.test.FunSuite
 
@@ -65,23 +64,23 @@ class H2ConfigTest extends FunSuite {
     val cparams = config.client.get.clientParams.paramsFor(Path.read("/foo"))
     assert(cparams[AutoRefillConnectionWindow] == AutoRefillConnectionWindow(true))
     assert(cparams[WindowUpdateRatio] == WindowUpdateRatio(0.9f))
-    assert(cparams[HeaderTableSize] == HeaderTableSize(Some(1.kilobyte)))
-    assert(cparams[InitialStreamWindowSize] == InitialStreamWindowSize(Some(512.kilobytes)))
-    assert(cparams[MaxFrameSize] == MaxFrameSize(Some(8.kilobytes)))
-    assert(cparams[MaxHeaderListSize] == MaxHeaderListSize(Some(1025.bytes)))
+    assert(cparams[HeaderTableSize] == HeaderTableSize(Some(StorageUnit.fromKilobytes(1))))
+    assert(cparams[InitialStreamWindowSize] == InitialStreamWindowSize(Some(StorageUnit.fromKilobytes(512))))
+    assert(cparams[MaxFrameSize] == MaxFrameSize(Some(StorageUnit.fromKilobytes(8))))
+    assert(cparams[MaxHeaderListSize] == MaxHeaderListSize(Some(StorageUnit.fromBytes(1025))))
 
     val sparams = config.servers.head.serverParams
     assert(sparams[AutoRefillConnectionWindow] == AutoRefillConnectionWindow(true))
     assert(sparams[WindowUpdateRatio] == WindowUpdateRatio(0.5f))
-    assert(sparams[HeaderTableSize] == HeaderTableSize(Some(2.kilobytes)))
-    assert(sparams[InitialStreamWindowSize] == InitialStreamWindowSize(Some(1.megabyte)))
+    assert(sparams[HeaderTableSize] == HeaderTableSize(Some(StorageUnit.fromKilobytes(2))))
+    assert(sparams[InitialStreamWindowSize] == InitialStreamWindowSize(Some(StorageUnit.fromMegabytes(1))))
     assert(sparams[MaxConcurrentStreams] == MaxConcurrentStreams(Some(800)))
-    assert(sparams[MaxFrameSize] == MaxFrameSize(Some(16.kilobytes)))
-    assert(sparams[MaxHeaderListSize] == MaxHeaderListSize(Some(2049.bytes)))
+    assert(sparams[MaxFrameSize] == MaxFrameSize(Some(StorageUnit.fromKilobytes(16))))
+    assert(sparams[MaxHeaderListSize] == MaxHeaderListSize(Some(StorageUnit.fromBytes(2049))))
     assert(sparams[SslServerEngineFactory.Param].factory.isInstanceOf[Netty4ServerEngineFactory])
 
     val pparams = config.service.get.pathParams.paramsFor(Path.read("/foo"))
-    assert(pparams[ClassificationTimeout] == ClassificationTimeout(350.millis))
+    assert(pparams[ClassificationTimeout] == ClassificationTimeout(350.milliseconds))
     assert(pparams[BufferSize] == BufferSize(16384, 16384))
 
     val tls = config.servers.head.tls.get

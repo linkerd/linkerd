@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonProperty}
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.{param, Stack}
 import com.twitter.finagle.buoyant.TotalTimeout
 import com.twitter.finagle.service._

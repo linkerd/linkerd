@@ -1,7 +1,7 @@
 package io.buoyant.linkerd
 package protocol
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.http.{Status, Request, Response}
 import com.twitter.finagle.{Failure, Service}
 import io.buoyant.linkerd.tls.TlsUtils._

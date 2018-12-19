@@ -1,6 +1,6 @@
 package io.buoyant.consul.v1
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.http
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}

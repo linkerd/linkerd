@@ -1,6 +1,6 @@
 package io.buoyant.namer.marathon
 
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.util._
 import io.buoyant.marathon.v2.{Api, WatchState}

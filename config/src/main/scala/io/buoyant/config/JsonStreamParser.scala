@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.concurrent.AsyncStream
-import com.twitter.io.{Buf, Reader}
+import com.twitter.io.{Buf, Reader, StreamTermination}
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, Try}
 import scala.util.control.NonFatal
@@ -79,6 +79,8 @@ class JsonStreamParser(mapper: ObjectMapper with ScalaObjectMapper) {
           None
       }
       def discard(): Unit = reader.discard()
+
+      def onClose: Future[StreamTermination] = reader.onClose
     }
 
     Reader.toAsyncStream(terminatingReader)

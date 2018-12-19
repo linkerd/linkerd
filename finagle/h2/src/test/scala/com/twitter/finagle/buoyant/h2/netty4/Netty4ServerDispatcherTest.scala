@@ -2,16 +2,13 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.concurrent.AsyncQueue
-import com.twitter.finagle
 import com.twitter.finagle.Service
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.finagle.transport.{LegacyContext, Transport, TransportContext}
-import com.twitter.io.Buf
+import com.twitter.finagle.transport.{SimpleTransportContext, Transport, TransportContext}
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
 import java.net.SocketAddress
-import java.security.cert.Certificate
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.immutable.Queue
 
@@ -24,7 +21,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     val closeP = new Promise[Throwable]
     val transport = new Transport[Http2Frame, Http2Frame] {
       type Context = TransportContext
-      def context: Context = new LegacyContext(this)
+      def context: Context = new SimpleTransportContext()
       def status = ???
       def localAddress = new SocketAddress {}
       def remoteAddress = new SocketAddress {}

@@ -1,7 +1,7 @@
 package io.buoyant.linkerd.failureAccrual
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
+import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.liveness.FailureAccrualPolicy
 import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 

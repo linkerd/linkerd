@@ -1,7 +1,6 @@
 package io.buoyant.namer.rancher
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.conversions.time._
 import com.twitter.finagle.{Path, Stack, param}
 import com.twitter.util.Timer
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
