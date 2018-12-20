@@ -127,7 +127,6 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       val retryingClient = infiniteRetryFilter andThen client
       watchState.foreach(_.recordApiCall(req))
       val initialState = Trace.letClear(retryingClient(req))
-
       close.set(Closable.make { _ =>
         log.trace("k8s watch cancelled")
         initialState.raise(Api.Closed)

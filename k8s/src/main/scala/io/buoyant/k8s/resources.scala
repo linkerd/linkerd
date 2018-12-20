@@ -152,15 +152,18 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: O
   override protected def restartWatches(
     labelSelector: Option[String],
     fieldSelector: Option[String]
-  ): Future[(Seq[W], Option[String])] =
+  ): Future[(Seq[W], Option[String])] = {
     get(
       labelSelector = labelSelector,
       fieldSelector = fieldSelector,
       retryIndefinitely = true
-    ).map { maybeList =>
-      val list = maybeList.get // list resources should always exist
-      (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
+    ).map {
+      case Some(list) => (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
+      case None =>
+        log.debug(s"Initial request for api path $watchPath resulted in empty response")
+        (Seq.empty, None)
     }
+  }
 }
 
 /**
@@ -231,11 +234,15 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
       labelSelector = labelSelector,
       fieldSelector = fieldSelector,
       retryIndefinitely = true
-    ).map { maybeObj =>
-      val watch = maybeObj.toSeq.flatMap { obj => Seq(od.toWatch(obj)) }
-      // object watches don't supply a resource version, since the version associated
-      // with the object is tied to when the object was last modified, and therefore
-      // it may be too old to successfully establish a watch
-      (watch, None)
+    ).map {
+      case Some(nsObjects) =>
+        val watch = Seq(nsObjects).flatMap { obj => Seq(od.toWatch(obj)) }
+        // object watches don't supply a resource version, since the version associated
+        // with the object is tied to when the object was last modified, and therefore
+        // it may be too old to successfully establish a watch
+        (watch, None)
+      case None =>
+        log.debug(s"Initial request for api path $watchPath resulted in empty response")
+        (Seq.empty, None)
     }
 }
