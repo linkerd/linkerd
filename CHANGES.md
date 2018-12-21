@@ -3,7 +3,7 @@
 Linkerd 1.6.0 includes a Finagle upgrade that reduces direct memory allocation and adds support for
 more efficient HTTP/1.1 streaming for large HTTP requests. This release also improves Linkerd's 
 execution script to run with Java 9 and higher. Finally, this release adds a new gRPC 
-response-classifier that may be configured with gRPC status codes.
+response-classifier that may be configured with user defined gRPC status codes.
 
 Full release notes:
 
@@ -11,7 +11,7 @@ Full release notes:
 * **Breaking Change**
   * `requestAuthorizers` are now configured in the client section of a router configuration.
   * `maxChunkKB` has been removed and is no longer configurable for HTTP/1.1 routers. Rather than
-   enforcing a hard size limit,Linkerd now streams HTTP/1.1 chunked messages that exceed 
+   enforcing a hard size limit, Linkerd now streams HTTP/1.1 chunked messages that exceed 
   `streamAfterContentLengthKB`
   
 HTTP/1.1
@@ -20,7 +20,7 @@ HTTP/1.1
   not used.
 * Consul  
   * Fixes an issue where the last known good state of an `io.l5d.consul` namer would be cleared if 
-  an 5xx API response from Consul was received.
+  a 5xx API response was received from Consul.
 * gRPC
   * Adds support for all `io.l5d.h2.grpc.*` response classifiers to classify gRPC status codes as 
   `Success` based off of a user defined list within the response classification section of a config.
