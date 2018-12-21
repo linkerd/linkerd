@@ -1,3 +1,31 @@
+## 1.5.3 2018-12-20
+
+Linkerd 1.5.3 includes a Finagle upgrade that fixes some memory related issues and adds support for 
+more efficient HTTP/1.1 routing for large HTTP requests. This release also improves 
+Linkerd's start up script to can run with newer versions of Java. Finally, this release adds a
+new feature for gRPC response classifiers that allow for added flexibility in classifying user 
+defined gRPC status codes.
+
+Full release notes:
+
+HTTP/1.1
+  * Adds a new config option `streamAfterContentLengthKB` that sets a threshold at which HTTP 
+  messages will be streamed by Netty if exceeded. This avoids having to allocate large HTTP messages
+  in memory when routing requests. e.g. file uploads.
+* Consul  
+  * Fixes an issue where the last known good state of an `io.l5d.consul` namer would be cleared if 
+  an 5xx API response from Consul was received.
+* gRPC
+  * Adds support for all `io.l5d.h2.grpc.*` response classifiers to classify gRPC status codes as 
+  `Success` based off of a user defined list within the response classification section of a config.
+* Fixes a startup issue where Linkerd would fail to load `readTimeoutMs` and `writeTimeoutMs`values
+  from socket option configs.  
+* Fixes Linkerd's executable script to work with Java version 9 and higher.
+* Upgrades Finagle to 18.12.0 which reduces the amount of direct memory Linkerd uses at startup time.
+* **Breaking Change**
+  * `requestAuthorizers` are now configured in the client section of a router configuration.
+  * `maxChunkKB` has been removed and is no longer configurable for HTTP/1.1 routers
+    
 ## 1.5.2 2018-11-19
 
 Linkerd 1.5.2 adds performance improvements to HTTP/2, dramatically improving throughput when
