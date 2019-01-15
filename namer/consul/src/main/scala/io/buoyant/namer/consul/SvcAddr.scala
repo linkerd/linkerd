@@ -96,7 +96,7 @@ private[consul] object SvcAddr {
             state.update(Addr.Neg)
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentState))
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, Addr.Neg))
           case Throw(e: IndividualRequestTimeoutException) =>
             // catch request timeout exceptions for Consul API. Use last known good state.
             stats.errors.incr()
