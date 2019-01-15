@@ -67,7 +67,7 @@ private[consul] object SvcAddr {
     InstrumentedVar[Addr](Addr.Pending) { state =>
       stats.opens.incr()
       @volatile var stopped: Boolean = false
-      def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentValueToLog: Addr): Future[Unit] = {
+      def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentState: Addr): Future[Unit] = {
 
         if (stopped) Future.Unit
         else getAddresses(blockingIndex).transform {
@@ -82,12 +82,12 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
-            // this exception case checks if we queried for a service in a datacenter that
-            // doesn't exist. We capture this case so that we can return Addr.Neg to prevent
-            // service name resolution from timing out. Since Consul's HTTP 5xx API response is
-            // overloaded and represents different error states, its necessary for us to capture this
-            // exception and resolve to Addr.Neg see https://github.com/hashicorp/consul/issues/4901
-          case Throw(e: UnexpectedResponse) if e.rsp.contentString == DatacenterErrorMessage =>
+          // this exception case checks if we queried for a service in a datacenter that
+          // doesn't exist. We capture this case so that we can return Addr.Neg to prevent
+          // service name resolution from timing out. Since Consul's HTTP 5xx API response is
+          // overloaded and represents different error states, its necessary for us to capture this
+          // exception and resolve to Addr.Neg see https://github.com/hashicorp/consul/issues/4901
+          case Throw(e: UnexpectedResponse) if e.rsp.contentString == DatacenterErrorMessage && currentState == Addr.Pending =>
             log.log(
               failureLogLevel,
               s"consul datacenter $datacenter service ${key.name} " +
@@ -96,7 +96,7 @@ private[consul] object SvcAddr {
             state.update(Addr.Neg)
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentState))
           case Throw(e: IndividualRequestTimeoutException) =>
             // catch request timeout exceptions for Consul API. Use last known good state.
             stats.errors.incr()
@@ -104,11 +104,11 @@ private[consul] object SvcAddr {
               failureLogLevel,
               "consul datacenter '%s' service '%s' lookup request timed out %s." +
                 " Last known state is %s",
-              datacenter, key.name, e, currentValueToLog
+              datacenter, key.name, e, currentState
             )
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentState))
 
           case Throw(e) =>
             // do not update state, log error and continue polling with backoff
@@ -117,11 +117,11 @@ private[consul] object SvcAddr {
               failureLogLevel,
               "consul datacenter '%s' service '%s' observation error %s." +
                 " Last known state is %s",
-              datacenter, key.name, e, currentValueToLog
+              datacenter, key.name, e, currentState
             )
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentValueToLog))
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentState))
 
           case Return(v1.Indexed(_, None)) =>
             // If consul doesn't return an index, we're in bad shape.

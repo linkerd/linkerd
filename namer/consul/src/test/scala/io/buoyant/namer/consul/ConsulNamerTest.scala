@@ -581,7 +581,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
   }
 
-  test("Namer state returns Pending then Bound then Neg when a datacenter becomes available and then becomes unavailable") {
+  test("Namer state returns Pending then Bound then remains Bound when a datacenter becomes available and then becomes unavailable") {
     val datacenterWillBeUnavailable = new Promise[Unit]
     val datacenterIsAvailable = new Promise[Unit]
     @volatile var datacenterIsUp = false
@@ -642,7 +642,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     withClue("during datacenter crash") {
       datacenterWillBeUnavailable.setDone()
       eventually {
-        assert(state == Activity.Ok(NameTree.Neg))
+        assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
       }
     }
   }
