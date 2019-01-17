@@ -66,6 +66,7 @@ private[consul] object SvcAddr {
     // for service updates.
     InstrumentedVar[Addr](Addr.Pending) { state =>
       stats.opens.incr()
+
       @volatile var stopped: Boolean = false
       def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentState: Addr): Future[Unit] = {
 
@@ -82,50 +83,28 @@ private[consul] object SvcAddr {
             )
             stopped = true
             Future.Unit
-          // this exception case checks if we queried for a service in a datacenter that
-          // doesn't exist. We capture this case so that we can return Addr.Neg to prevent
-          // service name resolution from timing out. Since Consul's HTTP 5xx API response is
-          // overloaded and represents different error states, its necessary for us to capture this
-          // exception and resolve to Addr.Neg see https://github.com/hashicorp/consul/issues/4901
-          case Throw(e: UnexpectedResponse) if e.rsp.contentString == DatacenterErrorMessage && currentState == Addr.Pending =>
-            log.log(
-              failureLogLevel,
-              s"consul datacenter $datacenter service ${key.name} " +
-                s"lookup request received invalid dc error $e."
-            )
-            state.update(Addr.Neg)
-            val backoff #:: nextBackoffs = backoffs
-            // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, Addr.Neg))
-          case Throw(e: IndividualRequestTimeoutException) =>
-            // catch request timeout exceptions for Consul API. Use last known good state.
-            stats.errors.incr()
-            log.log(
-              failureLogLevel,
-              "consul datacenter '%s' service '%s' lookup request timed out %s." +
-                " Last known state is %s",
-              datacenter, key.name, e, currentState
-            )
-            val backoff #:: nextBackoffs = backoffs
-            // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentState))
-
           case Throw(e) =>
-            // do not update state, log error and continue polling with backoff
+            // Update state only if it is state Pending to not let linkerd hang on name resolution
+            // Otherwise retain last known state to allow namerd survive intermittent failures
             stats.errors.incr()
+            val effectiveState = if (currentState == Addr.Pending) {
+              state.update(Addr.Neg)
+              Addr.Neg
+            } else {
+              currentState
+            }
+
             log.log(
               failureLogLevel,
-              "consul datacenter '%s' service '%s' observation error %s." +
-                " Last known state is %s",
-              datacenter, key.name, e, currentState
+              "consul datacenter '%s' service '%s' observation error %s. Current state is %s",
+              datacenter, key.name, e, effectiveState
             )
             val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, currentState))
-
+            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, effectiveState))
           case Return(v1.Indexed(_, None)) =>
+            // TODO: this looks like dead code. If response is 200, it will contain index. Remove?
             // If consul doesn't return an index, we're in bad shape.
-            // TODO: do we want to revert to the last good state here, as well?
             state.update(Addr.Failed(NoIndexException))
             stats.errors.incr()
             log.error(
