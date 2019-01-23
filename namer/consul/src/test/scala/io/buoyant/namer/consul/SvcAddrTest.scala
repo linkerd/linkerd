@@ -1,7 +1,7 @@
 package io.buoyant.namer.consul
 
 import com.twitter.conversions.DurationOps._
-import com.twitter.finagle.http.Request
+import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Addr, Address, Failure, IndividualRequestTimeoutException}
@@ -48,41 +48,142 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
       ): ApiCall[IndexedServiceNodes] = ApiCall(emptyRequest, _ => stubFn(serviceName, datacenter, tag, blockingIndex, consistency, retry))
     }
 
-  test("should keep last known Addr.Bound value on error") {
-    // given
-    val invoked = Promise[Unit]()
-    val (serviceNode, serviceAddr) = service()
-    val response = Indexed[Seq[ServiceNode]](Seq(serviceNode), Some("1"))
-    val backoffs: Stream[Duration] = Stream.fill(10)(10.millis)
-    @volatile var changes: Addr = Addr.Pending
-    @volatile var requestCount = new AtomicInteger()
-    val api = apiStub { (_, _, _, _, _, _) =>
-      synchronized {
-        requestCount.getAndIncrement() match {
-          case 0 => Future.value(response)
-          case 1 => Future.exception(new Throwable("whatever is thrown we catch"))
-          case _ =>
-            invoked.setDone()
-            Future.never
-        }
+  /**
+   * Creates CatalogApi stub that serves responses in sequence.
+   * Returns CatalogApi and a Future that is satisfied after all responses are served.
+   */
+  def scriptedApiStub(scriptedResponses: Future[IndexedServiceNodes]*): (CatalogApi, Future[Unit]) = {
+    val servedAllResponses = Promise[Unit]()
+    var remaining = scriptedResponses.toSeq
+    apiStub { (_, _, _, _, _, _) =>
+      remaining match {
+        case head +: tail =>
+          remaining = tail
+          head
+        case _ =>
+          servedAllResponses.setDone()
+          Future.never
       }
-    }
+    } -> servedAllResponses
+  }
+
+  object singletonSet {
+    def unapply[T](arg: Set[T]): Option[T]= arg.headOption
+  }
+
+  test("should keep last known Addr.Bound value on generic error") {
+    // given
+    val (serviceNode, serviceAddr) = service()
+    val (api, servedAll) = scriptedApiStub(
+      Future.value(Indexed[Seq[ServiceNode]](Seq(serviceNode), Some("1"))),
+      Future.exception(new Throwable("whatever is thrown we catch"))
+    )
 
     // when
-    val addr: InstrumentedVar[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    val svcAddrVar: InstrumentedVar[Addr] = SvcAddr(
+      api,
+      Stream.continually(1.millis),
+      "dc1",
+      SvcKey("svc", None),
+      None,
+      None,
+      None,
+      Map.empty,
+      Stats(NullStatsReceiver),
+      new PollState
+    )
+    // observe Var so it is not dormant
+    svcAddrVar.underlying.changes.respond(_ => ())
 
     // then
-    addr.underlying.changes.respond(changes = _)
-    await(invoked)
-    addr.running shouldBe true
-    addr.lastStartedAt shouldBe 'defined
-    addr.lastStoppedAt should not be 'defined
-    addr.lastUpdatedAt shouldBe 'defined
-    changes match {
-      case Addr.Bound(addrSet, _) =>
-        addrSet should have size 1
-        addrSet.head should matchPattern { case Address.Inet(addr, _) if addr == serviceAddr => }
-      case neg: Addr => neg should be(Addr.Neg)
+    await(servedAll)
+
+    svcAddrVar.running shouldBe true
+    svcAddrVar.lastStartedAt shouldBe 'defined
+    svcAddrVar.lastStoppedAt should not be 'defined
+    svcAddrVar.lastUpdatedAt shouldBe 'defined
+
+    svcAddrVar.underlying.sample() should matchPattern {
+      case Addr.Bound(singletonSet(Address.Inet(addr, _)), _) if addr == serviceAddr => ()
+    }
+  }
+
+  test("should keep last known Addr.Bound value on the 'No path to datacenter' error") {
+    // given
+    val (serviceNode, serviceAddr) = service()
+
+    val rsp = Response(Version.Http11, Status.InternalServerError)
+    rsp.contentString = "No path to datacenter"
+    val (api, servedAll) = scriptedApiStub(
+      Future.value(Indexed[Seq[ServiceNode]](Seq(serviceNode), Some("1"))),
+      Future.exception(UnexpectedResponse(rsp))
+    )
+
+    // when
+    val svcAddrVar: InstrumentedVar[Addr] = SvcAddr(
+      api,
+      Stream.continually(1.millis),
+      "dc1",
+      SvcKey("svc", None),
+      None,
+      None,
+      None,
+      Map.empty,
+      Stats(NullStatsReceiver),
+      new PollState
+    )
+    // observe Var so it is not dormant
+    svcAddrVar.underlying.changes.respond(_ => ())
+
+    // then
+    await(servedAll)
+
+    svcAddrVar.running shouldBe true
+    svcAddrVar.lastStartedAt shouldBe 'defined
+    svcAddrVar.lastStoppedAt should not be 'defined
+    svcAddrVar.lastUpdatedAt shouldBe 'defined
+
+    svcAddrVar.underlying.sample() should matchPattern {
+      case Addr.Bound(singletonSet(Address.Inet(addr, _)), _) if addr == serviceAddr => ()
+    }
+  }
+
+  test("should return Addr.Neg on the 'No path to datacenter' error if no previous state exist") {
+    // given
+    val (serviceNode, serviceAddr) = service()
+
+    val rsp = Response(Version.Http11, Status.InternalServerError)
+    rsp.contentString = "No path to datacenter"
+    val (api, servedAll) = scriptedApiStub(
+      Future.exception(UnexpectedResponse(rsp))
+    )
+
+    // when
+    val svcAddrVar: InstrumentedVar[Addr] = SvcAddr(
+      api,
+      Stream.continually(1.millis),
+      "dc1",
+      SvcKey("svc", None),
+      None,
+      None,
+      None,
+      Map.empty,
+      Stats(NullStatsReceiver),
+      new PollState
+    )
+    // observe Var so it is not dormant
+    svcAddrVar.underlying.changes.respond(_ => ())
+
+    // then
+    await(servedAll)
+
+    svcAddrVar.running shouldBe true
+    svcAddrVar.lastStartedAt shouldBe 'defined
+    svcAddrVar.lastStoppedAt should not be 'defined
+    svcAddrVar.lastUpdatedAt shouldBe 'defined
+
+    svcAddrVar.underlying.sample() should matchPattern {
+      case Addr.Neg =>
     }
   }
 
@@ -134,24 +235,40 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     extracted should be(Some(cause))
   }
 
-  test("should be Addr.Pending when unexpected error occurs initially") {
+  test("should be Addr.Pending before call to consul returns") {
     // given
-    val invoked = Promise[Unit]()
     val api = apiStub { (_, _, _, _, _, _) =>
-      invoked.setDone()
+      Future.never
+    }
+
+    // when
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    addr.underlying.changes.respond(_ => ())
+
+    // then
+    addr.running shouldBe true
+    addr.lastStartedAt shouldBe 'defined
+    addr.lastStoppedAt should not be 'defined
+    addr.lastUpdatedAt should not be 'defined
+    addr.underlying.sample() should matchPattern { case Addr.Pending => () }
+  }
+
+  test("should be Addr.Neg when unexpected error occurs initially") {
+    // given
+    val api = apiStub { (_, _, _, _, _, _) =>
       Future.exception(new Throwable("No path to datacenter"))
     }
 
     // when
     val addr: InstrumentedVar[Addr] = SvcAddr(api, hangForLongBackoff, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    addr.underlying.changes.respond(_ => ())
 
     // then
-    await(addr.underlying.changes.toFuture)
-    addr.running shouldBe false
+    addr.running shouldBe true
     addr.lastStartedAt shouldBe 'defined
-    addr.lastStoppedAt shouldBe 'defined
-    addr.lastUpdatedAt should not be 'defined
-    addr.underlying.sample() should matchPattern { case Addr.Pending => }
+    addr.lastStoppedAt should not be 'defined
+    addr.lastUpdatedAt shouldBe 'defined
+    addr.underlying.sample() should matchPattern { case Addr.Neg => () }
   }
 
   test("should use last known state on api timeout") {

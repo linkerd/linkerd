@@ -96,7 +96,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
   }
 
-  test("Namer stays pending if the consul api cannot be reached") {
+  test("Namer returns Neg if the consul api cannot be reached for a name that was never resolved") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -116,7 +116,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         state = _
       }
 
-      assert(state == Activity.Pending)
+      assert(state == Activity.Ok(NameTree.Neg))
       assert(
         stats.counters == Map(
           Seq("service", "updates") -> 0,
@@ -581,7 +581,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
   }
 
-  test("Namer state returns Pending then Bound then Neg when a datacenter becomes available and then becomes unavailable") {
+  test("Namer state returns Neg then Bound then remains Bound when a datacenter becomes available and then becomes unavailable") {
     val datacenterWillBeUnavailable = new Promise[Unit]
     val datacenterIsAvailable = new Promise[Unit]
     @volatile var datacenterIsUp = false
@@ -629,7 +629,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     withClue("before datacenter is available") {
       eventually {
-        assert(state == Activity.Pending)
+        assert(state == Activity.Ok(NameTree.Neg))
       }
 
       datacenterIsAvailable.setDone()
@@ -642,7 +642,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     withClue("during datacenter crash") {
       datacenterWillBeUnavailable.setDone()
       eventually {
-        assert(state == Activity.Ok(NameTree.Neg))
+        assertOnAddrs(state) { (addrs, _) => assert(addrs.size == 2); () }
       }
     }
   }
