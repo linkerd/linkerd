@@ -103,8 +103,8 @@ private[consul] object SvcAddr {
             // subsequent errors are logged as DEBUG
             Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, effectiveState))
           case Return(v1.Indexed(_, None)) =>
-            // TODO: this looks like dead code. If response is 200, it will contain index. Remove?
             // If consul doesn't return an index, we're in bad shape.
+            // TODO: do we want to revert to the last good state here, as well?
             state.update(Addr.Failed(NoIndexException))
             stats.errors.incr()
             log.error(
