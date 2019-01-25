@@ -24,7 +24,7 @@ object DelegatorService {
   ): mesh.Delegator.Server =
     new mesh.Delegator.Server(new Impl(store, namers, stats))
 
-  private[this] class Impl(
+  private[mesh] class Impl(
     store: DtabStore,
     namers: Map[Path, Namer],
     stats: StatsReceiver
@@ -74,33 +74,33 @@ object DelegatorService {
     }
   }
 
-  private[this] val _extractDtab: Option[VersionedDtab] => Dtab = {
+  private[mesh] val _extractDtab: Option[VersionedDtab] => Dtab = {
     case None => Dtab.empty
     case Some(VersionedDtab(dtab, _)) => dtab
   }
 
-  private[this] val _transformDtabRsp: Try[Option[VersionedDtab]] => Future[mesh.DtabRsp] = {
+  private[mesh] val _transformDtabRsp: Try[Option[VersionedDtab]] => Future[mesh.DtabRsp] = {
     case Return(None) => Future.exception(Errors.RootNotFound)
     case Return(Some(vdtab)) => Future.value(toDtabRsp(vdtab))
     case Throw(e) => Future.exception(GrpcStatus.Internal(e.getMessage))
   }
 
-  private[this] val toDtabRsp: VersionedDtab => mesh.DtabRsp = { vdtab =>
+  private[mesh] val toDtabRsp: VersionedDtab => mesh.DtabRsp = { vdtab =>
     val v = mesh.VersionedDtab.Version(Some(vdtab.version))
     val d = toDtab(vdtab.dtab)
     mesh.DtabRsp(Some(mesh.VersionedDtab(Some(v), Some(d))))
   }
 
-  private[this] val toDtabRspEv: Try[Option[VersionedDtab]] => VarEventStream.Ev[mesh.DtabRsp] = {
+  private[mesh] val toDtabRspEv: Try[Option[VersionedDtab]] => VarEventStream.Ev[mesh.DtabRsp] = {
     case Return(Some(vdtab)) => VarEventStream.Val(toDtabRsp(vdtab))
     case Return(None) => VarEventStream.End(Throw(Errors.RootNotFound)) // TODO empty dtab?
     case Throw(e) => VarEventStream.End(Throw(GrpcStatus.Internal(e.getMessage)))
   }
 
-  private[this] val toDelegateWeightedTree: DelegateTree.Weighted[Name.Bound] => mesh.BoundDelegateTree.Union.Weighted =
+  private[mesh] val toDelegateWeightedTree: DelegateTree.Weighted[Name.Bound] => mesh.BoundDelegateTree.Union.Weighted =
     wt => mesh.BoundDelegateTree.Union.Weighted(Some(wt.weight), Some(toDelegateTree(wt.tree)))
 
-  private[this] def mkBoundDelegateTree(
+  private[mesh] def mkBoundDelegateTree(
     path: Path,
     dentry: Option[Dentry],
     node: mesh.BoundDelegateTree.OneofNode
@@ -110,14 +110,14 @@ object DelegatorService {
     Some(node)
   )
 
-  private[this] def mkBoundDelegateTree(
+  private[mesh] def mkBoundDelegateTree(
     path: Path,
     dentry: Dentry,
     node: mesh.BoundDelegateTree.OneofNode
   ): mesh.BoundDelegateTree =
     mkBoundDelegateTree(path, Some(dentry), node)
 
-  private[this] def mkBoundDelegateTreeLeaf(name: Name.Bound): Option[mesh.BoundDelegateTree.Leaf] =
+  private[mesh] def mkBoundDelegateTreeLeaf(name: Name.Bound): Option[mesh.BoundDelegateTree.Leaf] =
     name.id match {
       case id: Path =>
         val pid = toPath(id)
@@ -126,7 +126,7 @@ object DelegatorService {
       case _ => None
     }
 
-  private[this] val toDelegateTree: DelegateTree[Name.Bound] => mesh.BoundDelegateTree = {
+  private[mesh] val toDelegateTree: DelegateTree[Name.Bound] => mesh.BoundDelegateTree = {
     case DelegateTree.Neg(p, d) =>
       mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Neg(mesh.BoundDelegateTree.Neg()))
     case DelegateTree.Fail(p, d) =>
@@ -137,7 +137,8 @@ object DelegatorService {
     case DelegateTree.Delegate(p, d, t) =>
       mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Delegate(toDelegateTree(t)))
     case DelegateTree.Exception(p, d, e) =>
-      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Exception(e.getMessage))
+      val msg = if(e.getMessage == null) "No underlying exception message" else e.getMessage
+      mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Exception(s"BoundDelegateTree Exception: $msg"))
     case DelegateTree.Transformation(p, desc, n, t) =>
       val leaf = mkBoundDelegateTreeLeaf(n)
       val ptrans = mesh.BoundDelegateTree.Transformation(Some(desc), leaf, Some(toDelegateTree(t)))
@@ -161,10 +162,10 @@ object DelegatorService {
       mkBoundDelegateTree(p, d, node)
   }
 
-  private[this] val toDelegateTreeRsp: DelegateTree[Name.Bound] => mesh.DelegateTreeRsp =
+  private[mesh] val toDelegateTreeRsp: DelegateTree[Name.Bound] => mesh.DelegateTreeRsp =
     t => mesh.DelegateTreeRsp(Some(toDelegateTree(t)))
 
-  private[this] val toDelegateTreeRspEv: Try[DelegateTree[Name.Bound]] => VarEventStream.Ev[mesh.DelegateTreeRsp] = {
+  private[mesh] val toDelegateTreeRspEv: Try[DelegateTree[Name.Bound]] => VarEventStream.Ev[mesh.DelegateTreeRsp] = {
     case Return(tree) => VarEventStream.Val(toDelegateTreeRsp(tree))
     case Throw(e) => VarEventStream.End(Throw(e))
   }
