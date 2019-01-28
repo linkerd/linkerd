@@ -34,7 +34,7 @@ class Base extends Build {
 
   val headVersion = "1.6.0"
   val openJdkVersion = "8u151"
-  val openJ9Version = "jdk8u162-b12_openj9-0.8.0"
+  val openJ9Version = "jdk8u192-b12_openj9-0.11.0"
 
   object Git {
     def git(arg: String, args: String*) = Process("git" +: arg +: args)
