@@ -374,7 +374,7 @@ object LinkerdBuild extends Base {
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          | Unable to use [$GC_LOG] for GC logging."
          |else
-         |  version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
          |
          |  if [ "$version" -ge 9 ]; then
          |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
@@ -469,7 +469,7 @@ object LinkerdBuild extends Base {
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          | Unable to use [$GC_LOG] for GC logging."
          |else
-         |  version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
          |
          |  if [ "$version" -ge 9 ]; then
          |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
@@ -714,7 +714,7 @@ object LinkerdBuild extends Base {
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          | Unable to use [$GC_LOG] for GC logging."
          |else
-         |  version=$("${JAVA_HOME:-usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
          |
          |  if [ "$version" -ge 9 ]; then
          |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
