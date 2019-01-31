@@ -275,7 +275,7 @@ enabled | true | If set to true, data is sent to Buoyant once per hour
 ### Socket Options
 
 Linkerd supports configuring socket level options for any given interface.
-i.e. the admin and router interfaces. These configurations are only available 
+i.e. the admin and router interfaces. These configurations are only available
 on Linux 3.9 distributions and newer.
 
 Key | Default Value | Description
@@ -286,3 +286,4 @@ reusePort | false | If set to true, enables the `SO_REUSEPORT` option, which can
 readTimeoutMs | unbounded | Configures this client or server with given transport-level socket read timeout in milliseconds.
 writeTimeoutMs | unbounded | Configures this client or server with given transport-level socket write timeout in milliseconds.
 keepAlive | false | If set to true, enables the `SO_KEEPALIVE` option, which will enable keep alive on the socket.
+backlog | None | If set will adjust the backlog queue size of the socket, a default of None falls back to the OS defined value of SOMAXCONN

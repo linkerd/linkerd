@@ -3,6 +3,7 @@ package com.twitter.finagle.buoyant
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.finagle.Stack
 import com.twitter.finagle.transport.Transport
+import com.twitter.finagle.server.Listener
 import com.twitter.util.Duration
 
 case class SocketOptionsConfig(
@@ -11,7 +12,8 @@ case class SocketOptionsConfig(
   reusePort: Boolean = false,
   @JsonDeserialize(contentAs = classOf[java.lang.Long]) writeTimeoutMs: Option[Long] = None,
   @JsonDeserialize(contentAs = classOf[java.lang.Long]) readTimeoutMs: Option[Long] = None,
-  keepAlive: Option[Boolean] = None
+  keepAlive: Option[Boolean] = None,
+  backlog: Option[Int] = None
 ) {
   def params: Stack.Params = {
     val writeTimeout: Duration = writeTimeoutMs match {
@@ -26,7 +28,8 @@ case class SocketOptionsConfig(
 
     Stack.Params.empty +
       Transport.Options(noDelay, reuseAddr, reusePort) +
-      Transport.Liveness(writeTimeout, readTimeout, keepAlive)
+      Transport.Liveness(writeTimeout, readTimeout, keepAlive) +
+      Listener.Backlog(backlog)
   }
 
 }
