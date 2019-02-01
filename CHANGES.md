@@ -1,3 +1,22 @@
+## 1.6.1 2019-02-01
+
+The first 1.x release of the year brings minor bug fixes to Namerd, the `io.l5d.consul` and 
+`io.l5d.curator` namers. This release features contributions from [NCBI](https://github.com/ncbi)
+and ThreeComma. A big thank you to [edio](https://github.com/edio) and 
+[Chris Goffinet](https://github.com/chrisgoffinet) for their contributions in this release.
+
+Full release notes:
+
+* Improves the `io.l5d.consul` namer's error handling in cases were it receives intermittent 5xx 
+HTTP errors from Consul
+* Fixes a `java.lang.NoSuchMethodError` that would sometimes occur when using the `io.l5d.curator` 
+namer
+* Fixes a `NullPointerException` that would occur when using the `io.l5d.mesh` interface in Namerd
+* Adds a new configuration option called `backlog` to `socketOptions` that allows you to set up a
+backlog queue size for TCP connections
+* Fixes an issue where the `interpreter_state` watch endpoint would sometimes display incorrect
+IP addresses
+
 ## 1.6.0 2018-12-20
 
 Linkerd 1.6.0 includes a Finagle upgrade that reduces direct memory allocation and adds support for
