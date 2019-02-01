@@ -1,7 +1,9 @@
 ## 1.6.1 2019-02-01
 
-The first release of the year brings minor bug fixes to Namerd, the `io.l5d.consul` and 
-`io.l5d.curator` namers.
+The first 1.x release of the year brings minor bug fixes to Namerd, the `io.l5d.consul` and 
+`io.l5d.curator` namers. This release features contributions from [NCBI](https://github.com/ncbi)
+and ThreeComma. A big thank you to [edio](https://github.com/edio) and 
+[Chris Goffinet](https://github.com/chrisgoffinet) for their contributions in this release.
 
 Full release notes:
 
