@@ -91,7 +91,7 @@ parameter `successStatusCodes` that accepts a user-defined list of gRPC
 status codes that should always be classified as `Success`.
 
 <aside class="notice">
-When defining `successStatusCodes`, it is up to the user to explicity classify
+When defining `successStatusCodes`, it is up to the user to explicitly classify
 status code 0 (`OK`) as `Success`.
 </aside>
 
