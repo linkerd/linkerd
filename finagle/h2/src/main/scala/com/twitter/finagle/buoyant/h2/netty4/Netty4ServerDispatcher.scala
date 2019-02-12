@@ -3,6 +3,7 @@ package netty4
 
 import com.twitter.finagle.{Failure, FailureFlags, Service}
 import com.twitter.finagle.context.{Contexts, RemoteInfo}
+import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.logging.Logger
@@ -30,6 +31,7 @@ object Netty4ServerDispatcher {
  */
 class Netty4ServerDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
+  override protected[this] val failureThreshold: Option[FailureDetector.Config],
   service: Service[Request, Response],
   protected[this] val stats: StatsReceiver
 ) extends Netty4DispatcherBase[Response, Request] with Closable {

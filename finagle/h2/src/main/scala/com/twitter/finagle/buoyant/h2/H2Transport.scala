@@ -37,5 +37,7 @@ object H2Transport {
     def goAway(err: GoAway, deadline: Time): Future[Unit]
 
     final def goAway(err: GoAway): Future[Unit] = goAway(err, Time.Top)
+
+    def ping(): Future[Unit]
   }
 }

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
+import com.twitter.finagle.liveness.FailureDetector
+import com.twitter.finagle.liveness.FailureDetector.ThresholdConfig
 import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.util.DefaultTimer
@@ -32,16 +34,37 @@ object MeshInterpreterConfig {
   val defaultRetry = Retry(1, 10.minutes.inSeconds)
 }
 
+object FailureThresholdConfig {
+  val DefaultMinPeriod = 5.seconds
+  val DefaultCloseTimeout = 6.seconds
+}
+
 case class Retry(
   baseSeconds: Int,
   maxSeconds: Int
 )
 
+case class FailureThresholdConfig(
+  minPeriodMs: Option[Int],
+  closeTimeoutMs: Option[Int]
+) {
+  @JsonIgnore
+  def params: Stack.Params = {
+    val thresholdConfig = ThresholdConfig(
+      minPeriodMs.map(_.milliseconds).getOrElse(FailureThresholdConfig.DefaultMinPeriod),
+      closeTimeoutMs.map(_.milliseconds).getOrElse(FailureThresholdConfig.DefaultCloseTimeout)
+    )
+    StackParams.empty + FailureDetector.Param(thresholdConfig)
+  }
+
+}
+
 case class MeshInterpreterConfig(
   dst: Option[Path],
   root: Option[Path],
   tls: Option[TlsClientConfig],
-  retry: Option[Retry]
+  retry: Option[Retry],
+  failureThreshold: Option[FailureThresholdConfig]
 ) extends InterpreterConfig {
   import MeshInterpreterConfig._
 
@@ -59,9 +82,10 @@ case class MeshInterpreterConfig(
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+    val failureThresholdParams = failureThreshold.map(_.params).getOrElse(Stack.Params.empty)
 
     val client = H2.client
-      .withParams(H2.client.params ++ tlsParams ++ params)
+      .withParams(H2.client.params ++ tlsParams ++ failureThresholdParams ++ params)
       .newService(name, label)
 
     root.getOrElse(DefaultRoot) match {
