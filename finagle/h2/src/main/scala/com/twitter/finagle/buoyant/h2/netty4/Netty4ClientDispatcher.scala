@@ -67,7 +67,7 @@ class Netty4ClientDispatcher(
   }
 
   override def status: SvcStatus =
-    if (isClosed) SvcStatus.Closed
+    if (isClosed || failureDetector.status == SvcStatus.Closed) SvcStatus.Closed
     else SvcStatus.Open
 
   /**

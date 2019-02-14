@@ -11,7 +11,7 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
@@ -21,12 +21,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def prefix: String
   protected[this] def stats: StatsReceiver
   protected[this] def failureThreshold: Option[FailureDetector.Config] = None
-
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
-  protected[this] def failureDetector: FailureDetector = failureThreshold match {
-    case None => FailureDetector(NullConfig, () => Future.never, stats)
-    case Some(cfg) => FailureDetector(cfg, (ping _), stats)
-  }
 
   protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
   /**
@@ -50,32 +45,44 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     streams.size()
   }
 
-  @volatile private[this] var pingFramePromise: Promise[Unit] = null
+  private[this] val pingPromise: AtomicReference[Promise[Unit]] = new AtomicReference(null)
 
   protected[this] val OutstandingPingEx = Failure("Outstanding ping on HTTP/2 connection")
   protected[this] val eventLoop = transport.context match {
-    case trans: HasExecutor => trans.executor
-    case _ => null
+    case trans: HasExecutor => Some(trans.executor)
+    case _ => None
   }
 
   protected[this] def ping(): Future[Unit] = {
     val done = new Promise[Unit]
-    eventLoop.execute(
-      new Runnable {
-        override def run(): Unit = {
-          if (pingFramePromise == null) {
-            writer.ping()
-            pingFramePromise = done
-          } else {
-            done.setException(OutstandingPingEx)
+    eventLoop match {
+      case None =>
+        // Immediately satisfy the promise to prevent the failure detector from marking the
+        // the connection as closed if we don't have a way to execute a ping request on another
+        // thread.
+        done.setDone()
+        done
+      case Some(executor) =>
+        executor.execute(
+          new Runnable {
+            override def run(): Unit = {
+              val prevPromise = pingPromise.getAndSet(done)
+              if (prevPromise == null || prevPromise.isDone) {
+                val _ = writer.sendPing()
+              } else {
+                done.setException(OutstandingPingEx)
+              }
+            }
           }
-        }
-      }
-    )
-    done
+        )
+        done
+    }
   }
 
-  private[this] val detector = failureDetector
+  protected[this] val failureDetector: FailureDetector = failureThreshold match {
+    case None => FailureDetector(NullConfig, null, null)
+    case Some(cfg) => FailureDetector(cfg, (ping _), stats)
+  }
 
   private[this] val closedId: AtomicInteger = new AtomicInteger(0)
   @tailrec private[this] def addClosedId(id: Int): Unit = {
@@ -139,11 +146,6 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     transport.read().rescue(wrapRemoteEx)
 
   protected[this] def demux(): Future[Unit] = {
-    detector.onClose.ensure {
-      log.debug(s"[%s] did not receive HTTP/2 ping ack from remote [%s]", prefix, transport.context.remoteAddress)
-      goAway(GoAway.InternalError); ()
-    }
-
     lazy val loop: Try[Http2Frame] => Future[Unit] = {
       case Throw(e) if closed.get =>
         log.debug("[%s] dispatcher closed: %s", prefix, e)
@@ -172,15 +174,15 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         // We received a settings frame, keep reading from the transport
         transport.read().transform(loop)
       case Return(f: Http2PingFrame) =>
-        if (f.ack() && pingFramePromise != null) {
+        if (f.ack()) {
           // client sent a ping and got acknowledgement. Satisfy promise to let failure detector
           // know the connection is still alive.
-          pingFramePromise.setDone()
-          pingFramePromise = null
-
-        } else {
-          // transport received initial ping frame. Delegates to underlying Netty FrameListener
-          // to send Ping ACK.
+          val _ = pingPromise.updateAndGet(
+            (t: Promise[Unit]) => {
+              t.setDone()
+              t
+            }
+          )
         }
         transport.read().transform(loop)
 

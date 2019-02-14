@@ -38,6 +38,6 @@ object H2Transport {
 
     final def goAway(err: GoAway): Future[Unit] = goAway(err, Time.Top)
 
-    def ping(): Future[Unit]
+    def sendPing(): Future[Unit]
   }
 }

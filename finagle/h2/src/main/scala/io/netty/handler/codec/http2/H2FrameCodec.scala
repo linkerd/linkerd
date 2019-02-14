@@ -299,18 +299,11 @@ object H2FrameCodec {
         0 // bytes are marked as consumed via WindowUpdateFrame writes
       }
 
-      override def onPingRead(
-        ctx: ChannelHandlerContext,
-        data: Long
-      ): Unit = {
-        val ping = new DefaultHttp2PingFrame(data)
-        ctx.fireChannelRead(ping); ()
-      }
-
       override def onPingAckRead(
         ctx: ChannelHandlerContext,
         data: Long
       ): Unit = {
+        // Propagate ping acks so that failure detector is informed of PING ACK Frames
         val pingAck = new DefaultHttp2PingFrame(data, true)
         ctx.fireChannelRead(pingAck); ()
       }

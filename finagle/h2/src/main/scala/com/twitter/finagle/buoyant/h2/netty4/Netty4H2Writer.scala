@@ -49,7 +49,7 @@ private[netty4] trait Netty4H2Writer extends H2Transport.Writer {
     write(frame)
   }
 
-  override def ping(): Future[Unit] = {
+  override def sendPing(): Future[Unit] = {
     val frame = new DefaultHttp2PingFrame(0)
     write(frame)
   }
