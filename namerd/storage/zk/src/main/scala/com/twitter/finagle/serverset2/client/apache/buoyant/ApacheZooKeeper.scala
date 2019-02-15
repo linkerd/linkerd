@@ -1,3 +1,4 @@
+// Modified from com.twitter.finagle.serverset2.client.apache.ApacheZooKeeper | (c) 2019 Twitter, Inc. | http://www.apache.org/licenses/LICENSE-2.0 */
 package com.twitter.finagle.serverset2.client.apache.buoyant
 
 import com.twitter.conversions.DurationOps._
