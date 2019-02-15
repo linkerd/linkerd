@@ -36,7 +36,7 @@ class Netty4ClientDispatcher(
   override protected[this] val prefix =
     s"C L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
 
-  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
+  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats.scope("stream"))
 
   transport.onClose.onSuccess(onTransportClose)
 
@@ -67,7 +67,7 @@ class Netty4ClientDispatcher(
   }
 
   override def status: SvcStatus =
-    if (isClosed || failureDetector.status == SvcStatus.Closed) SvcStatus.Closed
+    if (isClosed) SvcStatus.Closed
     else SvcStatus.Open
 
   /**

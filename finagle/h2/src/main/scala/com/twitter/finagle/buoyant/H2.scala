@@ -60,7 +60,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
     protected def newDispatcher(trans: Http2FrameTransport {
       type Context <: self.Context
     }): Service[Request, Response] = {
-      new Netty4ClientDispatcher(trans, Some(detectorCfg), statsReceiver.scope("stream"))
+      new Netty4ClientDispatcher(trans, Some(detectorCfg), statsReceiver)
     }
   }
 
@@ -109,7 +109,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       },
       service: Service[Request, Response]
     ): Closable = {
-      new Netty4ServerDispatcher(trans, None, service, statsReceiver.scope("stream"))
+      new Netty4ServerDispatcher(trans, None, service, statsReceiver)
     }
   }
 

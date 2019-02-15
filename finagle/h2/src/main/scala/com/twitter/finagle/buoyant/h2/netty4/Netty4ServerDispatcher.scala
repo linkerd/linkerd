@@ -40,7 +40,7 @@ class Netty4ServerDispatcher(
   override protected[this] val log = Netty4ServerDispatcher.log
   override protected[this] val prefix =
     s"S L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
-  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
+  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats.scope("stream"))
 
   transport.onClose.onSuccess(onTransportClose)
 

@@ -61,13 +61,11 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         // the connection as closed if we don't have a way to execute a ping request on another
         // thread.
         done.setDone()
-        done
       case Some(executor) =>
         executor.execute(
           new Runnable {
             override def run(): Unit = {
-              val prevPromise = pingPromise.getAndSet(done)
-              if (prevPromise == null || prevPromise.isDone) {
+              if (pingPromise.compareAndSet(null, done)) {
                 val _ = writer.sendPing()
               } else {
                 done.setException(OutstandingPingEx)
@@ -75,13 +73,17 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
             }
           }
         )
-        done
     }
+    done
   }
 
   protected[this] val failureDetector: FailureDetector = failureThreshold match {
     case None => FailureDetector(NullConfig, null, null)
-    case Some(cfg) => FailureDetector(cfg, (ping _), stats)
+    case Some(cfg) => FailureDetector(cfg, (ping _), stats.scope("failure_detector"))
+  }
+  failureDetector.onClose.ensure {
+    log.debug(s"failure detector closed HTTP/2 connection: $prefix")
+    goAway(GoAway.InternalError); ()
   }
 
   private[this] val closedId: AtomicInteger = new AtomicInteger(0)
@@ -177,12 +179,8 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         if (f.ack()) {
           // client sent a ping and got acknowledgement. Satisfy promise to let failure detector
           // know the connection is still alive.
-          val _ = pingPromise.updateAndGet(
-            (t: Promise[Unit]) => {
-              t.setDone()
-              t
-            }
-          )
+          val prevPingPromise = pingPromise.getAndSet(null)
+          prevPingPromise.setDone()
         }
         transport.read().transform(loop)
 
