@@ -169,13 +169,10 @@ private[serverset2] class ApacheZooKeeper private[serverset2] (zk: zookeeper.Zoo
   }
 
   def getDataWatch(path: String): Future[Watched[Node.Data]] = {
-    log.info("getDataWatch for path: %s", path)
-
     val watcher = new ApacheWatcher
     val rv = new Promise[Watched[Node.Data]]
     rv.setInterruptHandler {
-      case ex: Throwable =>
-        log.info("path: %s has handled interrupt", path)
+      case ex: FutureCancelledException =>
         rv.setException(ex)
         zk.removeWatches(path, watcher, WatcherType.Data, true)
     }

@@ -144,6 +144,10 @@ class ZkSession(
 
             state.map { s =>
               s match {
+                case WatchState.Pending => // No action to take
+
+                case WatchState.Determined(_) => // No action to take
+
                 case WatchState.SessionState(sessionState) if sessionState == SessionState.ConnectedReadOnly |
                   sessionState == SessionState.SaslAuthenticated |
                   sessionState == SessionState.SyncConnected =>
@@ -187,20 +191,16 @@ class ZkSession(
                 true
             }.toFuture().flatMap {
               case WatchState.Determined(_) => loop()
-              case _ => retryWithDelay {
-                loop()
+              case _ => retryWithDelay { loop() }
             }
-          }
         }
       }
 
-      val result = loop()
+      val pending = loop()
       Closable.make { _ =>
         closed = true
-        logger.info("Raising failure for watched operation")
-        result.raise(new FutureCancelledException)
-        logger.info("Raised!")
-        Future.Done
+        pending.raise(new FutureCancelledException)
+        Future.Unit
       }
     })
 
