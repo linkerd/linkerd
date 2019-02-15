@@ -1,7 +1,10 @@
-package com.twitter.finagle.serverset2.buoyant
+package com.twitter.finagle.serverset2.client.buoyant
+
+import java.nio.ByteBuffer
 
 import com.twitter.finagle.Dtab
 import com.twitter.finagle.serverset2.client._
+import com.twitter.finagle.serverset2.client.apache.buoyant.ApacheZooKeeper
 import com.twitter.finagle.serverset2.{RetryStream, Zk2Resolver, ZkSession => FZkSession}
 import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
@@ -11,7 +14,6 @@ import com.twitter.util._
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
 import io.buoyant.namerd.storage.{Acl, AuthInfo}
 import io.buoyant.namerd.{DtabStore, Ns, VersionedDtab}
-import java.nio.ByteBuffer
 
 /**
  * A DtabStore which stores dtabs in ZooKeeper.  Dtabs are stored, Utf8
@@ -30,15 +32,21 @@ class ZkDtabStore(
   private[this] val stats = DefaultStatsReceiver.scope("zkclient").scope(Zk2Resolver.statsOf(hosts))
 
   private[this] implicit val timer = DefaultTimer
-  private[this] val builder = ClientBuilder()
-    .hosts(hosts)
-    .sessionTimeout(sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout))
-    .statsReceiver(stats)
+
+  val zkClientConfig = new ClientConfig(
+    hosts,
+    sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout),
+    stats,
+    false,
+    None,
+    None,
+    DefaultTimer
+  )
 
   private[this] val zkSession = new ZkSession(
     retryStream,
     retryStream,
-    () => builder.writer(),
+    () => ApacheZooKeeper.newClient(zkClientConfig),
     authInfo,
     stats
   )

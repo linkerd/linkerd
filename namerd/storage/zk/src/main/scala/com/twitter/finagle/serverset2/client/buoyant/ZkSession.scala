@@ -1,8 +1,9 @@
 // modified from com.twitter.finagle.serverset2.ZkSession | (c) 2015 Twitter, Inc. | http://www.apache.org/licenses/LICENSE-2.0 */
-package com.twitter.finagle.serverset2.buoyant
+package com.twitter.finagle.serverset2.client.buoyant
 
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.finagle.serverset2.RetryStream
+import com.twitter.finagle.serverset2.client.WatchState.Determined
 import com.twitter.finagle.serverset2.client._
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
@@ -123,70 +124,82 @@ class ZkSession(
       @volatile var closed = false
 
       def loop(): Future[Unit] = {
-        if (!closed) safeRetry(go).respond {
+        if (closed) Future.Unit
+        else safeRetry(go).transform {
           case Throw(e@KeeperException.SessionExpired(_)) =>
             // don't retry. The session has expired while trying to set the watch.
             // In case our activity is still active, notify the listener
             u() = Activity.Failed(e)
+            Future.Unit
 
           case Throw(exc) =>
             logger.error("Operation failed with %s. Session %s", exc, sessionId)
             u() = Activity.Failed(exc)
-            fireAndForget { retryWithDelay { loop() } }
+            retryWithDelay { loop() }
 
           case Return(Watched(value, state)) =>
             val ok = Activity.Ok(value)
             retryBackoff.reset()
             u() = ok
 
-            val _ = state.changes.respond {
-              case WatchState.Pending =>
-              // Ignore updates WatchState is Pending.
+            state.map { s =>
+              s match {
+                case WatchState.SessionState(sessionState) if sessionState == SessionState.ConnectedReadOnly |
+                  sessionState == SessionState.SaslAuthenticated |
+                  sessionState == SessionState.SyncConnected =>
+                  logger.info("Reacquiring watch on %s. Session: %s", sessionState, sessionId)
+                  u() = ok
 
-              case WatchState.Determined(_) =>
-                // Note: since the watch transitioned to determined, we know
-                // that this observation will produce no more values, so there's
-                // no need to apply concurrency control to the subsequent
-                // branches.
-                fireAndForget { loop() }
+                case WatchState.SessionState(SessionState.Expired) =>
+                  u() = Activity.Failed(new Exception("session expired"))
+
+                case WatchState.SessionState(sessionState) if sessionState == SessionState.Disconnected |
+                  sessionState == SessionState.NoSyncConnected =>
+                  logger.warning(
+                    "Intermediate Failure session state: %s. Session: %s. Data is now unavailable.",
+                    sessionState, sessionId
+                  )
+                  u() = Activity.Failed(new Exception("" + sessionState))
+
+                case WatchState.SessionState(sessionState) =>
+                  logger.error("Unexpected session state %s. Session: %s", sessionState, sessionId)
+                  u() = Activity.Failed(new Exception("" + sessionState))
+              }
+              s
+            }.changes.filter {
+              case WatchState.Pending => false
+
+              case WatchState.Determined(_) => true
 
               case WatchState.SessionState(sessionState) if sessionState == SessionState.ConnectedReadOnly |
                 sessionState == SessionState.SaslAuthenticated |
                 sessionState == SessionState.SyncConnected =>
-                u() = ok
-                logger.info("Reacquiring watch on %s. Session: %s", sessionState, sessionId)
-                // We may have lost or never set our watch correctly. Retry to ensure we stay connected
-                fireAndForget { retryWithDelay { loop() } }
+                true
 
               case WatchState.SessionState(SessionState.Expired) =>
-                u() = Activity.Failed(new Exception("session expired"))
-              // Do NOT retry here as the session has expired. We expect the watcher of this
-              // ZkSession to retry at this point (See [[ZkSession.retrying]]).
+                false
 
-              // Disconnected, NoSyncConnected
               case WatchState.SessionState(sessionState) if sessionState == SessionState.Disconnected |
                 sessionState == SessionState.NoSyncConnected =>
-                logger.warning(
-                  "Intermediate Failure session state: %s. Session: %s. Data is now unavailable.",
-                  sessionState, sessionId
-                )
-                u() = Activity.Failed(new Exception("" + sessionState))
-              // Do NOT keep retrying, wait to be reconnected automatically by the underlying session
+                false
 
-              case WatchState.SessionState(sessionState) =>
-                logger.error("Unexpected session state %s. Session: %s", sessionState, sessionId)
-                u() = Activity.Failed(new Exception("" + sessionState))
-                // We don't know what happened. Retry.
-                fireAndForget { retryWithDelay { loop() } }
+              case WatchState.SessionState(_) =>
+                true
+            }.toFuture().flatMap {
+              case WatchState.Determined(_) => loop()
+              case _ => retryWithDelay {
+                loop()
             }
+          }
         }
-        Future.Done
       }
 
-      loop()
-
-      Closable.make { deadline =>
+      val result = loop()
+      Closable.make { _ =>
         closed = true
+        logger.info("Raising failure for watched operation")
+        result.raise(new FutureCancelledException)
+        logger.info("Raised!")
         Future.Done
       }
     })

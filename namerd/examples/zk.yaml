@@ -4,13 +4,6 @@ storage:
   zkAddrs:
   - host: localhost
     port: 2181
-  authInfo:
-    scheme: digest
-    auth: user_123:password_123
-  acls:
-  - scheme: auth
-    id: ""
-    perms: crwda 
 interfaces:
 - kind: io.l5d.thriftNameInterpreter
 - kind: io.l5d.httpController
