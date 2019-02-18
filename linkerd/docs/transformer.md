@@ -94,7 +94,7 @@ that are on the same /24 subnet as localhost.  Since each Kubernetes node is its
 This transformer does not have any configuration properties but it does require
 the `POD_IP` environment variable be set with the localhost IP address.  This is
 most easily done with the
-[Kubernetes downward API](http://kubernetes.io/docs/user-guide/downward-api/).
+[Kubernetes downward API](https://kubernetes.io/docs/user-guide/downward-api/).
 
 > In your container spec:
 

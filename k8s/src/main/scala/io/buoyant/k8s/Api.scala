@@ -95,7 +95,7 @@ trait ObjectDescriptor[O <: KubeObject, W <: Watch[O]] {
 
 /**
  * Describes an Object in the Kubernetes API (i.e.
- * http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_endpoints)
+ * https://kubernetes.io/docs/api-reference/v1/definitions/#_v1_endpoints)
  */
 trait KubeObject extends KubeMetadata {
   def apiVersion: Option[String]
@@ -154,7 +154,7 @@ case class ObjectReference(
 
 /**
  * An event resulting from a "watch" on the Kubernetes API:
- * http://kubernetes.io/docs/api-reference/v1/definitions/#_json_watchevent
+ * https://kubernetes.io/docs/api-reference/v1/definitions/#_json_watchevent
  *
  * Note: Dealing with this class is a little clunky because we haven't been able to get Jackson to
  * handle the combination of generics and polymorphic inheritance correctly. Thus, you'll need to
