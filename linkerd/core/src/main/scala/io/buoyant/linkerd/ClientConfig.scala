@@ -3,7 +3,7 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Stack
-import com.twitter.finagle.buoyant.{ClientAuth, ParamsMaybeWith, PathMatcher, TlsClientConfig => FTlsClientConfig}
+import com.twitter.finagle.buoyant.{ClientAuth, ParamsMaybeWith, PathMatcher, SocketOptionsConfig, TlsClientConfig => FTlsClientConfig}
 import com.twitter.finagle.client.DefaultPool
 import com.twitter.finagle.service._
 import com.twitter.logging.Logger
@@ -25,6 +25,7 @@ trait ClientConfig {
   var requestAttemptTimeoutMs: Option[Int] = None
   var requeueBudget: Option[RetryBudgetConfig] = None
   var clientSession: Option[ClientSessionConfig] = None
+  var socketOptions: Option[SocketOptionsConfig] = None
 
   @JsonIgnore
   def params(vars: Map[String, String]): Stack.Params = Stack.Params.empty
@@ -36,6 +37,7 @@ trait ClientConfig {
     .maybeWith(requeueBudget)
     .maybeWith(failureAccrual.map(FailureAccrualConfig.param))
     .maybeWith(clientSession.map(_.param))
+    .maybeWith(socketOptions.map(_.params))
 }
 
 case class TlsClientConfig(
@@ -99,5 +101,4 @@ case class ClientSessionConfig(
     lifeTime = lifeTimeMs.map(_.millis).getOrElse(default.lifeTime),
     idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime)
   )
-
 }

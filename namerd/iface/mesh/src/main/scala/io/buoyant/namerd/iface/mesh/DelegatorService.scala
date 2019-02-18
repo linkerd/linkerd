@@ -137,7 +137,7 @@ object DelegatorService {
     case DelegateTree.Delegate(p, d, t) =>
       mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Delegate(toDelegateTree(t)))
     case DelegateTree.Exception(p, d, e) =>
-      val msg = if(e.getMessage == null) "No underlying exception message" else e.getMessage
+      val msg = if (e.getMessage == null) "No underlying exception message" else e.getMessage
       mkBoundDelegateTree(p, d, mesh.BoundDelegateTree.OneofNode.Exception(s"BoundDelegateTree Exception: $msg"))
     case DelegateTree.Transformation(p, desc, n, t) =>
       val leaf = mkBoundDelegateTreeLeaf(n)

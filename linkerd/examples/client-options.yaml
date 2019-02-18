@@ -26,6 +26,10 @@ routers:
       # this client only
       loadBalancer:
         kind: aperture
+      socketOptions:
+        reusePort: true
+        readTimeoutMs: 61000
+        writeTimeoutMs: 61000
     # Wildcards and variable capture can be used in prefixes
     - prefix: "/#/*/{service}"
       tls:

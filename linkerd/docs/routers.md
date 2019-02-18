@@ -248,6 +248,10 @@ client:
   failureAccrual:
     kind: io.l5d.consecutiveFailures
     failures: 10
+  socketOptions:
+    reusePort: true
+    readTimeoutMs: 61000
+    writeTimeoutMs: 61000
 ```
 
 Key | Default Value | Description
