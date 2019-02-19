@@ -104,11 +104,3 @@ private[serverset2] object ApacheZooKeeper {
       Watched(wrappedZk, statsWatcher)
   }
 }
-
-private class ApacheFactory extends ClientFactory[ZooKeeperRW] {
-  val capabilities: Seq[Capability] = Seq(Reader, Writer)
-  val priority: Int = 0
-
-  def newClient(config: ClientConfig): Watched[ZooKeeperRW] =
-    ApacheZooKeeper.newClient(config)
-}
