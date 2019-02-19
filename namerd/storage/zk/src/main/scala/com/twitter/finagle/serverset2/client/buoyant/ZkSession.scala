@@ -143,6 +143,10 @@ class ZkSession(
             u() = ok
 
             state.map { s =>
+              // Depending on the `WatchState`, we may perform some effectful
+              // action such as logging or updating the activity. This `map`
+              // will cause such effects for each `WatchState` that can be
+              // observed.
               s match {
                 case WatchState.Pending => // No action to take
 
@@ -171,6 +175,9 @@ class ZkSession(
               }
               s
             }.changes.filter {
+              // Depending on the `WatchState`, we may want to `loop()` again.
+              // Here, we filter out `WatchState`s that we do not wish to
+              // `loop()` again on, and pass through states that we do.
               case WatchState.Pending => false
 
               case WatchState.Determined(_) => true
@@ -190,6 +197,10 @@ class ZkSession(
               case WatchState.SessionState(_) =>
                 true
             }.toFuture().flatMap {
+              // Depending on the `WatchState`, we want to `loop()`
+              // immediately, or backoff with a `sleep` first. `toFuture()`
+              // creates a future that is satisfied when when of these states
+              // is reached.
               case WatchState.Determined(_) => loop()
               case _ => retryWithDelay { loop() }
             }

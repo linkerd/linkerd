@@ -1,7 +1,5 @@
 package com.twitter.finagle.serverset2.client.buoyant
 
-import java.nio.ByteBuffer
-
 import com.twitter.finagle.Dtab
 import com.twitter.finagle.serverset2.client._
 import com.twitter.finagle.serverset2.client.apache.buoyant.ApacheZooKeeper
@@ -14,6 +12,7 @@ import com.twitter.util._
 import io.buoyant.namerd.DtabStore.{DtabNamespaceAlreadyExistsException, DtabNamespaceDoesNotExistException, DtabVersionMismatchException, Forbidden}
 import io.buoyant.namerd.storage.{Acl, AuthInfo}
 import io.buoyant.namerd.{DtabStore, Ns, VersionedDtab}
+import java.nio.ByteBuffer
 
 /**
  * A DtabStore which stores dtabs in ZooKeeper.  Dtabs are stored, Utf8
@@ -34,13 +33,13 @@ class ZkDtabStore(
   private[this] implicit val timer = DefaultTimer
 
   val zkClientConfig = new ClientConfig(
-    hosts,
-    sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout),
-    stats,
-    false,
-    None,
-    None,
-    DefaultTimer
+    hosts = hosts,
+    sessionTimeout = sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout),
+    statsReceiver = stats,
+    readOnlyOK = false,
+    sessionId = None,
+    password = None,
+    timer = DefaultTimer
   )
 
   private[this] val zkSession = new ZkSession(
