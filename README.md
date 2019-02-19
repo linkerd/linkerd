@@ -94,6 +94,6 @@ specific language governing permissions and limitations under the License.
 [namerctl]: https://github.com/linkerd/namerctl
 [netty]: https://netty.io/
 [slack-badge]: http://slack.linkerd.io/badge.svg
-[slack]: http://slack.linkerd.io
+[slack]: https://slack.linkerd.io
 [zipkin]: https://github.com/openzipkin/zipkin
 [releases]: https://github.com/linkerd/linkerd/releases
