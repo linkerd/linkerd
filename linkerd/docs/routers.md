@@ -33,7 +33,7 @@ Key | Default Value | Description
 protocol | _required_ | Either [`http`](#http-1-1-protocol), [`h2`](#http-2-protocol), [`thrift`](#thrift-protocol), or [`mux`](#mux-protocol-experimental).
 servers | _required_ | A list of [server objects](#servers).
 announcers | an empty list | A list of service discovery [announcers](#announcers) that servers can announce to.
-dtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/doc/dtabs/) for more.
+dtab | an empty dtab | Sets the base delegation table. See [dtabs](https://linkerd.io/1/advanced/dtabs/) for more.
 bindingTimeoutMs | 10 seconds | The maximum amount of time in milliseconds to spend binding a path.
 bindingCache | see [binding cache](#binding-cache) | Binding cache size configuration.
 client | an empty object | A [client configuration](#client-configuration) object.
@@ -223,8 +223,8 @@ matching configs will be applied, with parameters defined later in the
 configuration file taking precedence over those defined earlier.
 
 Note: Capture variables use greedy pattern matching.  For example (`{foo}{bar}`) is
-ambiguous.  The capture variable (`{foo}`) would capture the whole segement and
-(`{bar}`) would empty.  Similary, the pattern (`{foo}-{bar}`) on the segement
+ambiguous.  The capture variable (`{foo}`) would capture the whole segment and
+(`{bar}`) would empty.  Similarly, the pattern (`{foo}-{bar}`) on the segment
 `a-b-c` would capture `a-b` into (`{foo}`) and `c` in (`{bar}`).
 
 ### Client Parameters
