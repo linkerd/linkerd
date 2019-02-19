@@ -27,6 +27,7 @@ routers:
       loadBalancer:
         kind: aperture
       socketOptions:
+        keepAlive: true
         reusePort: true
         readTimeoutMs: 61000
         writeTimeoutMs: 61000
