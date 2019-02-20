@@ -103,4 +103,4 @@ changes should include before- and after- benchmark results.
 [issue]: https://github.com/linkerd/linkerd/issues/new
 [members]: https://github.com/orgs/linkerd/people
 [slack]: https://slack.linkerd.io/
-[ssg]: http://docs.scala-lang.org/style/scaladoc.html
+[ssg]: https://docs.scala-lang.org/style/scaladoc.html

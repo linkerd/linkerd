@@ -91,7 +91,7 @@ ms | `0` | The number of milliseconds to wait before each retry.
 
 kind: `jittered`
 
-Uses a [decorrelated jitter](http://www.awsarchitectureblog.com/2015/03/backoff.html) backoff algorithm.
+Uses a [decorrelated jitter](https://www.awsarchitectureblog.com/2015/03/backoff.html) backoff algorithm.
 
 Key | Default Value | Description
 --- | ------------- | -----------
