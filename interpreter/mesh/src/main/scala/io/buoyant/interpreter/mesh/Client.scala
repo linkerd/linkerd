@@ -232,8 +232,7 @@ object Client {
    * gRPC stream, publishing updates into the Var's state.
    *
    * When the stream returns an error, the Var may be updated (as
-   * according to `toT`) and no further updates will will be
-   * published.
+   * according to `toT`) and no further updates will be published.
    */
   private[this] def streamVar[S, T](
     init: T,
@@ -305,7 +304,7 @@ object Client {
    * gRPC stream, publishing updates into the Activity's state.
    *
    * When the stream returns an error, the state is updated to
-   * Activity.Failed and no further updates will will be published.
+   * Activity.Failed and no further updates will be published.
    */
   private[this] def streamActivity[S, T](
     open: () => Stream[S],
