@@ -190,8 +190,8 @@ class ConsulDtabStore(
                 val version = Buf.Utf8(result.index.get)
                 // the raw string, not yet parsed as a dtab.
                 val rawDtab = result.value
-                // attempt to parse the string as a dtab, and update the the
-                // Activity with  the new state - either Ok if the string was
+                // attempt to parse the string as a dtab, and update the
+                // Activity with the new state - either Ok if the string was
                 // parsed successfully, or Failed if an error occurred.
                 val nextState = Try {
                   Dtab.read(rawDtab)

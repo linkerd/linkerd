@@ -172,7 +172,7 @@ Full release notes:
   * Fix a memory leak when there are a large number of reset streams
   * Allow HTTP/2 response classifiers to be loaded as plugins
 * Namerd
-  * Fix a memory leak in the the io.l5d.mesh interpreter when idle services are reaped
+  * Fix a memory leak in the io.l5d.mesh interpreter when idle services are reaped
 
 ## 1.4.4 2018-07-06
 
