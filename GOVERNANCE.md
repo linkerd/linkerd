@@ -11,12 +11,12 @@ super-maintainer. MAINTAINERS.md defines the membership of these roles.
 
 Maintainers are responsible for one or more components, and are expected to
 contribute code, field incoming PRs, triage issues, proactively fix bugs, and
-generally perform maintainance tasks for these components.
+generally perform maintenance tasks for these components.
 
 Super-maintainers are responsible for the project as a whole, and are expected
 to guide general project direction as well as being the final reviewer on PRs.
 
-## Decisionmaking
+## Decision making
 
 Ideally, all project decisions are resolved by consensus. If this is not
 possible, maintainers may call a vote. Unless otherwise specified in this

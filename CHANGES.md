@@ -554,7 +554,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
     interfaces.
 * HTTP/2
   * Reset h2 remote streams that continue to send frames after the local stream
-    has been interrupted.  This fixes a bug that occationally caused the
+    has been interrupted.  This fixes a bug that occasionally caused the
     io.l5d.mesh interpreter to hang.
   * Add support for HTTP/2 tracing.
 * Kubernetes
@@ -592,7 +592,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
   * Add `io.l5d.k8s.ns` namer for routing within a fixed namespace.
 * Consul:
   * Fix issue where the Consul namer would fail to reconnect after ConnectionFailedException.
-* Promethus:
+* Prometheus:
   * Properly escape metrics labels in the Prometheus telemeter.
 * Namerd:
   * Add support for telemeters.
