@@ -1,7 +1,8 @@
-package com.twitter.finagle.serverset2.buoyant
+package com.twitter.finagle.serverset2.client.buoyant
 
 import com.twitter.finagle.Dtab
 import com.twitter.finagle.serverset2.client._
+import com.twitter.finagle.serverset2.client.apache.buoyant.ApacheZooKeeper
 import com.twitter.finagle.serverset2.{RetryStream, Zk2Resolver, ZkSession => FZkSession}
 import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
@@ -30,15 +31,21 @@ class ZkDtabStore(
   private[this] val stats = DefaultStatsReceiver.scope("zkclient").scope(Zk2Resolver.statsOf(hosts))
 
   private[this] implicit val timer = DefaultTimer
-  private[this] val builder = ClientBuilder()
-    .hosts(hosts)
-    .sessionTimeout(sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout))
-    .statsReceiver(stats)
+
+  val zkClientConfig = new ClientConfig(
+    hosts = hosts,
+    sessionTimeout = sessionTimeout.getOrElse(FZkSession.DefaultSessionTimeout),
+    statsReceiver = stats,
+    readOnlyOK = false,
+    sessionId = None,
+    password = None,
+    timer = DefaultTimer
+  )
 
   private[this] val zkSession = new ZkSession(
     retryStream,
     retryStream,
-    () => builder.writer(),
+    () => ApacheZooKeeper.newClient(zkClientConfig),
     authInfo,
     stats
   )
