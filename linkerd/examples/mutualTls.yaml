@@ -17,7 +17,7 @@ routers:
         intermediateCertsPath: /foo/intermediateCa.pem
   servers:
   - port: 4140
-    # Expect the incoming connection to be encryped.
+    # Expect the incoming connection to be encrypted.
     tls:
       certPath: /foo/cert.pem
       keyPath: /foo/key.pem

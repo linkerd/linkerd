@@ -8,7 +8,7 @@ routers:
   dtab: |
     /svc => /#/io.l5d.fs
   client:
-    # Establish encryped outgoing connections.
+    # Establish encrypted outgoing connections.
     kind: io.l5d.static
     configs:
     - prefix: "/#/io.l5d.fs/{service}"
@@ -17,7 +17,7 @@ routers:
         commonName: "{service}"
   servers:
   - port: 4140
-    # Expect the incoming connection to be encryped.
+    # Expect the incoming connection to be encrypted.
     tls:
       certPath: /foo/cert.pem
       keyPath: /foo/key.pem

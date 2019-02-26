@@ -58,7 +58,7 @@ object Headers {
      *   - Deadline
      *   - Dtab
      *
-     * Note that the dtabs read by this module are appeneded to that specified
+     * Note that the dtabs read by this module are appended to that specified
      * by the `l5d-dtab` header.
      *
      * Note that trace configuration is handled by
@@ -217,7 +217,7 @@ object Headers {
      *       linkerd.
      *
      * `l5d-dtab` is appended to `l5d-ctx-dtab`, so that user-provided
-     * delegations take precdence.
+     * delegations take precedence.
      */
     object Dtab {
       val CtxKey = Ctx.Prefix + "dtab"
@@ -352,7 +352,7 @@ object Headers {
    * outside of this range are rounded to the nearest valid value so
    * that negative numbers are treated as 0 and positive numbers
    * greater than 1 are rounded to 1. At 1.0, the trace is marked as
-   * sampled on all downstream requestes.
+   * sampled on all downstream requests.
    */
   object Sample {
     val Key = Prefix + "sample"

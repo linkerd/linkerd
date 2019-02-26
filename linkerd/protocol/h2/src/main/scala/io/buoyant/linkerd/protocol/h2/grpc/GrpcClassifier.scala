@@ -113,7 +113,7 @@ object GrpcClassifiers {
   /**
    * The fully standards compliant H2Classifier for gRPC.
    *
-   * - gRPC UNAVILABLE response is marked as retryable.
+   * - gRPC UNAVAILABLE response is marked as retryable.
    * - HTTP/2 RST_STREAM:REFUSED_STREAM is marked as retryable.
    * - HTTP/2 429, 502, 503, and 504 responses are marked as retryable.
    * - All other failures are marked as non-retryable.
