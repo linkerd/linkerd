@@ -125,7 +125,7 @@ Only status code 14 (`Unavailable`) is considered retryable, all other errors ar
 
 kind:  `io.l5d.h2.grpc.compliant`
 
-Strictly complies with gRPC specifications for retryability. 
+Strictly complies with gRPC specifications for retrievability. 
 
 * Status code 14 (`Unavailable`) is considered retryable.
 * HTTP/2 RST_STREAM:REFUSED_STREAM is [considered retryable](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#errors).

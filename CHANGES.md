@@ -325,7 +325,7 @@ Linkerd 1.3.7 includes memory leak fixes, tons of improvements for Consul, and m
 
 * Add support for more types of client certificates in the ForwardClientCertFilter ([#1850](https://github.com/linkerd/linkerd/pull/1850)).
 * Improve documentation on how to override the base Docker image ([#1867](https://github.com/linkerd/linkerd/pull/1867)).
-* Improve the efficientcy of the dtab delegator UI ([#1862](https://github.com/linkerd/linkerd/pull/1862)).
+* Improve the efficiency of the dtab delegator UI ([#1862](https://github.com/linkerd/linkerd/pull/1862)).
 * Add a command line flag for config file validation ([#1854](https://github.com/linkerd/linkerd/pull/1854)).
 * Fix a bug where the wrong timezone was being used in access logs ([#1851](https://github.com/linkerd/linkerd/pull/1851)).
 * Add the ability to explicitly disable TLS for specific clients ([#1856](https://github.com/linkerd/linkerd/pull/1856)).
@@ -710,7 +710,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
   generation of gRPC clients and servers for Finagle.
 * Various bug fixes to the Linkerd admin dashboard.
 * The default docker images now use a 64 bit JVM.  A `-32b` docker image is
-  also availble but does not support the boringssl TLS extensions required for
+  also available but does not support the boringssl TLS extensions required for
   ALPN, etc.
 * Marathon:
   * Support "ip per task" feature
