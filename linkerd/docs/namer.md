@@ -7,7 +7,7 @@ namers:
   rootDir: disco
 ```
 
-A namer binds a [concrete name to a physical address](http://twitter.github.io/finagle/guide/Names.html).
+A namer binds a [concrete name to a physical address](https://twitter.github.io/finagle/guide/Names.html).
 
 <aside class="notice">
 These parameters are available to the namer regardless of kind. Namers may also have kind-specific parameters.

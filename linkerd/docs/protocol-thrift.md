@@ -20,7 +20,7 @@ routers:
 
 protocol: `thrift`
 
-If the [TTwitter thrift](http://twitter.github.io/finagle/guide/Protocols.html#thrift) protocol is
+If the [TTwitter thrift](https://twitter.github.io/finagle/guide/Protocols.html#thrift) protocol is
 used, the value from the `dest` request header will be used for routing:
 
 > Dtab Path Format For Thrift
