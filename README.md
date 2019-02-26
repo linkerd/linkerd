@@ -93,7 +93,7 @@ specific language governing permissions and limitations under the License.
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [namerctl]: https://github.com/linkerd/namerctl
 [netty]: https://netty.io/
-[slack-badge]: http://slack.linkerd.io/badge.svg
+[slack-badge]: https://slack.linkerd.io/badge.svg
 [slack]: https://slack.linkerd.io
 [zipkin]: https://github.com/openzipkin/zipkin
 [releases]: https://github.com/linkerd/linkerd/releases

@@ -11,7 +11,7 @@ private[telemetry] object StatsDStatsReceiver {
     name.mkString("/")
       .replaceAll("[^/A-Za-z0-9]", "_")
       .replace("//", "/")
-      .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
+      .replace("/", ".") // https://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
   }
 }
 

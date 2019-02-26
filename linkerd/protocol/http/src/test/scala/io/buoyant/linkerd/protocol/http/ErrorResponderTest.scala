@@ -32,7 +32,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
 
   val redirectService = mkService {
     val redirect = Response(Status.Found)
-    redirect.location = "http://linkerd.io"
+    redirect.location = "https://linkerd.io"
     Future.exception(HttpResponseException(redirect))
   }
 
@@ -63,7 +63,7 @@ class ErrorResponderTest extends FunSuite with Awaits {
   test("respects HttpResponseException") {
     val rsp = await(redirectService(Request()))
     assert(rsp.status == Status.Found)
-    assert(rsp.location == Some("http://linkerd.io"))
+    assert(rsp.location == Some("https://linkerd.io"))
   }
 
   test("returns ServiceUnavailable for request attempt timeouts") {
