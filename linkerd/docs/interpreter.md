@@ -131,7 +131,7 @@ kind: `io.l5d.k8s.configMap`
 
 The Kubernetes ConfigMap interpreter resolves names via the configured
 [`namers`](#namers), just like the default interpreter, but also uses
-a dtab read from a [ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configmap/#understanding-configmaps) using the Kubernetes API. The specified ConfigMap is watched for changes, as in the [file-system interpreter](#file-system).
+a dtab read from a [ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#understanding-configmaps-and-pods) using the Kubernetes API. The specified ConfigMap is watched for changes, as in the [file-system interpreter](#file-system).
 
 > Example configuration
 
