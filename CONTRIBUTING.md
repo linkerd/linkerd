@@ -102,5 +102,5 @@ changes should include before- and after- benchmark results.
 [es]: https://twitter.github.io/effectivescala/
 [issue]: https://github.com/linkerd/linkerd/issues/new
 [members]: https://github.com/orgs/linkerd/people
-[slack]: http://slack.linkerd.io/
+[slack]: https://slack.linkerd.io/
 [ssg]: http://docs.scala-lang.org/style/scaladoc.html
