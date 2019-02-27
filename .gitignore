@@ -11,5 +11,6 @@ npm-debug.log
 .idea
 .iml
 .DS_Store
+*.swp
 
 **/*.iml
