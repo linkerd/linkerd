@@ -134,7 +134,7 @@ class HttpEndToEndTest
         val path = "/svc/felix"
         val bound = s"/$$/inet/127.1/${cat.port}"
         withAnnotations { anns =>
-          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
+          assert(annotationKeys(anns) == Seq("wr", "sr", "cs", "ws", "wr", "l5d.success", "cr", "ss", "ws"))
           assert(anns.contains(Annotation.BinaryAnnotation("service", path)))
           assert(anns.contains(Annotation.BinaryAnnotation("client", bound)))
           assert(anns.contains(Annotation.BinaryAnnotation("residual", "/")))
@@ -323,7 +323,7 @@ class HttpEndToEndTest
         assert(stats.stats.get(Seq("rt", "http", "service", name, "retries", "per_request")) == Some(Seq(1.0)))
         assert(stats.counters.get(Seq("rt", "http", "service", name, "retries", "total")) == Some(1))
         withAnnotations { anns =>
-          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss"))
+          assert(annotationKeys(anns) == Seq("wr", "sr", "cs", "ws", "wr", "l5d.retryable", "cr", "cs", "ws", "wr", "l5d.success", "cr", "ss", "ws"))
           ()
         }
       }
@@ -352,7 +352,7 @@ class HttpEndToEndTest
         assert(stats.stats.get(Seq("rt", "http", "service", name, "retries", "per_request")) == Some(Seq(0.0)))
         assert(stats.counters.get(Seq("rt", "http", "service", name, "retries", "total")).forall(_ == 0))
         withAnnotations { anns =>
-          assert(annotationKeys(anns) == Seq("sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss"))
+          assert(annotationKeys(anns) == Seq("wr", "sr", "cs", "ws", "wr", "l5d.failure", "cr", "ss", "ws"))
           ()
         }
       }
