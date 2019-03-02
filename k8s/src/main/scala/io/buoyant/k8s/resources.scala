@@ -152,15 +152,16 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: O
   override protected def restartWatches(
     labelSelector: Option[String],
     fieldSelector: Option[String]
-  ): Future[(Seq[W], Option[String])] =
+  ): Future[(Seq[W], Option[String])] = {
     get(
       labelSelector = labelSelector,
       fieldSelector = fieldSelector,
       retryIndefinitely = true
-    ).map { maybeList =>
-      val list = maybeList.get // list resources should always exist
-      (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
+    ).map {
+      case Some(list) => (list.items.map(od.toWatch), list.metadata.flatMap(_.resourceVersion))
+      case None => (Seq.empty, None)
     }
+  }
 }
 
 /**
