@@ -19,7 +19,7 @@ protocol: `thriftmux`
 Linkerd _experimentally_ supports the thriftmux protocol.
 
 Thriftmux protocol is capable of routing traffic to pure thrift service and
-will use [Thrift](http://twitter.github.io/finagle/guide/Protocols.html#thrift) protocol on the client.
+will use [Thrift](https://twitter.github.io/finagle/guide/Protocols.html#thrift) protocol on the client.
 
 Protocol configuration uses the same parameters as
 [Thrift protocol](https://linkerd.io/config/head/linkerd#thrift-protocol).
