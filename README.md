@@ -12,7 +12,7 @@ Linkerd is a transparent *service mesh*, designed to make modern applications
 safe and sane by transparently adding service discovery, load balancing, failure
 handling, instrumentation, and routing to all inter-service communication.
 
-Linkerd (pronouned "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
+Linkerd (pronounced "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
 proxy, and can usually be dropped into existing applications with a minimum of
 configuration, regardless of what language they're written in. It works with
 many common protocols and service discovery backends, including scheduled
