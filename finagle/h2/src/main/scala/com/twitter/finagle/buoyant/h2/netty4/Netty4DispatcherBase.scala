@@ -180,7 +180,9 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
           // client sent a ping and got acknowledgement. Satisfy promise to let failure detector
           // know the connection is still alive.
           val prevPingPromise = pingPromise.getAndSet(null)
-          prevPingPromise.setDone()
+          if (prevPingPromise != null) {
+            prevPingPromise.setDone()
+          }
         }
         transport.read().transform(loop)
 
