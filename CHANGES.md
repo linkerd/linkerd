@@ -1031,7 +1031,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 * DTab explorer admin page now supports inspecting DTabs for all configured
   routers.
 * New `/routers.json` endpoint with runtime router state.
-* We now have a [slack channel](http://slack.linkerd.io)! Operators are
+* We now have a [slack channel](https://slack.linkerd.io)! Operators are
   standing by to field YOUR questions today.
 * Admin site redesign to match [linkerd.io](https://linkerd.io/), now with
   favicon!
@@ -1079,7 +1079,7 @@ This is a big release! Get ready.
   sufficient Java version (we require JDK 8) before attempting to start the
   router.
 * Upgrades to a newer version of the
-  [Finagle](http://twitter.github.io/finagle/) library.
+  [Finagle](https://twitter.github.io/finagle/) library.
 * More information added to HTTP tracing:
   * Host header
   * Transfer-Encoding header

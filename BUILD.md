@@ -297,5 +297,5 @@ $ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyant
 
 [funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
 [l5d-ci]: https://circleci.com/gh/linkerd/linkerd
-[sbt]: http://www.scala-sbt.org/
+[sbt]: https://www.scala-sbt.org/
 [scalatest]: http://www.scalatest.org/

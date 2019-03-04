@@ -162,7 +162,7 @@ message Help {
 // which can be attached to an RPC error.
 message LocalizedMessage {
   // The locale used following the specification defined at
-  // http://www.rfc-editor.org/rfc/bcp/bcp47.txt.
+  // https://www.rfc-editor.org/rfc/bcp/bcp47.txt.
   // Examples are: "en-US", "fr-CH", "es-MX"
   string locale = 1;
 

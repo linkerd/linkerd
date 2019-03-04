@@ -20,7 +20,7 @@ case class ConstantBackoffConfig(ms: Int) extends BackoffConfig {
   def mk = Backoff.constant(ms.millis)
 }
 
-/** See http://www.awsarchitectureblog.com/2015/03/backoff.html */
+/** See https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/ */
 case class JitteredBackoffConfig(minMs: Option[Int], maxMs: Option[Int]) extends BackoffConfig {
   def mk = {
     val min = minMs match {
