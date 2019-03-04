@@ -22,8 +22,6 @@ class Netty4ClientDispatcherTest extends FunSuite {
       type Context = TransportContext
       def context: Context = new SimpleTransportContext()
       def status = ???
-      def localAddress = new SocketAddress {}
-      def remoteAddress = new SocketAddress {}
       def peerCertificate = ???
       def read(): Future[Http2Frame] = recvq.poll()
       def write(f: Http2Frame): Future[Unit] = {

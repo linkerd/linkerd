@@ -86,7 +86,7 @@ class BufferingChannelTransport(
       if (f.isSuccess) {
         p.setDone(); ()
       } else {
-        p.setException(ChannelException(f.cause, remoteAddress))
+        p.setException(ChannelException(f.cause, context.remoteAddress))
       }
     }
     p
