@@ -111,6 +111,7 @@ dst | _required_ | A Finagle path locating the Namerd service.
 root | `/default` | A single-element Finagle path representing the Namerd namespace.
 retry | see [Namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to Namerd.
 tls | no tls | Requests to Namerd will be made using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
+failureThreshold | no failureThreshold | Sets the [failure threshold](#failure-threshold) used by Linkerd's threshold failure detector to gauge a Namerd instance's health
 
 ## File-System
 

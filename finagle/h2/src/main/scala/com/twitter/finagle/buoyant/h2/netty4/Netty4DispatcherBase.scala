@@ -1,6 +1,9 @@
 package com.twitter.finagle.buoyant.h2
 package netty4
 
+import com.twitter.finagle.liveness.FailureDetector
+import com.twitter.finagle.liveness.FailureDetector.NullConfig
+import com.twitter.finagle.netty4.transport.HasExecutor
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ChannelClosedException, Failure, FailureFlags}
@@ -8,7 +11,7 @@ import com.twitter.logging.Logger
 import com.twitter.util._
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
@@ -17,10 +20,10 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def log: Logger
   protected[this] def prefix: String
   protected[this] def stats: StatsReceiver
-
+  protected[this] def failureThreshold: Option[FailureDetector.Config] = None
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
-  protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
 
+  protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
   /**
    * The various states a stream can be in (particularly closed).
    *
@@ -40,6 +43,47 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] val streamsGauge = stats.addGauge("open_streams") {
     streams.size()
+  }
+
+  private[this] val pingPromise: AtomicReference[Promise[Unit]] = new AtomicReference(null)
+
+  protected[this] val OutstandingPingEx = Failure("Outstanding ping on HTTP/2 connection")
+  protected[this] val eventLoop = transport.context match {
+    case trans: HasExecutor => Some(trans.executor)
+    case _ => None
+  }
+
+  protected[this] def ping(): Future[Unit] = {
+    val done = new Promise[Unit]
+    eventLoop match {
+      case None =>
+        // Immediately satisfy the promise to prevent the failure detector from marking the
+        // the connection as closed if we don't have a way to execute a ping request on another
+        // thread.
+        done.setDone()
+      case Some(executor) =>
+        executor.execute(
+          new Runnable {
+            override def run(): Unit = {
+              if (pingPromise.compareAndSet(null, done)) {
+                val _ = writer.sendPing()
+              } else {
+                done.setException(OutstandingPingEx)
+              }
+            }
+          }
+        )
+    }
+    done
+  }
+
+  protected[this] val failureDetector: FailureDetector = failureThreshold match {
+    case None => FailureDetector(NullConfig, null, null)
+    case Some(cfg) => FailureDetector(cfg, (ping _), stats.scope("failure_detector"))
+  }
+  failureDetector.onClose.ensure {
+    log.debug(s"failure detector closed HTTP/2 connection: $prefix")
+    goAway(GoAway.InternalError); ()
   }
 
   private[this] val closedId: AtomicInteger = new AtomicInteger(0)
@@ -128,8 +172,18 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         if (resetStreams(Reset.Cancel)) transport.close()
         else Future.Unit
 
-      case Return(f: Http2SettingsFrame) =>
+      case Return(_: Http2SettingsFrame) =>
         // We received a settings frame, keep reading from the transport
+        transport.read().transform(loop)
+      case Return(f: Http2PingFrame) =>
+        if (f.ack()) {
+          // client sent a ping and got acknowledgement. Satisfy promise to let failure detector
+          // know the connection is still alive.
+          val prevPingPromise = pingPromise.getAndSet(null)
+          if (prevPingPromise != null) {
+            prevPingPromise.setDone()
+          }
+        }
         transport.read().transform(loop)
 
       case Return(f: Http2StreamFrame) =>

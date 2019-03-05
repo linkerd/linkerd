@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.concurrent.AsyncMutex
+import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, Status => SvcStatus}
 import com.twitter.finagle.transport.Transport
@@ -25,6 +26,7 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
+  override protected[this] val failureThreshold: Option[FailureDetector.Config],
   protected[this] val stats: StatsReceiver
 ) extends Service[Request, Response] with Netty4DispatcherBase[Request, Response] {
   import Netty4ClientDispatcher._
@@ -34,7 +36,7 @@ class Netty4ClientDispatcher(
   override protected[this] val prefix =
     s"C L:${transport.context.localAddress} R:${transport.context.remoteAddress}"
 
-  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats)
+  private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats.scope("stream"))
 
   transport.onClose.onSuccess(onTransportClose)
 

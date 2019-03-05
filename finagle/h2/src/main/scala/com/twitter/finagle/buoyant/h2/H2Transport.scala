@@ -37,5 +37,12 @@ object H2Transport {
     def goAway(err: GoAway, deadline: Time): Future[Unit]
 
     final def goAway(err: GoAway): Future[Unit] = goAway(err, Time.Top)
+
+    /**
+     * Writes a Non-ACK PING frame on the transport. This method does not send
+     * ACK PING frames on a stream. ACK PING frames are automatically
+     * sent by the underlying Netty H2 implementation.
+     */
+    def sendPing(): Future[Unit]
   }
 }

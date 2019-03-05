@@ -3,6 +3,7 @@ package com.twitter.finagle.buoyant
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.buoyant.h2.netty4._
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
+import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.param.{WithDefaultLoadBalancer, WithSessionPool}
 import com.twitter.finagle.pool.SingletonPool
 import com.twitter.finagle.server.{Listener, StackServer, StdStackServer}
@@ -54,11 +55,13 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
     ): Client = copy(stack, params)
 
     private[this] lazy val param.Stats(statsReceiver) = params[param.Stats]
+    private[this] lazy val FailureDetector.Param(detectorCfg) = params[FailureDetector.Param]
 
     protected def newDispatcher(trans: Http2FrameTransport {
       type Context <: self.Context
-    }): Service[Request, Response] =
-      new Netty4ClientDispatcher(trans, statsReceiver.scope("stream"))
+    }): Service[Request, Response] = {
+      new Netty4ClientDispatcher(trans, Some(detectorCfg), statsReceiver)
+    }
   }
 
   val client = Client()
@@ -106,7 +109,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       },
       service: Service[Request, Response]
     ): Closable = {
-      new Netty4ServerDispatcher(trans, service, statsReceiver.scope("stream"))
+      new Netty4ServerDispatcher(trans, None, service, statsReceiver)
     }
   }
 
