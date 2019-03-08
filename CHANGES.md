@@ -1,11 +1,12 @@
 ## 1.6.2 2019-03-08
 This Linkerd release includes bug fixes for Namerd's k8s watch API as well as memory management
 improvements in the `io.l5d.zk` storage plugin. This release features a new failure detector
-module in the `io.l5d.mesh` interpreter that sends "heartbeat" pings on all HTTP/2 connections to Namerd. This is intended to monitor the health of connections between Linkerd and Namerd so that
+module in the `io.l5d.mesh` interpreter that sends "heartbeat" pings on all HTTP/2 connections to
+Namerd. This is intended to monitor the health of connections between Linkerd and Namerd so that
 connections can be torn down and restablished if a ping message is not received within a configured
 amount of time.
 
-This release also includes doc updates from these following external contributors:
+This release also includes doc updates from the following contributors:
 * [LongKB](https://github.com/longkb)
 * [Nguyen Phuong An](https://github.com/annp1987)
 * [JoeWrightss](https://github.com/JoeWrightss)
@@ -18,16 +19,16 @@ Full release notes:
 
 * OpenJ9
   * Fixes an issue in Linkerd's OpenJ9 docker image where Linkerd may sometimes run into an
-    `OutOfMemoryErrorException` caused by OpenJ9's JDK base image
+  `OutOfMemoryErrorException` caused by OpenJ9's JDK base image
 * Namerd
   * Fixes a memory leak issue in the `io.l5d.zk` dtab storage module
-  * Fixes an issue where Namerd stops watching dtabs if it receives a 404 while restarting
-	a watch API request
+  * Fixes an issue where Namerd stops watching dtabs if it receives a 404 while restarting a watch
+  API request
 * Linkerd Mesh Interpreter
   * Adds a failure detector in the `io.l5d.mesh` interpreter to help monitor the health of
-    connections to Namerd. The failure detector can be configured by providing a `minPeriodMs`
-	which sets the duration between each successive pings and a `closeTimeoutMs` parameter that
-	sets the duration before before a connection is marked as "unhealthy"
+  connections to Namerd. The failure detector can be configured by providing a `minPeriodMs`
+  which sets the duration between each successive pings and a `closeTimeoutMs` parameter that
+  sets the duration before before a connection is marked as "unhealthy"
 * Adds support for configuring `socketOptions` in the client section of a Linkerd config
 
 ## 1.6.1 2019-02-01
