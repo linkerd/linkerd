@@ -15,32 +15,33 @@ This release also includes doc updates from these following external contributor
 A big shoutout to all contributors listed above for their great work!
 
 Full release notes:
+
 * OpenJ9
   * Fixes an issue in Linkerd's OpenJ9 docker image where Linkerd may sometimes run into an
     `OutOfMemoryErrorException` caused by OpenJ9's JDK base image
 * Namerd
   * Fixes a memory leak issue in the `io.l5d.zk` dtab storage module
-	* Fixes an issue where Namerd stops watching dtabs if it receives a 404 while restarting
-	  a watch API request
+  * Fixes an issue where Namerd stops watching dtabs if it receives a 404 while restarting
+	a watch API request
 * Linkerd Mesh Interpreter
-   * Adds a failure detector in the `io.l5d.mesh` interpreter to help monitor the health of
-	   connections to Namerd. The failure detector can be configured by providing a `minPeriodMs`
-	   which sets the duration between each successive pings and a `closeTimeoutMs` parameter that
-	   sets the duration before before a connection is marked as "unhealthy"
+  * Adds a failure detector in the `io.l5d.mesh` interpreter to help monitor the health of
+    connections to Namerd. The failure detector can be configured by providing a `minPeriodMs`
+	which sets the duration between each successive pings and a `closeTimeoutMs` parameter that
+	sets the duration before before a connection is marked as "unhealthy"
 * Adds support for configuring `socketOptions` in the client section of a Linkerd config
 
 ## 1.6.1 2019-02-01
 
-The first 1.x release of the year brings minor bug fixes to Namerd, the `io.l5d.consul` and
+The first 1.x release of the year brings minor bug fixes to Namerd, the `io.l5d.consul` and 
 `io.l5d.curator` namers. This release features contributions from [NCBI](https://github.com/ncbi)
-and ThreeComma. A big thank you to [edio](https://github.com/edio) and
+and ThreeComma. A big thank you to [edio](https://github.com/edio) and 
 [Chris Goffinet](https://github.com/chrisgoffinet) for their contributions in this release.
 
 Full release notes:
 
-* Improves the `io.l5d.consul` namer's error handling in cases were it receives intermittent 5xx
+* Improves the `io.l5d.consul` namer's error handling in cases were it receives intermittent 5xx 
 HTTP errors from Consul
-* Fixes a `java.lang.NoSuchMethodError` that would sometimes occur when using the `io.l5d.curator`
+* Fixes a `java.lang.NoSuchMethodError` that would sometimes occur when using the `io.l5d.curator` 
 namer
 * Fixes a `NullPointerException` that would occur when using the `io.l5d.mesh` interface in Namerd
 * Adds a new configuration option called `backlog` to `socketOptions` that allows you to set up a
@@ -51,8 +52,8 @@ IP addresses
 ## 1.6.0 2018-12-20
 
 Linkerd 1.6.0 includes a Finagle upgrade that reduces direct memory allocation and adds support for
-more efficient HTTP/1.1 streaming for large HTTP requests. This release also improves Linkerd's
-execution script to run with Java 9 and higher. Finally, this release adds a new gRPC
+more efficient HTTP/1.1 streaming for large HTTP requests. This release also improves Linkerd's 
+execution script to run with Java 9 and higher. Finally, this release adds a new gRPC 
 response-classifier that may be configured with user defined gRPC status codes.
 
 Full release notes:
@@ -61,25 +62,25 @@ Full release notes:
 * **Breaking Change**
   * `requestAuthorizers` are now configured in the client section of a router configuration.
   * `maxChunkKB` has been removed and is no longer configurable for HTTP/1.1 routers. Rather than
-   enforcing a hard size limit, Linkerd now streams HTTP/1.1 chunked messages that exceed
+   enforcing a hard size limit, Linkerd now streams HTTP/1.1 chunked messages that exceed 
   `streamAfterContentLengthKB`
-
+  
 HTTP/1.1
   * Adds a new config option `streamAfterContentLengthKB` that sets a threshold at which HTTP
   messages will be streamed instead of being fully buffered in memory, even when chunked-encoding is
   not used.
-* Consul
-  * Fixes an issue where the last known good state of an `io.l5d.consul` namer would be cleared if
+* Consul  
+  * Fixes an issue where the last known good state of an `io.l5d.consul` namer would be cleared if 
   a 5xx API response was received from Consul.
 * gRPC
-  * Adds support for all `io.l5d.h2.grpc.*` response classifiers to classify gRPC status codes as
+  * Adds support for all `io.l5d.h2.grpc.*` response classifiers to classify gRPC status codes as 
   `Success` based off of a user defined list within the response classification section of a config.
 * Fixes a startup issue where Linkerd would fail to load `readTimeoutMs` and `writeTimeoutMs`values
-  from socket option configs.
+  from socket option configs.  
 * Fixes Linkerd's executable script to work with Java version 9 and higher.
 * Upgrades Finagle to 18.12.0 which reduces the amount of direct memory Linkerd allocates at startup
  time.
-
+    
 ## 1.5.2 2018-11-19
 
 Linkerd 1.5.2 adds performance improvements to HTTP/2, dramatically improving throughput when
@@ -101,8 +102,8 @@ Full release notes:
 
 ## 1.5.1 2018-10-24
 
-Linkerd 1.5.1 adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from
-a Consul KV store agent instead of using Namerd. In addition, this release fixes an issue in
+Linkerd 1.5.1 adds a new `io.l5d.consul.interpreter` that allows Linkerd to read dtabs directly from 
+a Consul KV store agent instead of using Namerd. In addition, this release fixes an issue in 
 the HTTP/2 router where Linkerd would get stuck handling connections in certain cases.
 
 This release features contributions from OfferUp, Planet Labs and Buoyant with a special shoutout
@@ -113,7 +114,7 @@ Full release notes:
 
 * HTTP/2
   * Fixes an HTTP/2 issue that causes Linkerd to stop processing incoming frames on an HTTP/2
-  connection after Linkerd sends a `RST_STREAM` frame to its remote peer. This was causing gRPC
+  connection after Linkerd sends a `RST_STREAM` frame to its remote peer. This was causing gRPC 
   clients to experience timeout errors intermittently because connections between Linkerd and its
   remote peers weren't being closed properly.
   * Sets the `maxConcurrentStreamsPerConnection` config value for the `h2` router to `1000` by default
@@ -157,8 +158,8 @@ Full release notes:
 
 ## 1.4.6 2018-08-13
 
-Linkerd 1.4.6 adds even more watch state endpoints to Linkerd's debugging arsenal, allowing you to
-inspect the state of Linkerd’s watches easily. This release adds watch state endpoints for the
+Linkerd 1.4.6 adds even more watch state endpoints to Linkerd's debugging arsenal, allowing you to 
+inspect the state of Linkerd’s watches easily. This release adds watch state endpoints for the 
 Kubernetes ConfigMap interpreter as well as the Marathon and filesystem namers.
 
 Full release notes:
@@ -169,14 +170,14 @@ Full release notes:
     requests.
 * Add TLS support for the `io.l5d.etcd` namer client.
 * Admin
-  * Add new `io.l5d.marathon`, `io.l5d.fs`, and `io.l5d.k8s.configMap` watch state endpoints to
+  * Add new `io.l5d.marathon`, `io.l5d.fs`, and `io.l5d.k8s.configMap` watch state endpoints to 
   allow diagnosis of Linkerd’s various watches.
 * Distributed Tracing
   * Add a new `io.l5d.zipkin` trace propagation plugin that writes Zipkin B3 trace headers to
-  outgoing requests. Previously, Zipkin trace headers were ignored by Linkerd in order for Linkerd
+  outgoing requests. Previously, Zipkin trace headers were ignored by Linkerd in order for Linkerd 
   to not interfere with other tracing systems like Zipkin.
 * Namerd
-  * Add an experimental `io.l5d.destination` interface which implements the Linkerd
+  * Add an experimental `io.l5d.destination` interface which implements the Linkerd 
   [destination API.](https://github.com/linkerd/linkerd2-proxy-api/blob/master/proto/destination.proto)
 
 ## 1.4.5 2018-07-13
@@ -207,13 +208,13 @@ Full release notes:
 
 ## 1.4.4 2018-07-06
 
-Linkerd 1.4.4 continues our focus on diagnostics, performance, and stability. This release features
-several performance and diagnostics improvements, including better handling of HTTP/2 edge cases,
-new watch state introspection for the Consul namer, and better isolation of admin page serving from
-the primary data path. It also features a new, pluggable trace propagation module that allows for
+Linkerd 1.4.4 continues our focus on diagnostics, performance, and stability. This release features 
+several performance and diagnostics improvements, including better handling of HTTP/2 edge cases, 
+new watch state introspection for the Consul namer, and better isolation of admin page serving from 
+the primary data path. It also features a new, pluggable trace propagation module that allows for 
 easier integration with tracing systems like OpenTracing.
 
-This release features contributions from Salesforce, Walmart, WePay, Comcast, ScalaConsultants,
+This release features contributions from Salesforce, Walmart, WePay, Comcast, ScalaConsultants, 
 OfferUp, Buoyant, and more. A big thank you to:
 
 * [Chris Goffinet](https://github.com/chrisgoffinet)
@@ -221,43 +222,43 @@ OfferUp, Buoyant, and more. A big thank you to:
 * [Ivano Pagano](https://github.com/ivanopagano)
 * [Leo Liang](https://github.com/leozc)
 * [Mantas Stoškus](https://github.com/mstoskus)
-* [Mohsen Rezaei](https://github.com/mrezaei00)
+* [Mohsen Rezaei](https://github.com/mrezaei00) 
 * [Nick K](https://github.com/utrack)
 * [Priyasmita Bagchi](https://github.com/pbagchi)
 * [Robert Panzer](https://github.com/robertpanzer)
 * [Ryan Michela](https://github.com/rmichela)
-
+ 
 Full release notes:
 
 * Distributed Tracing
   * Refactor Linkerd's trace propagation module to be pluggable. This allows better integration with
-   tracing systems like OpenTracing and allows users to write Linkerd trace propagation plugins for
+   tracing systems like OpenTracing and allows users to write Linkerd trace propagation plugins for 
    arbitrary tracing systems.
 * TLS
-  * Deprecate the  `trustCerts` config field in the client TLS section in favor of
-  `trustCertsBundle`. This allows you to use multiple trust certs in one file and avoids the need
+  * Deprecate the  `trustCerts` config field in the client TLS section in favor of 
+  `trustCertsBundle`. This allows you to use multiple trust certs in one file and avoids the need 
   for Linkerd to create temporary files.
 * HTTP, HTTP/2
-  * Fix an issue where Linkerd sometimes interprets HTTP/1.0 response with no Content-Length as a
+  * Fix an issue where Linkerd sometimes interprets HTTP/1.0 response with no Content-Length as a 
   chunked response.
-  * Improve error messages by adding contextual routing information to a `ConnectionFailed`
+  * Improve error messages by adding contextual routing information to a `ConnectionFailed` 
   exception sent back to a client via Linkerd.
   * Add a gRPC standard-compliant response classifier.
   * Fix an issue where Linkerd doesn't add an `l5d-err` header in an HTTP/2 response.
-  * Fix an issue where Linkerd does not handle HTTP/2 requests with invalid HTTP status codes
+  * Fix an issue where Linkerd does not handle HTTP/2 requests with invalid HTTP status codes 
   correctly.
 * Consul
   * Add new watch state instrumentation feature to the `io.l5d.consul` namer.
-  * Fix an issue where the `io.l5d.consul` namer sometimes does not retry `ConnectionRefused`
+  * Fix an issue where the `io.l5d.consul` namer sometimes does not retry `ConnectionRefused` 
   exception.
   * Fix an issue where the `io.l5d.consul` namer returns a single IP for a service node instead of
    multiple IP addresses for a service node.
 * Admin
-  * Fix an issue where Linkerd may slow down data plane requests when the admin server is under
+  * Fix an issue where Linkerd may slow down data plane requests when the admin server is under 
   heavy load.
-  * Improve performance of the Prometheus telemeter when serving metrics for a high cardinality
+  * Improve performance of the Prometheus telemeter when serving metrics for a high cardinality 
   of services.
-  * Fix an issue where the `intepreter_state` endpoint was not available for interpreters that
+  * Fix an issue where the `intepreter_state` endpoint was not available for interpreters that 
   contained a transformer.
   * Fix the `namer_state` endpoint to expose namers that use transformers.
 * Namerd
@@ -271,18 +272,18 @@ Full release notes:
 
 * Add diagnostic tracing for H2 requests, allowing Linkerd to add h2 request routing information at
 the end of h2 streams to downstream services.
-* Pass stack params to announcer plugins, allowing them to report metrics correctly.
+* Pass stack params to announcer plugins, allowing them to report metrics correctly. 
 
 ## 1.4.2 2018-06-11
 
-Linkerd 1.4.2 continues its focus on diagnostics and stability. This release introduces Diagnostic
-Tracing, a feature that helps describe how Linkerd routes requests by displaying detailed routing
-information from each hop through your application. Stay tuned for a deep dive blog post about this
-feature coming soon.
+Linkerd 1.4.2 continues its focus on diagnostics and stability. This release introduces Diagnostic 
+Tracing, a feature that helps describe how Linkerd routes requests by displaying detailed routing 
+information from each hop through your application. Stay tuned for a deep dive blog post about this 
+feature coming soon. 
 
-We’re also excited to share improvements to Linkerd’s error handling. Previously, when Linkerd
-failed to route a request, it could fail with a notoriously confusing `No Hosts Available` error.
-Now, these errors include more useful, informative diagnostic information to help explain the cause
+We’re also excited to share improvements to Linkerd’s error handling. Previously, when Linkerd 
+failed to route a request, it could fail with a notoriously confusing `No Hosts Available` error. 
+Now, these errors include more useful, informative diagnostic information to help explain the cause 
 of the failure.
 
 Full release notes:
