@@ -1,3 +1,36 @@
+## 1.6.2 2019-03-08
+This Linkerd release includes bug fixes for Namerd's k8s watch API as well as memory management
+improvements in the `io.l5d.zk` storage plugin. This release features a new failure detector
+module in the `io.l5d.mesh` interpreter that sends "heartbeat" pings on all HTTP/2 connections to
+Namerd. This is intended to monitor the health of connections between Linkerd and Namerd so that
+connections are torn down and re-established if a ping message is not received within a configured
+amount of time.
+
+This release also includes doc updates from the following contributors:
+* [LongKB](https://github.com/longkb)
+* [Nguyen Phuong An](https://github.com/annp1987)
+* [JoeWrightss](https://github.com/JoeWrightss)
+* [tuanvcw](https://github.com/tuanvcw)
+* [Nguyen Hai Truong](https://github.com/truongnh1992)
+
+A big shoutout to all contributors listed above for their great work!
+
+Full release notes:
+
+* OpenJ9
+  * Fixes an issue in Linkerd's OpenJ9 docker image where Linkerd may sometimes run into an
+  `OutOfMemoryErrorException` caused by OpenJ9's JDK base image
+* Namerd
+  * Fixes a memory leak in the `io.l5d.zk` dtab storage module
+  * Fixes an issue where Namerd stops watching dtabs if it receives HTTP 404 from a Kubernetes
+  API server while restarting a watch API request
+* Linkerd Mesh Interpreter
+  * Adds a failure detector in the `io.l5d.mesh` interpreter to help monitor the health of
+  connections to Namerd. The failure detector can be configured by providing a `minPeriodMs`
+  which sets the duration between each successive ping and a `closeTimeoutMs` parameter that
+  sets a duration that must elapse before a connection is marked as "unhealthy"
+* Adds support for configuring `socketOptions` in the client section of a Linkerd config
+
 ## 1.6.1 2019-02-01
 
 The first 1.x release of the year brings minor bug fixes to Namerd, the `io.l5d.consul` and 
