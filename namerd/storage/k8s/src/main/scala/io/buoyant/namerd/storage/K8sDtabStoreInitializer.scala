@@ -17,7 +17,7 @@ case class K8sConfig(
 
   @JsonIgnore
   override def mkDtabStore(params: Stack.Params): DtabStore = {
-    val client = mkClient()
+    val client = mkClient(params)
 
     new K8sDtabStore(client, dst, namespace.getOrElse(DefaultNamespace))
   }
