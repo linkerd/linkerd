@@ -14,10 +14,12 @@ define([
     }
 
     return $.get("config.json").done(function(routersRsp) {
-      var routers = routersRsp.routers;
+      var routers = routersRsp.routers || [];
       addAllRoutersLabel(routers, removeRoutersAllOption);
 
-      if(window.location.pathname === "/" && !matches && routers.length > 0) {
+      // !routersRsp.storage is a hack to force the admin page to not append a ?router=all
+      // suffix to the page URL if we are viewing a Namerd admin page.
+      if(window.location.pathname === "/" && !matches && routers.length > 0 && !routersRsp.storage) {
         selectRouter(routers[0].label || routers[0].protocol);
       }
       return routersRsp;

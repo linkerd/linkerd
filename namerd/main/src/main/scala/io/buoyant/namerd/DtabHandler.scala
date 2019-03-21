@@ -31,7 +31,6 @@ class DtabHandler(
 
   def renderDtab(name: String, dtab: Dtab): Future[Response] = {
     val body = s"""
-          <div class="container-fluid">
             <div class="row">
               <div class="col-lg-6">
                 <h2 class="router-label-title">Namespace "$name"</h2>
@@ -39,20 +38,18 @@ class DtabHandler(
             </div>
             <div class="delegator">
             </div>
-          </div>
 
           <script id="data" type="application/json">{"namespace": "$name", "dtab": ${
       DelegateApiHandler
         .Codec.writeStr(dtab)
     }}</script>
-          <script data-main="../files/js/main-namerd" src="../files/js/lib/require.js"></script>
+          <script data-main="/files/js/main-namerd" src="/files/js/lib/require.js"></script>
       """
     render(body)
   }
 
   def renderError(e: Throwable): Future[Response] = {
     val body = s"""
-          <div class="container-fluid">
             <div class="row">
               <div class="col-lg-6">
                 <h2 class="router-label-title">Dtab Error</h2>
@@ -60,31 +57,14 @@ class DtabHandler(
                 <pre>$e</pre>
               </div>
             </div>
-          </div>
     """
     render(body)
   }
 
   def render(body: String): Future[Response] = {
-    val content = s"""
-      <!doctype html>
-      <html>
-        <head>
-          <title>namerd admin</title>
-          <link rel="shortcut icon" href="../files/images/favicon.png" />
-          <link type="text/css" href="../files/css/lib/bootstrap.min.css" rel="stylesheet"/>
-          <link type="text/css" href="../files/css/fonts.css" rel="stylesheet"/>
-          <link type="text/css" href="../files/css/dashboard.css" rel="stylesheet"/>
-          <link type="text/css" href="../files/css/delegator.css" rel="stylesheet"/>
-        </head>
-        <body>
-        $body
-        </body>
-      </html>
-    """
     val response = Response()
-    response.contentType = MediaType.Html + ";charset=UTF-8"
-    response.contentString = content
+    response.contentType = MediaType.Html
+    response.contentString = body
     Future.value(response)
   }
 }
