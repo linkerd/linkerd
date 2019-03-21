@@ -43,7 +43,7 @@ class DtabHandler(
       DelegateApiHandler
         .Codec.writeStr(dtab)
     }}</script>
-          <script data-main="/files/js/main-namerd" src="/files/js/lib/require.js"></script>
+          <script data-main="../files/js/main-namerd" src="../files/js/lib/require.js"></script>
       """
     render(body)
   }

@@ -6,7 +6,7 @@ import com.twitter.server.handler.ResourceHandler
 import com.twitter.util.Future
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.admin.names.DelegateApiHandler
-import io.buoyant.admin._
+import io.buoyant.admin.{Admin, ConfigHandler, HtmlView, LoggingApiHandler, LoggingHandler, StaticFilter}
 import io.buoyant.namer.ConfiguredNamersInterpreter
 
 object NamerdAdmin {
@@ -23,28 +23,23 @@ object NamerdAdmin {
     Handler("/config.json", new ConfigHandler(nc, NamerdConfig.LoadedInitializers.iter))
   )
 
-  def dtabs(dtabStore: DtabStore, namers: Map[Path, Namer], adminHandler: NamerdAdmin) = {
-    val adminFilter = new NamerdFilter(adminHandler)
-    Seq(
+  def dtabs(dtabStore: DtabStore, namers: Map[Path, Namer], adminFilter: NamerdFilter) = Seq(
       Handler("/", adminFilter.andThen(new DtabListHandler(dtabStore))),
-      Handler("/dtab/delegator.json", new DelegateApiHandler(ns => ConfiguredNamersInterpreter(namers.toSeq))),
+      Handler("/dtab/delegator.json", new DelegateApiHandler(_ => ConfiguredNamersInterpreter(namers.toSeq))),
       Handler("/dtab/", adminFilter.andThen(new DtabHandler(dtabStore)))
     )
-  }
 
-  def logging(adminHandler: NamerdAdmin): Seq[Handler] = {
-    val adminFilter = new NamerdFilter(adminHandler)
-    Seq(
+  def logging(adminHandler: NamerdAdmin, adminFilter: NamerdFilter): Seq[Handler] = Seq(
       Handler("/logging.json", new LoggingApiHandler()),
       Handler("/logging", adminFilter.andThen(new LoggingHandler(adminHandler)))
     )
-  }
 
   def apply(nc: NamerdConfig, namerd: Namerd): Seq[Handler] = {
-    val handler = new NamerdAdmin(Seq(NavItem("dtabs", "dtabs"), NavItem("logging", "logging")))
+    val handler = new NamerdAdmin(Seq(NavItem("logging", "logging")))
+    val adminFilter = new NamerdFilter(handler)
 
     static ++ config(nc) ++
-      dtabs(namerd.dtabStore, namerd.namers, handler) ++ logging(handler) ++
+      dtabs(namerd.dtabStore, namerd.namers, adminFilter) ++ logging(handler, adminFilter) ++
       Admin.extractHandlers(namerd.dtabStore +: (namerd.namers.values.toSeq ++ namerd.telemeters))
   }
 
