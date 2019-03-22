@@ -23,7 +23,12 @@ require.config({
 require([
   'jQuery',
   'bootstrap',
-  'src/dashboard_delegate'
-], function ($, bootstrap, namerdDtabPlayground) {
-  new namerdDtabPlayground();
+  'src/dashboard_delegate',
+  'src/logging'
+], function ($, bootstrap, namerdDtabPlayground, loggingConfig) {
+  if(window.location.pathname.indexOf("/dtab") >= 0){
+    new namerdDtabPlayground();
+  } else if(window.location.pathname.endsWith("/logging")){
+    new loggingConfig();
+  }
 });

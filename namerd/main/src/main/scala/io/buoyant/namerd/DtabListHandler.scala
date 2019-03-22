@@ -12,7 +12,7 @@ class DtabListHandler(
   override def apply(req: Request): Future[Response] =
     store.list().toFuture.map { list =>
       val response = Response()
-      response.contentType = MediaType.Html + ";charset=UTF-8"
+      response.contentType = MediaType.Html
       response.contentString = render(list.toSeq.sorted)
       response
     }
@@ -42,25 +42,11 @@ class DtabListHandler(
     }
 
     s"""
-      <!doctype html>
-      <html>
-        <head>
-          <title>namerd admin</title>
-          <link rel="shortcut icon" href="files/images/favicon.png" />
-          <link type="text/css" href="files/css/lib/bootstrap.min.css" rel="stylesheet"/>
-          <link type="text/css" href="files/css/fonts.css" rel="stylesheet"/>
-          <link type="text/css" href="files/css/dashboard.css" rel="stylesheet"/>
-        </head>
-        <body>
-          <div class="container-fluid">
-            <div class="row">
-              <div class="col-lg-6">
-                $content
-              </div>
-            </div>
-          </div>
-        </body>
-      </html>
+      <div class="row">
+        <div class="col-lg-6">
+          $content
+        </div>
+    </div>
     """
   }
 }
