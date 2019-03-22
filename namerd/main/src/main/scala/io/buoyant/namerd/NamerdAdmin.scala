@@ -24,15 +24,15 @@ object NamerdAdmin {
   )
 
   def dtabs(dtabStore: DtabStore, namers: Map[Path, Namer], adminFilter: NamerdFilter) = Seq(
-      Handler("/", adminFilter.andThen(new DtabListHandler(dtabStore))),
-      Handler("/dtab/delegator.json", new DelegateApiHandler(_ => ConfiguredNamersInterpreter(namers.toSeq))),
-      Handler("/dtab/", adminFilter.andThen(new DtabHandler(dtabStore)))
-    )
+    Handler("/", adminFilter.andThen(new DtabListHandler(dtabStore))),
+    Handler("/dtab/delegator.json", new DelegateApiHandler(_ => ConfiguredNamersInterpreter(namers.toSeq))),
+    Handler("/dtab/", adminFilter.andThen(new DtabHandler(dtabStore)))
+  )
 
   def logging(adminHandler: NamerdAdmin, adminFilter: NamerdFilter): Seq[Handler] = Seq(
-      Handler("/logging.json", new LoggingApiHandler()),
-      Handler("/logging", adminFilter.andThen(new LoggingHandler(adminHandler)))
-    )
+    Handler("/logging.json", new LoggingApiHandler()),
+    Handler("/logging", adminFilter.andThen(new LoggingHandler(adminHandler)))
+  )
 
   def apply(nc: NamerdConfig, namerd: Namerd): Seq[Handler] = {
     val handler = new NamerdAdmin(Seq(NavItem("logging", "logging")))
@@ -60,18 +60,18 @@ private class NamerdAdmin(navItems: Seq[NavItem]) extends HtmlView {
   ): String =
     s"""
 <!doctype html>
-      <html>
-        <head>
-          <title>namerd admin</title>
-          <link type="text/css" href="/files/css/lib/bootstrap.min.css" rel="stylesheet"/>
-          <link type="text/css" href="/files/css/fonts.css" rel="stylesheet"/>
-          <link type="text/css" href="/files/css/dashboard.css" rel="stylesheet"/>
-          <link type="text/css" href="/files/css/logger.css" rel="stylesheet"/>
-          <link type="text/css" href="/files/css/delegator.css" rel="stylesheet"/>
-          <link rel="shortcut icon" href="/files/images/favicon.png" />
-        </head>
-        <body>
-          <nav class="navbar navbar-inverse">
+<html>
+  <head>
+    <title>namerd admin</title>
+    <link type="text/css" href="/files/css/lib/bootstrap.min.css" rel="stylesheet"/>
+    <link type="text/css" href="/files/css/fonts.css" rel="stylesheet"/>
+    <link type="text/css" href="/files/css/dashboard.css" rel="stylesheet"/>
+    <link type="text/css" href="/files/css/logger.css" rel="stylesheet"/>
+    <link type="text/css" href="/files/css/delegator.css" rel="stylesheet"/>
+    <link rel="shortcut icon" href="/files/images/favicon.png" />
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse">
       <div class="navbar-container">
         <div class="navbar-header">
           <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
@@ -80,28 +80,24 @@ private class NamerdAdmin(navItems: Seq[NavItem]) extends HtmlView {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-
           <a class="navbar-brand" href="/">
             <div>Namerd</div>
           </a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-          ${navHtml(navHighlight)}
+            ${navHtml(navHighlight)}
           </ul>
         </div>
       </div>
     </nav>
-
-          <div class="container-fluid">
-            $content
-          </div>
-          $tailContent
-
-          <script data-main="/files/js/main-linkerd" src="/files/js/lib/require.js"></script>
-
-        </body>
-      </html>
+    <div class="container-fluid">
+      $content
+    </div>
+    $tailContent
+    <script data-main="/files/js/main-namerd" src="/files/js/lib/require.js"></script>
+  </body>
+</html>
      """
 
   override def mkResponse(

@@ -14,16 +14,11 @@ define([
     }
 
     return $.get("config.json").done(function(routersRsp) {
-      var routers = routersRsp.routers || [];
+      var routers = routersRsp.routers;
       addAllRoutersLabel(routers, removeRoutersAllOption);
 
-        // selectRouter appends ?router=all to the address bar URL which causes an additional page
-        // reload. We need a way to prevent this when running Namerd since Namerd doesn't use
-        // routers. We use routersRps.storage as a way to differentiate between a Namerd admin page
-        // or a Linkerd admin page. If routersRsp.storage doesn't exist in the config.json, we know
-        // that we are viewing a Namerd admin page so don't call selectRouter.
-        if(window.location.pathname === "/" && !matches && routers.length > 0 && !routersRsp.storage) {
-          selectRouter(routers[0].label || routers[0].protocol);
+      if(window.location.pathname === "/" && !matches && routers.length > 0) {
+        selectRouter(routers[0].label || routers[0].protocol);
       }
       return routersRsp;
     });
