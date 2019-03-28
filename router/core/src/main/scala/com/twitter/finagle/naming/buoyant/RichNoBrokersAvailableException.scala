@@ -2,9 +2,7 @@ package com.twitter.finagle.naming.buoyant
 
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.Future
-import io.buoyant.namer.{DelegateTree, Delegator, RichActivity}
 
 class RichNoBrokersAvailableException(
   path: Dst.Path,
