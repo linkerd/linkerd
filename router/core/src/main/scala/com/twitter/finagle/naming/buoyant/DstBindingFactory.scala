@@ -163,7 +163,7 @@ object DstBindingFactory {
           }
 
           private val handleNoBrokers: PartialFunction[Throwable, Future[Service[Req, Rsp]]] = {
-            case e: NoBrokersAvailableException => RichNoBrokersAvailableException(dst, namer)
+            case e: NoBrokersAvailableException => RichNoBrokersAvailableException(dst)
           }
 
         }

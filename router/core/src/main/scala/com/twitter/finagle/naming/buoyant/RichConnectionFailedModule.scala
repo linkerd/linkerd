@@ -10,7 +10,7 @@ import com.twitter.util.Future
  * RichConnectionFailedExceptions, adding helpful information about the current routing context.
  * This module is typically used in the client stack.
  */
-class RichConnectionFailedModule[Request, Response] extends Stack.Module2[BindingFactory.Dest, DstBindingFactory.Namer, ServiceFactory[Request, Response]] {
+class RichConnectionFailedModule[Request, Response] extends Stack.Module1[BindingFactory.Dest, ServiceFactory[Request, Response]] {
 
   override def role: Stack.Role = Stack.Role("RichConnectionFailed")
 
@@ -18,7 +18,6 @@ class RichConnectionFailedModule[Request, Response] extends Stack.Module2[Bindin
 
   override def make(
     dest: BindingFactory.Dest,
-    interpreter: DstBindingFactory.Namer,
     next: ServiceFactory[Request, Response]
   ): ServiceFactory[Request, Response] = {
 
@@ -33,8 +32,7 @@ class RichConnectionFailedModule[Request, Response] extends Stack.Module2[Bindin
           case Failure(Some(e: ConnectionFailedException)) =>
             Future.exception(RichConnectionFailedException(
               bound,
-              e.remoteAddress,
-              interpreter.interpreter
+              e.remoteAddress
             ))
         }
       }
