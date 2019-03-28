@@ -1,3 +1,10 @@
+## 1.6.2.1 2019-03-28
+
+This bug fix release fixes an issue where Linkerd can send excessive load to Namerd in certain
+when Linkerd is unable to establish TCP connections to services.  To remedy this, detailed
+delegation information has been removed from error responses returned by Linkerd.  This detailed
+delegation information is still available by using the dtab page of the Linkerd admin server.
+ 
 ## 1.6.2 2019-03-08
 This Linkerd release includes bug fixes for Namerd's k8s watch API as well as memory management
 improvements in the `io.l5d.zk` storage plugin. This release features a new failure detector
