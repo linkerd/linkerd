@@ -1,10 +1,8 @@
 package com.twitter.finagle.naming.buoyant
 
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.finagle._
 import com.twitter.util.Future
-import io.buoyant.namer.{DelegateTree, Delegator}
 import java.net.SocketAddress
 import scala.util.control.NoStackTrace
 
@@ -17,8 +15,7 @@ import scala.util.control.NoStackTrace
  */
 case class RichConnectionFailedException(
   client: Option[Name.Bound],
-  remote: SocketAddress,
-  namer: NameInterpreter
+  remote: SocketAddress
 ) extends Exception(null, null)
   with NoStackTrace
   with SourcedException
@@ -28,8 +25,7 @@ case class RichConnectionFailedException(
     RichConnectionFailedExceptionWithPath(
       service,
       client,
-      remote,
-      namer
+      remote
     )
   }
 
@@ -47,8 +43,7 @@ class RichConnectionFailedExceptionWithPath(
   service: Dst.Path,
   client: String,
   addresses: Set[Address],
-  remote: String,
-  resolution: Seq[String]
+  remote: String
 ) extends Exception(null, null)
   with NoStackTrace
   with SourcedException
@@ -58,8 +53,6 @@ class RichConnectionFailedExceptionWithPath(
     case Address.Inet(isa, _) => isa.toString.stripPrefix("/")
   }.mkString("[", ", ", "]")
 
-  private[this] val resolutionList = resolution.mkString("\n")
-
   override lazy val exceptionMessage: String =
     s"""Unable to establish connection to $remote.
 
@@ -67,8 +60,6 @@ service name: ${service.path.show}
 client name: $client
 addresses: $addressList
 selected address: ${remote.toString.stripPrefix("/")}
-dtab resolution:
-$resolutionList
 """
 
   override def flags = FailureFlags.Retryable
@@ -82,8 +73,7 @@ object RichConnectionFailedExceptionWithPath {
   def apply(
     path: Dst.Path,
     client: Option[Name.Bound],
-    remote: SocketAddress,
-    namer: NameInterpreter
+    remote: SocketAddress
   ): Future[Nothing] = {
 
     val addresses = client match {
@@ -95,22 +85,6 @@ object RichConnectionFailedExceptionWithPath {
       case None => Future.value(Set.empty[Address])
     }
 
-    val resolution = (namer match {
-      case delegator: Delegator =>
-        delegator.delegate(path.dtab, path.path).map { tree =>
-          DelegateTree.find[Name.Bound](tree, client.contains)
-        }
-      case _ => Future.None
-    }).map {
-      case Some(nodes) => nodes.map {
-        case (path, "") =>
-          s"  ${path.show}"
-        case (path, dentry) =>
-          s"  ${path.show} ($dentry)"
-      }
-      case None => Nil
-    }
-
     val clnt = client match {
       case Some(b) =>
         b.id match {
@@ -120,15 +94,13 @@ object RichConnectionFailedExceptionWithPath {
       case None => "unknown"
     }
 
-    addresses.join(resolution).map {
-      case (addrs, res) =>
-        new RichConnectionFailedExceptionWithPath(
-          path,
-          clnt,
-          addrs,
-          remote.toString.stripPrefix("/"),
-          res
-        )
+    addresses.map { addrs =>
+      new RichConnectionFailedExceptionWithPath(
+        path,
+        clnt,
+        addrs,
+        remote.toString.stripPrefix("/")
+      )
     }.flatMap(Future.exception)
   }
 }

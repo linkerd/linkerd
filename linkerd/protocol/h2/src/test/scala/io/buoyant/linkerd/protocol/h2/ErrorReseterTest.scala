@@ -55,7 +55,7 @@ class ErrorReseterTest extends FunSuite with Awaits {
 
   test("response from exceptions should have l5d-err header"){
     val service = ErrorReseter.filter.andThen(Service.mk[Request, Response]{_ =>
-      Future.exception(new RichNoBrokersAvailableException(Dst.Path.empty,None, None))
+      Future.exception(new RichNoBrokersAvailableException(Dst.Path.empty,None))
     })
     val req = Request("http", Method.Get, "hihost", "/", Stream.empty())
     val resp = await(service(req))
