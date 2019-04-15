@@ -28,7 +28,11 @@ requireClientAuth | false | If true, only accept requests with valid client cert
 caCertPath | none | File path to the CA cert to validate the client certificates.
 protocols | unspecified | The list of TLS protocols to enable (TLSv1.2)
 
-See [Transparent TLS with Linkerd](https://blog.buoyant.io/2016/03/24/transparent-tls-with-linkerd/) for more on how to generate certificate
+<aside class="notice">
+Linkerd needs the private key as .pem file in PKCS8 format. PKCS1 is not supported.  
+</aside>
+
+See [Transparent TLS with Linkerd](https://blog.linkerd.io/2016/03/24/transparent-tls-with-linkerd/) for more on how to generate certificate
 and key files.
 
 ## Client TLS
