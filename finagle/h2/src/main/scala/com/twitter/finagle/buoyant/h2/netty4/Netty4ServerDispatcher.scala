@@ -85,11 +85,17 @@ class Netty4ServerDispatcher(
     val serveF = st.onRecvMessage.flatMap(serve).flatMap(st.send(_).flatten)
 
     // When the stream is reset, ensure that the cancelation is
-    // propagated downstream.
+    // propagated downstream and discard the recv message (if we have one).
     st.onReset.onFailure {
-      case StreamError.Remote(rst: Reset) => serveF.raise(rst)
-      case StreamError.Remote(e) => serveF.raise(Reset.Cancel)
-      case e => serveF.raise(e)
+      case StreamError.Remote(rst: Reset) =>
+        st.onRecvMessage.onSuccess(_.stream.cancel(rst))
+        serveF.raise(rst)
+      case StreamError.Remote(e) =>
+        st.onRecvMessage.onSuccess(_.stream.cancel(Reset.Cancel))
+        serveF.raise(Reset.Cancel)
+      case e =>
+        st.onRecvMessage.onSuccess(_.stream.cancel(Reset.Cancel))
+        serveF.raise(e)
     }
 
     val _ = serveF.onFailure {
