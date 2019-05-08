@@ -11,11 +11,14 @@ object ByteBufferSerializers {
   def path(path: Seq[ByteBuffer]): String =
     path.map(utf8).mkString("/", "/", "")
 
-  def stamp(bb: ByteBuffer): String =
-    bb.duplicate().getLong.toString
+  def stamp(bb: ByteBuffer): String = {
+    if (bb.remaining() >= 8) bb.duplicate().getLong.toString else ""
+  }
 
   def ipv4(bb: ByteBuffer): String = {
     val dup = bb.duplicate()
-    s"${dup.get()}.${dup.get()}.${dup.get()}.${dup.get()}"
+    if (dup.remaining() >= 4)
+      s"${dup.get()}.${dup.get()}.${dup.get()}.${dup.get()}"
+    else ""
   }
 }
