@@ -258,7 +258,12 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
        |   ${GC_LOG_OPTION:-}                                            \
-       |   ${LOCAL_JVM_OPTIONS:-}                                        "
+       |   ${LOCAL_JVM_OPTIONS:-}"
+       |
+       |if ! [ "$LOCAL_JAVA_VERSION" -ge 9 ]; then
+       |  DEFAULT_JVM_OPTIONS="$DEFAULT_JVM_OPTIONS -XX:+UseConcMarkSweepGC"
+       |fi
+       |
        |""".stripMargin
 
   object Namerd {
@@ -368,15 +373,16 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
+         |# Check Java version for use in GC_LOG_OPTION and DEFAULT_JVM_OPTIONS
+         |LOCAL_JAVA_VERSION=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |
          |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
          |
          |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          | Unable to use [$GC_LOG] for GC logging."
          |else
-         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
-         |
-         |  if [ "$version" -ge 9 ]; then
+         |  if [ "$LOCAL_JAVA_VERSION" -ge 9 ]; then
          |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
          |  else
          |    GC_LOG_OPTION="
@@ -390,7 +396,6 @@ object LinkerdBuild extends Base {
          |      -XX:+UseGCLogFileRotation
          |      -XX:NumberOfGCLogFiles=10
          |      -XX:GCLogFileSize=10M"
-         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
          |  fi
          |fi
          |
@@ -463,15 +468,16 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/namerd"
          |fi
          |
+         |# Check Java version for use in GC_LOG_OPTION and DEFAULT_JVM_OPTIONS
+         |LOCAL_JAVA_VERSION=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |
          |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
          |
          |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          | Unable to use [$GC_LOG] for GC logging."
          |else
-         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
-         |
-         |  if [ "$version" -ge 9 ]; then
+         |  if [ "$LOCAL_JAVA_VERSION" -ge 9 ]; then
          |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
          |  else
          |    GC_LOG_OPTION="
@@ -485,7 +491,6 @@ object LinkerdBuild extends Base {
          |      -XX:+UseGCLogFileRotation
          |      -XX:NumberOfGCLogFiles=10
          |      -XX:GCLogFileSize=10M"
-         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
          |  fi
          |fi
          |
@@ -708,15 +713,16 @@ object LinkerdBuild extends Base {
          |  GC_LOG="/var/log/linkerd"
          |fi
          |
+         |# Check Java version for use in GC_LOG_OPTION and DEFAULT_JVM_OPTIONS
+         |LOCAL_JAVA_VERSION=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+         |
          |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
          |
          |if [ $? -ne 0 ]; then
          |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
          | Unable to use [$GC_LOG] for GC logging."
          |else
-         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
-         |
-         |  if [ "$version" -ge 9 ]; then
+         |  if [ "$LOCAL_JAVA_VERSION" -ge 9 ]; then
          |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
          |  else
          |    GC_LOG_OPTION="
@@ -730,7 +736,6 @@ object LinkerdBuild extends Base {
          |      -XX:+UseGCLogFileRotation
          |      -XX:NumberOfGCLogFiles=10
          |      -XX:GCLogFileSize=10M"
-         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
          |  fi
          |fi
          |
