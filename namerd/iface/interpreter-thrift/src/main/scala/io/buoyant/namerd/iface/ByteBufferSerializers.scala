@@ -12,12 +12,12 @@ object ByteBufferSerializers {
     path.map(utf8).mkString("/", "/", "")
 
   def stamp(bb: ByteBuffer): String = {
-    if (bb.array().length > 0) bb.duplicate().getLong.toString else ""
+    if (bb.remaining() >= 8) bb.duplicate().getLong.toString else ""
   }
 
   def ipv4(bb: ByteBuffer): String = {
     val dup = bb.duplicate()
-    if (dup.array().length > 0)
+    if (dup.remaining() >= 4)
       s"${dup.get()}.${dup.get()}.${dup.get()}.${dup.get()}"
     else ""
   }
