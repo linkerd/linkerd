@@ -237,13 +237,13 @@ object LinkerdBuild extends Base {
     """|#!/bin/sh
        |
        |jars="$0"
-       |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
-       |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
-       |  for jar in $NAMERD_HOME/plugins/*.jar ; do
+       |HSPREF_SETTING=$([ -n "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
+       |if [ -n "$NAMERD_HOME" ] && [ -d "$NAMERD_HOME"/plugins ]; then
+       |  for jar in "$NAMERD_HOME"/plugins/*.jar ; do
        |    jars="$jars:$jar"
        |  done
        |fi
-       |	
+       |
        |export MALLOC_ARENA_MAX=2
        |
        |# Configure GC logging directory
@@ -257,9 +257,9 @@ object LinkerdBuild extends Base {
     """|#!/bin/sh
        |
        |jars="$0"
-       |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
-       |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
-       |  for jar in $L5D_HOME/plugins/*.jar ; do
+       |HSPREF_SETTING=$([ -n "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
+       |if [ -n "$L5D_HOME" ] && [ -d "$L5D_HOME"/plugins ]; then
+       |  for jar in "$L5D_HOME"/plugins/*.jar ; do
        |    jars="$jars:$jar"
        |  done
        |fi
@@ -277,9 +277,7 @@ object LinkerdBuild extends Base {
     """|# Check Java version for use in GC_LOG_OPTION and DEFAULT_JVM_OPTIONS
        |LOCAL_JAVA_VERSION=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
        |
-       |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
-       |
-       |if [ $? -ne 0 ]; then
+       |if mkdir -p "$GC_LOG" && [ ! -w "$GC_LOG" ]; then
        |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
        | Unable to use [$GC_LOG] for GC logging."
        |else
@@ -330,9 +328,9 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
+       |   ${GC_OPTION:-}                                                \
        |   ${GC_LOG_OPTION:-}                                            \
-       |   ${LOCAL_JVM_OPTIONS:-}                                        \
-       |   ${GC_OPTION:-}"
+       |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
 
   object Namerd {
@@ -428,8 +426,8 @@ object LinkerdBuild extends Base {
       baseNamerdExecScript +
       gcLogOptionScript +
       execScriptJvmOptions +
-      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
+      """|exec "${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} "$HSPREF_SETTING" -cp "$jars" -server \
          |     io.buoyant.namerd.Main "$@"
          |"""
       ).stripMargin
@@ -481,18 +479,18 @@ object LinkerdBuild extends Base {
       baseNamerdExecScript +
       gcLogOptionScript +
       execScriptJvmOptions +
-      """|if read -t 0; then
-         |  CONFIG_INPUT=`cat`
+      """|if read -r 0; then
+         |  CONFIG_INPUT=$(cat)
          |fi
          |
-         |echo $CONFIG_INPUT | \
-         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
+         |echo "$CONFIG_INPUT" | \
+         |"${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} "$HSPREF_SETTING" -cp "$jars" -server \
          |io.buoyant.namerd.DcosBootstrap "$@"
          |
-         |echo $CONFIG_INPUT | \
-         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |echo "$CONFIG_INPUT" | \
+         |"${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp "$jars" -server \
          |io.buoyant.namerd.Main "$@"
          |
          |exit
@@ -684,8 +682,8 @@ object LinkerdBuild extends Base {
       baseLinkerdExecScript +
       gcLogOptionScript +
       execScriptJvmOptions +
-      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
+      """|exec "${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} "$HSPREF_SETTING" -cp "$jars" -server \
          |     io.buoyant.linkerd.Main "$@"
          |"""
       ).stripMargin
