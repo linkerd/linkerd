@@ -233,7 +233,7 @@ object LinkerdBuild extends Base {
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
-  val baseExecScript =
+  val baseNamerdExecScript =
     """|#!/bin/sh
        |
        |jars="$0"
@@ -243,7 +243,7 @@ object LinkerdBuild extends Base {
        |    jars="$jars:$jar"
        |  done
        |fi
-       |
+       |	
        |export MALLOC_ARENA_MAX=2
        |
        |# Configure GC logging directory
@@ -251,7 +251,30 @@ object LinkerdBuild extends Base {
        |  GC_LOG="/var/log/namerd"
        |fi
        |
-       |# Check Java version for use in GC_LOG_OPTION and DEFAULT_JVM_OPTIONS
+       |""".stripMargin
+
+  val baseLinkerdExecScript =
+    """|#!/bin/sh
+       |
+       |jars="$0"
+       |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
+       |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
+       |  for jar in $L5D_HOME/plugins/*.jar ; do
+       |    jars="$jars:$jar"
+       |  done
+       |fi
+       |
+       |export MALLOC_ARENA_MAX=2
+       |
+       |# Configure GC logging directory
+       |if [ -z "$GC_LOG" ]; then
+       |  GC_LOG="/var/log/linkerd"
+       |fi
+       |
+       |""".stripMargin
+
+  val gcLogOptionScript =
+    """|# Check Java version for use in GC_LOG_OPTION and DEFAULT_JVM_OPTIONS
        |LOCAL_JAVA_VERSION=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
        |
        |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
@@ -281,7 +304,7 @@ object LinkerdBuild extends Base {
        |  GC_OPTION="-XX:+UseConcMarkSweepGC"
        |fi
        |
-       |"""
+       |""".stripMargin
 
   val execScriptJvmOptions =
     """|DEFAULT_JVM_OPTIONS="$DEFAULT_JVM_OPTIONS                        \
@@ -402,7 +425,8 @@ object LinkerdBuild extends Base {
      * to the classpath if it exists.
      */
     val namerdExecScript = (
-      baseExecScript +
+      baseNamerdExecScript +
+      gcLogOptionScript +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
@@ -454,7 +478,8 @@ object LinkerdBuild extends Base {
      * 3) boots namerd
      */
     val dcosExecScript = (
-      baseExecScript +
+      baseNamerdExecScript +
+      gcLogOptionScript +
       execScriptJvmOptions +
       """|if read -t 0; then
          |  CONFIG_INPUT=`cat`
@@ -656,7 +681,8 @@ object LinkerdBuild extends Base {
      * to the classpath if it exists.
      */
     val linkerdExecScript = (
-      baseExecScript +
+      baseLinkerdExecScript +
+      gcLogOptionScript +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
