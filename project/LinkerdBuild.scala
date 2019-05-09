@@ -233,7 +233,7 @@ object LinkerdBuild extends Base {
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
-  val defaultExecScript =
+  val baseExecScript =
     """|#!/bin/sh
        |
        |jars="$0"
@@ -402,7 +402,7 @@ object LinkerdBuild extends Base {
      * to the classpath if it exists.
      */
     val namerdExecScript = (
-      defaultExecScript +
+      baseExecScript +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
@@ -454,7 +454,7 @@ object LinkerdBuild extends Base {
      * 3) boots namerd
      */
     val dcosExecScript = (
-      defaultExecScript +
+      baseExecScript +
       execScriptJvmOptions +
       """|if read -t 0; then
          |  CONFIG_INPUT=`cat`
@@ -656,7 +656,7 @@ object LinkerdBuild extends Base {
      * to the classpath if it exists.
      */
     val linkerdExecScript = (
-      defaultExecScript +
+      baseExecScript +
       execScriptJvmOptions +
       """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
          |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
