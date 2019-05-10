@@ -233,6 +233,77 @@ object LinkerdBuild extends Base {
 
   val ConfigFileRE = """^(.*)\.yaml$""".r
 
+  val baseNamerdExecScript =
+    """|#!/bin/sh
+       |
+       |jars="$0"
+       |HSPREF_SETTING=$([ -n "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
+       |if [ -n "$NAMERD_HOME" ] && [ -d "$NAMERD_HOME"/plugins ]; then
+       |  for jar in "$NAMERD_HOME"/plugins/*.jar ; do
+       |    jars="$jars:$jar"
+       |  done
+       |fi
+       |
+       |export MALLOC_ARENA_MAX=2
+       |
+       |# Configure GC logging directory
+       |if [ -z "$GC_LOG" ]; then
+       |  GC_LOG="/var/log/namerd"
+       |fi
+       |
+       |""".stripMargin
+
+  val baseLinkerdExecScript =
+    """|#!/bin/sh
+       |
+       |jars="$0"
+       |HSPREF_SETTING=$([ -n "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
+       |if [ -n "$L5D_HOME" ] && [ -d "$L5D_HOME"/plugins ]; then
+       |  for jar in "$L5D_HOME"/plugins/*.jar ; do
+       |    jars="$jars:$jar"
+       |  done
+       |fi
+       |
+       |export MALLOC_ARENA_MAX=2
+       |
+       |# Configure GC logging directory
+       |if [ -z "$GC_LOG" ]; then
+       |  GC_LOG="/var/log/linkerd"
+       |fi
+       |
+       |""".stripMargin
+
+  val gcLogOptionScript =
+    """|# Check Java version for use in GC_LOG_OPTION and DEFAULT_JVM_OPTIONS
+       |LOCAL_JAVA_VERSION=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
+       |
+       |if mkdir -p "$GC_LOG" && [ ! -w "$GC_LOG" ]; then
+       |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
+       | Unable to use [$GC_LOG] for GC logging."
+       |else
+       |  if [ "$LOCAL_JAVA_VERSION" -ge 9 ]; then
+       |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
+       |  else
+       |    GC_LOG_OPTION="
+       |      -XX:+PrintGCDetails
+       |      -XX:+PrintGCDateStamps
+       |      -XX:+PrintHeapAtGC
+       |      -XX:+PrintTenuringDistribution
+       |      -XX:+PrintGCApplicationStoppedTime
+       |      -XX:+PrintPromotionFailure
+       |      -Xloggc:${GC_LOG}/gc.log
+       |      -XX:+UseGCLogFileRotation
+       |      -XX:NumberOfGCLogFiles=10
+       |      -XX:GCLogFileSize=10M"
+       |  fi
+       |fi
+       |
+       |if ! [ "$LOCAL_JAVA_VERSION" -ge 9 ]; then
+       |  GC_OPTION="-XX:+UseConcMarkSweepGC"
+       |fi
+       |
+       |""".stripMargin
+
   val execScriptJvmOptions =
     """|DEFAULT_JVM_OPTIONS="$DEFAULT_JVM_OPTIONS                        \
        |   -Djava.net.preferIPv4Stack=true                               \
@@ -257,6 +328,7 @@ object LinkerdBuild extends Base {
        |   -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8}      \
        |   -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8}    \
        |   -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} \
+       |   ${GC_OPTION:-}                                                \
        |   ${GC_LOG_OPTION:-}                                            \
        |   ${LOCAL_JVM_OPTIONS:-}                                        "
        |""".stripMargin
@@ -350,61 +422,19 @@ object LinkerdBuild extends Base {
      * An assembly-running script that adds the namerd plugin directory
      * to the classpath if it exists.
      */
-    val execScript = (
-      """|#!/bin/sh
-         |
-         |jars="$0"
-         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
-         |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
-         |  for jar in $NAMERD_HOME/plugins/*.jar ; do
-         |    jars="$jars:$jar"
-         |  done
-         |fi
-         |
-         |export MALLOC_ARENA_MAX=2
-         |
-         |# Configure GC logging directory
-         |if [ -z "$GC_LOG" ]; then
-         |  GC_LOG="/var/log/namerd"
-         |fi
-         |
-         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
-         |
-         |if [ $? -ne 0 ]; then
-         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
-         | Unable to use [$GC_LOG] for GC logging."
-         |else
-         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
-         |
-         |  if [ "$version" -ge 9 ]; then
-         |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
-         |  else
-         |    GC_LOG_OPTION="
-         |      -XX:+PrintGCDetails
-         |      -XX:+PrintGCDateStamps
-         |      -XX:+PrintHeapAtGC
-         |      -XX:+PrintTenuringDistribution
-         |      -XX:+PrintGCApplicationStoppedTime
-         |      -XX:+PrintPromotionFailure
-         |      -Xloggc:${GC_LOG}/gc.log
-         |      -XX:+UseGCLogFileRotation
-         |      -XX:NumberOfGCLogFiles=10
-         |      -XX:GCLogFileSize=10M"
-         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
-         |  fi
-         |fi
-         |
-         |""" +
+    val namerdExecScript = (
+      baseNamerdExecScript +
+      gcLogOptionScript +
       execScriptJvmOptions +
-      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
+      """|exec "${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} "$HSPREF_SETTING" -cp "$jars" -server \
          |     io.buoyant.namerd.Main "$@"
          |"""
       ).stripMargin
 
     val BundleSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.namerd.Main"),
-      assemblyExecScript := execScript.split("\n").toSeq,
+      assemblyExecScript := namerdExecScript.split("\n").toSeq,
       dockerEnvPrefix := "NAMERD_",
       unmanagedBase := baseDirectory.value / "plugins",
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
@@ -446,63 +476,21 @@ object LinkerdBuild extends Base {
      * 3) boots namerd
      */
     val dcosExecScript = (
-      """|#!/bin/bash
-         |
-         |jars="$0"
-         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
-         |if [ -n "$NAMERD_HOME" ] && [ -d $NAMERD_HOME/plugins ]; then
-         |  for jar in $NAMERD_HOME/plugins/*.jar ; do
-         |    jars="$jars:$jar"
-         |  done
-         |fi
-         |
-         |export MALLOC_ARENA_MAX=2
-         |
-         |# Configure GC logging directory
-         |if [ -z "$GC_LOG" ]; then
-         |  GC_LOG="/var/log/namerd"
-         |fi
-         |
-         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
-         |
-         |if [ $? -ne 0 ]; then
-         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
-         | Unable to use [$GC_LOG] for GC logging."
-         |else
-         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
-         |
-         |  if [ "$version" -ge 9 ]; then
-         |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
-         |  else
-         |    GC_LOG_OPTION="
-         |      -XX:+PrintGCDetails
-         |      -XX:+PrintGCDateStamps
-         |      -XX:+PrintHeapAtGC
-         |      -XX:+PrintTenuringDistribution
-         |      -XX:+PrintGCApplicationStoppedTime
-         |      -XX:+PrintPromotionFailure
-         |      -Xloggc:${GC_LOG}/gc.log
-         |      -XX:+UseGCLogFileRotation
-         |      -XX:NumberOfGCLogFiles=10
-         |      -XX:GCLogFileSize=10M"
-         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
-         |  fi
-         |fi
-         |
-         |""" +
+      baseNamerdExecScript +
+      gcLogOptionScript +
       execScriptJvmOptions +
-      """|if read -t 0; then
-         |  CONFIG_INPUT=`cat`
+      """|if read -r 0; then
+         |  CONFIG_INPUT=$(cat)
          |fi
          |
-         |echo $CONFIG_INPUT | \
-         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
+         |echo "$CONFIG_INPUT" | \
+         |"${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} "$HSPREF_SETTING" -cp "$jars" -server \
          |io.buoyant.namerd.DcosBootstrap "$@"
          |
-         |echo $CONFIG_INPUT | \
-         |${JAVA_HOME:-/usr}/bin/java -XX:+PrintCommandLineFlags \
-         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp $jars -server \
+         |echo "$CONFIG_INPUT" | \
+         |"${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} -cp "$jars" -server \
          |io.buoyant.namerd.Main "$@"
          |
          |exit
@@ -690,61 +678,19 @@ object LinkerdBuild extends Base {
      * An assembly-running script that adds the linkerd plugin directory
      * to the classpath if it exists.
      */
-    val execScript = (
-      """|#!/bin/sh
-         |
-         |jars="$0"
-         |HSPREF_SETTING=$([ ! -z "$ENABLE_HSPREF" ] && echo "" || echo "-XX:+PerfDisableSharedMem")
-         |if [ -n "$L5D_HOME" ] && [ -d $L5D_HOME/plugins ]; then
-         |  for jar in $L5D_HOME/plugins/*.jar ; do
-         |    jars="$jars:$jar"
-         |  done
-         |fi
-         |
-         |export MALLOC_ARENA_MAX=2
-         |
-         |# Configure GC logging directory
-         |if [ -z "$GC_LOG" ]; then
-         |  GC_LOG="/var/log/linkerd"
-         |fi
-         |
-         |mkdir -p "$GC_LOG" && [ -w "$GC_LOG" ]
-         |
-         |if [ $? -ne 0 ]; then
-         |  echo "GC_LOG must be set to a directory that user [$USER] has write permissions on.\
-         | Unable to use [$GC_LOG] for GC logging."
-         |else
-         |  version=$("${JAVA_HOME:-/usr}"/bin/java -version 2>&1 | sed 's/.*version "\([0-9]*\)\..*/\1/; 1q')
-         |
-         |  if [ "$version" -ge 9 ]; then
-         |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
-         |  else
-         |    GC_LOG_OPTION="
-         |      -XX:+PrintGCDetails
-         |      -XX:+PrintGCDateStamps
-         |      -XX:+PrintHeapAtGC
-         |      -XX:+PrintTenuringDistribution
-         |      -XX:+PrintGCApplicationStoppedTime
-         |      -XX:+PrintPromotionFailure
-         |      -Xloggc:${GC_LOG}/gc.log
-         |      -XX:+UseGCLogFileRotation
-         |      -XX:NumberOfGCLogFiles=10
-         |      -XX:GCLogFileSize=10M"
-         |    DEFAULT_JVM_OPTIONS="-XX:+UseConcMarkSweepGC"
-         |  fi
-         |fi
-         |
-         |""" +
+    val linkerdExecScript = (
+      baseLinkerdExecScript +
+      gcLogOptionScript +
       execScriptJvmOptions +
-      """|exec "${JAVA_HOME:-/usr}/bin/java" -XX:+PrintCommandLineFlags \
-         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} $HSPREF_SETTING -cp $jars -server \
+      """|exec "${JAVA_HOME:-/usr}"/bin/java -XX:+PrintCommandLineFlags \
+         |     ${JVM_OPTIONS:-$DEFAULT_JVM_OPTIONS} "$HSPREF_SETTING" -cp "$jars" -server \
          |     io.buoyant.linkerd.Main "$@"
          |"""
       ).stripMargin
 
     val BundleSettings = Defaults.configSettings ++ appPackagingSettings ++ Seq(
       mainClass := Some("io.buoyant.linkerd.Main"),
-      assemblyExecScript := execScript.split("\n").toSeq,
+      assemblyExecScript := linkerdExecScript.split("\n").toSeq,
       dockerEnvPrefix := "L5D_",
       unmanagedBase := baseDirectory.value / "plugins",
       assemblyJarName in assembly := s"${name.value}-${version.value}-exec",
