@@ -1,3 +1,29 @@
+## 1.6.3 2019-05-10
+Linkerd 1.6.3 includes a bug fix for Namerd's `io.l5d.k8s` dtab storage module. This fix exposes
+HTTP request and response metrics for the Kubernetes API client used to store dtabs. Namerd also
+includes a new logging dashboard page that allows you to change Namerd's logging verbosity at
+runtime. In addition, this release improves Linkerd's HTTP/2 implementation to better manage direct
+memory and includes a fix for Linkerd's `interpreter_state` watch state endpoint.
+
+A special thank you to the following contributors for their awesome doc update contributions:
+* [Nguyen Hai Truong](https://github.com/truongnh1992)
+* [Peter Fröhlich](https://github.com/peterfroehlich)
+
+Full release notes:
+* Namerd
+  * Expose HTTP client metrics for Namerd's `io.l5d.k8s` dtab storage module. This change now
+    instruments the HTTP client that interacts with the Kubernetes API used for storing dtabs.
+  * Adds a new logging dashboard page in Namerd with the ability to change logging verbosity at
+    runtime. This is similar to Linkerd's logging dashboard page
+* HTTP/2
+  * Fixes an issue where Linkerd could sometimes exhaust direct memory when routing HTTP/2 requests
+  that immediately receive a `RST_STREAM` frame.
+* Fixes a `BufferUnderflowException` that could be triggered when viewing Linkerd's
+  interpreter watch state endpoint. This issue occurs when using Linkerd's `io.l5d.namerd` thrift
+  interpreter.
+* Fixes an issue where Linkerd incorrectly uses the JVM's Parallel GC collector if the `GC_LOG`
+  start-up flag is not set on JVMs using Java 1.8 or earlier.
+
 ## 1.6.2 2019-03-08
 This Linkerd release includes bug fixes for Namerd's k8s watch API as well as memory management
 improvements in the `io.l5d.zk` storage plugin. This release features a new failure detector
