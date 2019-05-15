@@ -2,17 +2,22 @@ package io.buoyant.namerd
 package iface
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle.{Namer, Path, Stack}
+import com.twitter.finagle._
 import com.twitter.finagle.buoyant.H2
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.finagle.tracing.NullTracer
+import com.twitter.logging.Logger
 import io.buoyant.grpc.runtime.ServerDispatcher
+import io.buoyant.namerd.iface.mesh.MeshAccessLogger
 import io.netty.handler.ssl.ApplicationProtocolNames
 import java.net.{InetAddress, InetSocketAddress}
 
-import com.twitter.finagle.tracing.NullTracer
-
 class MeshIfaceConfig extends InterfaceConfig {
+
+  @JsonIgnore
+  val log = Logger.get(this.getClass.getName)
+
   @JsonIgnore
   override protected def defaultAddr = MeshIfaceInitializer.defaultAddr
 
@@ -39,7 +44,9 @@ class MeshIfaceConfig extends InterfaceConfig {
         val interpreter = mesh.InterpreterService(store, namers, stats1)
         val delegator = mesh.DelegatorService(store, namers, stats1)
         val resolver = mesh.ResolverService(namers, stats1)
-        ServerDispatcher(codec, interpreter, delegator, resolver)
+        val accessLogger = MeshAccessLogger(log)
+
+        accessLogger.andThen(ServerDispatcher(codec, interpreter, delegator, resolver))
       }
 
       H2.server
