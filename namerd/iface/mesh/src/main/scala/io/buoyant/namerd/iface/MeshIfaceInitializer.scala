@@ -4,16 +4,21 @@ package iface
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.H2
+import com.twitter.finagle.buoyant.h2.AccessLogger
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.logging.Logger
+import com.twitter.logging._
 import io.buoyant.grpc.runtime.ServerDispatcher
-import io.buoyant.namerd.iface.mesh.MeshAccessLogger
 import io.netty.handler.ssl.ApplicationProtocolNames
 import java.net.{InetAddress, InetSocketAddress}
 
 class MeshIfaceConfig extends InterfaceConfig {
+
+  var h2AccessLog: Option[String] = None
+  var h2AccessLogRollPolicy: Option[String] = None
+  var h2AccessLogAppend: Option[Boolean] = None
+  var h2AccessLogRotateCount: Option[Int] = None
 
   @JsonIgnore
   val log = Logger.get(this.getClass.getName)
@@ -44,9 +49,16 @@ class MeshIfaceConfig extends InterfaceConfig {
         val interpreter = mesh.InterpreterService(store, namers, stats1)
         val delegator = mesh.DelegatorService(store, namers, stats1)
         val resolver = mesh.ResolverService(namers, stats1)
-        val accessLogger = MeshAccessLogger(log)
-
-        accessLogger.andThen(ServerDispatcher(codec, interpreter, delegator, resolver))
+        val service = ServerDispatcher(codec, interpreter, delegator, resolver)
+        AccessLogger.mk(
+          h2AccessLog,
+          h2AccessLogRollPolicy,
+          h2AccessLogAppend,
+          h2AccessLogRotateCount
+        ) match {
+          case None => service
+          case Some(filter) => filter.andThen(service)
+        }
       }
 
       H2.server

@@ -1,37 +1,9 @@
 package io.buoyant.linkerd.protocol.h2
 
-import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack, Stackable}
-import com.twitter.finagle.buoyant.h2.{Request, Response}
-import com.twitter.finagle.context.RemoteInfo
+import com.twitter.finagle.buoyant.h2.{AccessLogger, Request, Response}
+import com.twitter.finagle.{ServiceFactory, Stack, Stackable}
 import com.twitter.logging._
-import com.twitter.util.{Time, TimeFormat}
 import io.buoyant.router.RouterLabel
-import java.net.{InetSocketAddress}
-
-case class H2AccessLogger(log: Logger) extends SimpleFilter[Request, Response] {
-
-  def apply(req: Request, svc: Service[Request, Response]) = {
-    val reqHeaders = req.headers
-    val remoteHost = RemoteInfo.Upstream.addr match {
-      case Some(isa: InetSocketAddress) => isa.getHostString
-      case _ => "-"
-    }
-    val identd = "-"
-    val user = "-"
-    val referer = reqHeaders.get("referer").getOrElse("-")
-    val userAgent = reqHeaders.get("user-agent").getOrElse("-")
-    var hostHeader = req.authority
-    val reqResource = s"${req.method.toString.toUpperCase} ${req.path} HTTP/2"
-
-    svc(req).onSuccess { rsp =>
-      val statusCode = rsp.status.code
-      val responseBytes = "-"
-      val requestEndTime = new TimeFormat("dd/MM/yyyy:HH:mm:ss Z").format(Time.now)
-      log.info("""%s %s %s %s [%s] "%s" %d %s "%s" "%s"""", hostHeader, remoteHost, identd, user, requestEndTime,
-        reqResource, statusCode, responseBytes, referer, userAgent)
-    }
-  }
-}
 
 object H2AccessLogger {
 
@@ -83,7 +55,7 @@ object H2AccessLogger {
               )),
               useParents = false
             )
-            new H2AccessLogger(logger()).andThen(factory)
+            AccessLogger(logger()).andThen(factory)
         }
     }
 
