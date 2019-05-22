@@ -1,6 +1,6 @@
 package io.buoyant.interpreter.mesh
 
-import com.twitter.finagle._
+import com.twitter.finagle.{Addr, _}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.buoyant.h2.Reset
 import com.twitter.finagle.http.{MediaType, Request, Response}
@@ -14,6 +14,7 @@ import io.buoyant.namer.{DelegateTree, Delegator, InstrumentedActivity, Instrume
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
 import java.net.{InetAddress, InetSocketAddress}
+import com.twitter.logging.Logger
 import scala.util.control.{NoStackTrace, NonFatal}
 
 object Client {
@@ -54,6 +55,8 @@ object Client {
     timer: Timer
   ) extends NameInterpreter with Delegator with Admin.WithHandlers {
 
+    val log = Logger(this.getClass.getName)
+
     private case class InstrumentedBind(
       act: InstrumentedActivity[NameTree[Name.Bound]],
       stream: StreamState[mesh.BindReq, mesh.BoundTreeRsp]
@@ -91,6 +94,7 @@ object Client {
             val streamState = new StreamState[mesh.BindReq, mesh.BoundTreeRsp]
             val open = () => {
               val req = mkBindReq(root, path, dtab)
+              log.trace(s"Mesh bind request: Root: ${root.show}, Path: ${path.show}, Dtab: ${dtab.show}")
               streamState.recordApiCall(req)
               interpreter.streamBoundTree(req)
             }
@@ -112,10 +116,17 @@ object Client {
           val streamState = new StreamState[mesh.DtabReq, mesh.DtabRsp]
           val open = () => {
             val req = mkDtabReq(root)
+            log.trace(s"Mesh dtab request: Path: ${root.show}")
             streamState.recordApiCall(req)
             delegator.streamDtab(req)
           }
-          streamActivity(open, decodeDtab, backoffs, timer, streamState).underlying
+          val dtabVar = streamActivity(open, decodeDtab, backoffs, timer, streamState).underlying
+          dtabVar.states.respond {
+            case Activity.Pending => log.trace(s"Dtab stream initialized for root: ${root.show}")
+            case Activity.Failed(cause) => log.trace(s"Dtab stream failed for root ${root.show}: ${cause.getMessage}")
+            case Activity.Ok(d) => log.trace(s"Dtab stream for root ${root.show}: ${d.show}")
+          }
+          dtabVar
         }
       }
     }
@@ -125,6 +136,7 @@ object Client {
       tree: NameTree[Name.Path]
     ): Future[DelegateTree[Name.Bound]] = {
       val req = mkDelegateTreeReq(root, dtab, tree)
+      log.trace(s"Mesh delegate request: Root: ${root.show} Dtab: ${dtab.show}")
       delegator.getDelegateTree(req).flatMap { delegateTree =>
         decodeDelegateTree(delegateTree) match {
           case Some(decoded) => Future.value(decoded)
@@ -143,12 +155,20 @@ object Client {
               val streamState = new StreamState[mesh.ReplicasReq, mesh.Replicas]
               val open = () => {
                 val req = mkReplicasReq(id)
+                log.trace(s"Mesh replicas request: client name: ${id.show}")
                 streamState.recordApiCall(req)
                 resolver.streamReplicas(req)
               }
               val resolution = streamVar(Addr.Pending, open, replicasToAddr, backoffs, timer, streamState)
               resolveCache += (id -> InstrumentedResolve(resolution, streamState))
-              resolution.underlying
+              val underlyingVar = resolution.underlying
+              underlyingVar.changes.respond {
+                case Addr.Pending => log.trace(s"Pending addresses for client: ${id.show}")
+                case Addr.Failed(cause) => log.trace(s"Failed to receive address set for client ${id.show}: ${cause.getMessage}")
+                case Addr.Neg => log.trace(s"empty address set for client ${id.show}")
+                case Addr.Bound(addrs, _) => log.trace(s"Received addresses for client ${id.show}: ${addrs.mkString(",")}")
+              }
+              underlyingVar
           }
         }
     }
