@@ -1,11 +1,13 @@
 package io.buoyant.grpc.runtime
 
-import com.twitter.finagle.{Failure, Service => FinagleService}
+import com.twitter.finagle.{Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Return, Throw, Try}
 
 object ServerDispatcher {
 
+  val log = Logger.get(this.getClass.getName)
   trait Service {
     def name: String
     def rpcs: Seq[Rpc]
@@ -16,7 +18,6 @@ object ServerDispatcher {
   }
 
   object Rpc {
-
     class UnaryToUnary[Req, Rsp](
       val name: String,
       serve: Req => Future[Rsp],
@@ -38,11 +39,13 @@ object ServerDispatcher {
       rspCodec: Codec[Rsp]
     ) extends ServerDispatcher.Rpc {
 
-      override def apply(req: h2.Request): Future[h2.Response] =
-        acceptUnary(reqCodec, req).map(streamResponse)
+      override def apply(req: h2.Request): Future[h2.Response] = {
+        val headersMap = req.headers.toSeq
+        acceptUnary(reqCodec, req).map(req => streamResponse(req, headersMap))
+      }
 
-      private[this] val streamResponse: Req => h2.Response =
-        req => respondStreaming(rspCodec, serve(req))
+      private[this] val streamResponse: (Req, Seq[(String, String)]) => h2.Response =
+        (req, reqMeta) => respondStreaming(rspCodec, serve(req), reqMeta)
     }
 
     class StreamToUnary[Req, Rsp](
@@ -68,7 +71,8 @@ object ServerDispatcher {
 
       override def apply(req: h2.Request): Future[h2.Response] = {
         val reqs = acceptStreaming(reqCodec, req)
-        val rsp = respondStreaming(rspCodec, serve(reqs))
+        val headersMap = req.headers.toSeq
+        val rsp = respondStreaming(rspCodec, serve(reqs), headersMap)
         Future.value(rsp)
       }
     }
@@ -99,11 +103,12 @@ object ServerDispatcher {
         h2.Response(h2.Status.Ok, frames)
     }
 
-    private[this] def respondStreaming[Rsp](codec: Codec[Rsp], msgs: Stream[Rsp]): h2.Response = {
+    private[this] def respondStreaming[Rsp](codec: Codec[Rsp], msgs: Stream[Rsp], reqMeta: Seq[(String, String)]): h2.Response = {
       val frames = h2.Stream()
       def loop(): Future[Unit] =
         msgs.recv().transform {
           case Return(Stream.Releasable(s, release)) =>
+            log.trace(s"Streaming response metadata: ${reqMeta.mkString(":")}")
             val buf = codec.encodeGrpcMessage(s)
             val data = h2.Frame.Data(buf, eos = false, release)
             frames.write(data).before(loop())
@@ -113,6 +118,7 @@ object ServerDispatcher {
               case s: GrpcStatus => s
               case e => GrpcStatus.Internal(e.getMessage)
             }
+            log.trace(s"Streaming response metadata: ${reqMeta.mkString(":")}")
             frames.write(status.toTrailers)
         }
 
