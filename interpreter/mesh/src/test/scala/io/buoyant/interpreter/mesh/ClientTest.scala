@@ -38,7 +38,7 @@ class ClientTest extends FunSuite {
           addrRsps
         }
       }
-      Client(Path.Utf8("foons"), interp, resolv, unusedDelegator, scala.Stream.empty, DefaultTimer)
+      Client("", Path.Utf8("foons"), interp, resolv, unusedDelegator, scala.Stream.empty, DefaultTimer)
     }
 
     val act = client.bind(Dtab.read("/stuff => /mas"), Path.read("/some/name"))

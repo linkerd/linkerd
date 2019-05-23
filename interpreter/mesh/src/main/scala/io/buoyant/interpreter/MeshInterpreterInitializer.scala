@@ -1,8 +1,12 @@
 package io.buoyant.interpreter
 
+import java.util.UUID.randomUUID
+
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.DurationOps._
+import com.twitter.finagle.Stack.Module
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.h2.H2HeaderInjector
 import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
 import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.liveness.FailureDetector.ThresholdConfig
@@ -12,6 +16,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
 import io.buoyant.interpreter.mesh.Client
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+
 import scala.util.control.NoStackTrace
 
 /**
@@ -67,30 +72,31 @@ case class MeshInterpreterConfig(
   failureThreshold: Option[FailureThresholdConfig]
 ) extends InterpreterConfig {
   import MeshInterpreterConfig._
-
   /**
    * Construct a namer.
    */
   @JsonIgnore
   def newInterpreter(params: Stack.Params): NameInterpreter = {
+    val MeshClientHeader = "l5d-ctx-mesh-client"
     val name = dst match {
       case None => throw new IllegalArgumentException("`dst` is a required field") with NoStackTrace
       case Some(dst) => Name.Path(dst)
     }
     val label = MeshInterpreterInitializer.configId
-
+    val clientId = randomUUID().toString
     val Retry(baseRetry, maxRetry) = retry.getOrElse(defaultRetry)
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
     val failureThresholdParams = failureThreshold.map(_.params).getOrElse(Stack.Params.empty)
+    val headerIdentity = Map(MeshClientHeader -> clientId)
 
-    val client = H2.client
+    val client = H2.client.withStack(H2HeaderInjector.module(headerIdentity) +: _)
       .withParams(H2.client.params ++ tlsParams ++ failureThresholdParams ++ params)
       .newService(name, label)
 
     root.getOrElse(DefaultRoot) match {
       case r@Path.Utf8(_) =>
-        Client(r, client, backoffs, DefaultTimer)
+        Client(clientId, r, client, backoffs, DefaultTimer)
 
       case r =>
         val msg = s"io.l5d.mesh: `root` may only contain a single path element (for now): ${r.show}"

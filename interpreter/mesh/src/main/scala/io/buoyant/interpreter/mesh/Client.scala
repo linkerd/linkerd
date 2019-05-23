@@ -20,6 +20,7 @@ import scala.util.control.{NoStackTrace, NonFatal}
 object Client {
 
   def apply(
+    clientId: String,
     root: Path,
     service: Service[h2.Request, h2.Response],
     backoffs: scala.Stream[Duration],
@@ -28,10 +29,11 @@ object Client {
     val interpreter = new mesh.Interpreter.Client(service)
     val resolver = new mesh.Resolver.Client(service)
     val delegator = new mesh.Delegator.Client(service)
-    new Impl(root, interpreter, resolver, delegator, backoffs, timer)
+    new Impl(clientId, root, interpreter, resolver, delegator, backoffs, timer)
   }
 
   def apply(
+    clientId: String,
     root: Path,
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
@@ -39,7 +41,7 @@ object Client {
     backoffs: scala.Stream[Duration],
     timer: Timer
   ): NameInterpreter with Delegator =
-    new Impl(root, interpreter, resolver, delegator, backoffs, timer)
+    new Impl(clientId, root, interpreter, resolver, delegator, backoffs, timer)
 
   private[this] val _releaseNop = () => Future.Unit
   private[this] val _rescueUnit: PartialFunction[Throwable, Future[Unit]] = {
@@ -47,6 +49,7 @@ object Client {
   }
 
   private[this] class Impl(
+    clientId: String,
     root: Path,
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
@@ -94,7 +97,7 @@ object Client {
             val streamState = new StreamState[mesh.BindReq, mesh.BoundTreeRsp]
             val open = () => {
               val req = mkBindReq(root, path, dtab)
-              log.trace(s"Mesh bind request: Root: ${root.show}, Path: ${path.show}, Dtab: ${dtab.show}")
+              log.trace(s"Mesh client [$clientId] mesh bind request: Root: ${root.show}, Path: ${path.show}, Dtab: ${dtab.show}")
               streamState.recordApiCall(req)
               interpreter.streamBoundTree(req)
             }
@@ -116,15 +119,15 @@ object Client {
           val streamState = new StreamState[mesh.DtabReq, mesh.DtabRsp]
           val open = () => {
             val req = mkDtabReq(root)
-            log.trace(s"Mesh dtab request: Path: ${root.show}")
+            log.trace(s"Mesh client [$clientId] mesh dtab request: Path: ${root.show}")
             streamState.recordApiCall(req)
             delegator.streamDtab(req)
           }
           val dtabVar = streamActivity(open, decodeDtab, backoffs, timer, streamState).underlying
           dtabVar.states.respond {
-            case Activity.Pending => log.trace(s"Dtab stream initialized for root: ${root.show}")
-            case Activity.Failed(cause) => log.trace(s"Dtab stream failed for root ${root.show}: ${cause.getMessage}")
-            case Activity.Ok(d) => log.trace(s"Dtab stream for root ${root.show}: ${d.show}")
+            case Activity.Pending => log.trace(s"Mesh client [$clientId] Dtab stream initialized for root: ${root.show}")
+            case Activity.Failed(cause) => log.trace(s"Mesh client [$clientId] Dtab stream failed for root ${root.show}: ${cause.getMessage}")
+            case Activity.Ok(d) => log.trace(s"Mesh client [$clientId] Dtab stream for root ${root.show}: ${d.show}")
           }
           dtabVar
         }
@@ -136,7 +139,7 @@ object Client {
       tree: NameTree[Name.Path]
     ): Future[DelegateTree[Name.Bound]] = {
       val req = mkDelegateTreeReq(root, dtab, tree)
-      log.trace(s"Mesh delegate request: Root: ${root.show} Dtab: ${dtab.show}")
+      log.trace(s"Mesh client [$clientId] mesh delegate request: Root: ${root.show} Dtab: ${dtab.show}")
       delegator.getDelegateTree(req).flatMap { delegateTree =>
         decodeDelegateTree(delegateTree) match {
           case Some(decoded) => Future.value(decoded)
@@ -155,7 +158,7 @@ object Client {
               val streamState = new StreamState[mesh.ReplicasReq, mesh.Replicas]
               val open = () => {
                 val req = mkReplicasReq(id)
-                log.trace(s"Mesh replicas request: client name: ${id.show}")
+                log.trace(s"Mesh client [$clientId] mesh replicas request: client name: ${id.show}")
                 streamState.recordApiCall(req)
                 resolver.streamReplicas(req)
               }
@@ -163,10 +166,10 @@ object Client {
               resolveCache += (id -> InstrumentedResolve(resolution, streamState))
               val underlyingVar = resolution.underlying
               underlyingVar.changes.respond {
-                case Addr.Pending => log.trace(s"Pending addresses for client: ${id.show}")
-                case Addr.Failed(cause) => log.trace(s"Failed to receive address set for client ${id.show}: ${cause.getMessage}")
-                case Addr.Neg => log.trace(s"empty address set for client ${id.show}")
-                case Addr.Bound(addrs, _) => log.trace(s"Received addresses for client ${id.show}: ${addrs.mkString(",")}")
+                case Addr.Pending => log.trace(s"Mesh client [$clientId] Pending addresses for client: ${id.show}")
+                case Addr.Failed(cause) => log.trace(s"Mesh client [$clientId] Failed to receive address set for client ${id.show}: ${cause.getMessage}")
+                case Addr.Neg => log.trace(s"Mesh client [$clientId] empty address set for client ${id.show}")
+                case Addr.Bound(addrs, _) => log.trace(s"Mesh client [$clientId] Received addresses for client ${id.show}: ${addrs.mkString(",")}")
               }
               underlyingVar
           }
