@@ -185,7 +185,10 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
 
         case Some((event, ws)) =>
           import Ordering.Implicits._
-          watchState.foreach(_.recordStreamData(event))
+          watchState.foreach { state =>
+            state.recordStreamData(event)
+            log.trace("k8s event on '%s' received '%s", watchPath, event)
+          }
           // Register the update only if its resource version is larger than or equal to the largest version
           // seen so far.
           if (largestEvent.forall(_ <= event)) {
