@@ -1,10 +1,7 @@
 package io.buoyant.interpreter
 
-import java.util.UUID.randomUUID
-
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.DurationOps._
-import com.twitter.finagle.Stack.Module
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2.H2HeaderInjector
 import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
@@ -16,7 +13,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
 import io.buoyant.interpreter.mesh.Client
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
-
+import java.util.UUID.randomUUID
 import scala.util.control.NoStackTrace
 
 /**

@@ -58,7 +58,7 @@ object Client {
     timer: Timer
   ) extends NameInterpreter with Delegator with Admin.WithHandlers {
 
-    val log = Logger(this.getClass.getName)
+    val log = Logger.get(this.getClass.getName)
 
     private case class InstrumentedBind(
       act: InstrumentedActivity[NameTree[Name.Bound]],
@@ -95,13 +95,14 @@ object Client {
           case Some(bind) => bind.act.underlying
           case None =>
             val streamState = new StreamState[mesh.BindReq, mesh.BoundTreeRsp]
+            val logWithClientId: String => Unit = log.trace(s"Mesh client %s BoundTreeRsp stream state: %s", clientId, _)
             val open = () => {
               val req = mkBindReq(root, path, dtab)
               log.trace(s"Mesh client [$clientId] mesh bind request: Root: ${root.show}, Path: ${path.show}, Dtab: ${dtab.show}")
               streamState.recordApiCall(req)
               interpreter.streamBoundTree(req)
             }
-            val bind = streamActivity(open, decodeBoundTree, backoffs, timer, streamState)
+            val bind = streamActivity(open, decodeBoundTree, backoffs, timer, streamState, logWithClientId)
             bindCache += (key -> InstrumentedBind(bind, streamState))
             bind.underlying
         }
@@ -117,19 +118,14 @@ object Client {
           dtabCache.act.underlying
         } else {
           val streamState = new StreamState[mesh.DtabReq, mesh.DtabRsp]
+          val logWithClientId: String => Unit = log.trace(s"Mesh client %s DtabRsp stream state: %s", clientId, _)
           val open = () => {
             val req = mkDtabReq(root)
             log.trace(s"Mesh client [$clientId] mesh dtab request: Path: ${root.show}")
             streamState.recordApiCall(req)
             delegator.streamDtab(req)
           }
-          val dtabVar = streamActivity(open, decodeDtab, backoffs, timer, streamState).underlying
-          dtabVar.states.respond {
-            case Activity.Pending => log.trace(s"Mesh client [$clientId] Dtab stream initialized for root: ${root.show}")
-            case Activity.Failed(cause) => log.trace(s"Mesh client [$clientId] Dtab stream failed for root ${root.show}: ${cause.getMessage}")
-            case Activity.Ok(d) => log.trace(s"Mesh client [$clientId] Dtab stream for root ${root.show}: ${d.show}")
-          }
-          dtabVar
+          streamActivity(open, decodeDtab, backoffs, timer, streamState, logWithClientId).underlying
         }
       }
     }
@@ -139,7 +135,7 @@ object Client {
       tree: NameTree[Name.Path]
     ): Future[DelegateTree[Name.Bound]] = {
       val req = mkDelegateTreeReq(root, dtab, tree)
-      log.trace(s"Mesh client [$clientId] mesh delegate request: Root: ${root.show} Dtab: ${dtab.show}")
+      log.trace(s"Mesh client [$clientId] delegate request: Root: ${root.show} Dtab: ${dtab.show}")
       delegator.getDelegateTree(req).flatMap { delegateTree =>
         decodeDelegateTree(delegateTree) match {
           case Some(decoded) => Future.value(decoded)
@@ -156,22 +152,16 @@ object Client {
             case Some(resolution) => resolution.act.underlying
             case None =>
               val streamState = new StreamState[mesh.ReplicasReq, mesh.Replicas]
+              val logWithClientId: String => Unit = log.trace(s"Mesh client %s Replicas stream state: %s", clientId, _)
               val open = () => {
                 val req = mkReplicasReq(id)
-                log.trace(s"Mesh client [$clientId] mesh replicas request: client name: ${id.show}")
+                log.trace(s"Mesh client [$clientId] replicas request: client name: ${id.show}")
                 streamState.recordApiCall(req)
                 resolver.streamReplicas(req)
               }
-              val resolution = streamVar(Addr.Pending, open, replicasToAddr, backoffs, timer, streamState)
+              val resolution = streamVar(Addr.Pending, open, replicasToAddr, backoffs, timer, streamState, logWithClientId)
               resolveCache += (id -> InstrumentedResolve(resolution, streamState))
-              val underlyingVar = resolution.underlying
-              underlyingVar.changes.respond {
-                case Addr.Pending => log.trace(s"Mesh client [$clientId] Pending addresses for client: ${id.show}")
-                case Addr.Failed(cause) => log.trace(s"Mesh client [$clientId] Failed to receive address set for client ${id.show}: ${cause.getMessage}")
-                case Addr.Neg => log.trace(s"Mesh client [$clientId] empty address set for client ${id.show}")
-                case Addr.Bound(addrs, _) => log.trace(s"Mesh client [$clientId] Received addresses for client ${id.show}: ${addrs.mkString(",")}")
-              }
-              underlyingVar
+              resolution.underlying
           }
         }
     }
@@ -263,7 +253,8 @@ object Client {
     toT: Try[S] => Option[T],
     backoffs0: scala.Stream[Duration],
     timer: Timer,
-    streamState: StreamState[_, S]
+    streamState: StreamState[_, S],
+    logWithClientId: String => Unit
   ): InstrumentedVar[T] = InstrumentedVar[T](init) { state =>
     implicit val timer0 = timer
 
@@ -284,10 +275,12 @@ object Client {
       else rsps.recv().respond { rep =>
         streamState.recordResponse(rep.map(_.value))
       }.transform {
-        case Throw(_) if closed =>
+        case Throw(e) if closed =>
+          logWithClientId(e.getMessage)
           releasePrior().rescue(_rescueUnit)
 
         case Throw(NonFatal(e)) =>
+          logWithClientId(e.getMessage)
           val releasePriorNoError = () => releasePrior().rescue(_rescueUnit)
           backoffs match {
             case wait #:: moreBackoffs =>
@@ -298,13 +291,16 @@ object Client {
           }
 
         case Throw(e) => // fatal
+          logWithClientId(e.getMessage)
           Future.exception(e)
 
         case Return(Stream.Releasable(s, release)) =>
           toT(Return(s)) match {
             case None =>
+              logWithClientId("None")
               release().before(loop(rsps, backoffs0, releasePrior))
             case Some(t) =>
+              logWithClientId(t.toString)
               state() = t
               releasePrior().before(loop(rsps, backoffs0, release))
           }
@@ -334,7 +330,8 @@ object Client {
     toT: S => Option[T],
     bos: scala.Stream[Duration],
     timer: Timer,
-    state: StreamState[_, S]
+    state: StreamState[_, S],
+    logWithClientId: String => Unit
   ): InstrumentedActivity[T] = {
     val toState: Try[S] => Option[Activity.State[T]] = {
       case Throw(e) => Some(Activity.Failed(e))
@@ -344,7 +341,7 @@ object Client {
           case Some(t) => Some(Activity.Ok(t))
         }
     }
-    new InstrumentedActivity(streamVar(Activity.Pending, open, toState, bos, timer, state))
+    new InstrumentedActivity(streamVar(Activity.Pending, open, toState, bos, timer, state, logWithClientId))
   }
 
   private[this] val decodeDtab: mesh.DtabRsp => Option[Dtab] = {
