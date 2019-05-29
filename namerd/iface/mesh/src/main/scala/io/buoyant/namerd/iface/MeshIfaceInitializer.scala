@@ -9,6 +9,7 @@ import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.logging._
+import com.twitter.util.{Return, Throw, Try}
 import io.buoyant.grpc.runtime.ServerDispatcher
 import io.netty.handler.ssl.ApplicationProtocolNames
 import java.net.{InetAddress, InetSocketAddress}
@@ -21,7 +22,46 @@ class MeshIfaceConfig extends InterfaceConfig {
   var h2AccessLogRotateCount: Option[Int] = None
 
   @JsonIgnore
-  val log = Logger.get(this.getClass.getName)
+  def mkAccessLogger(
+    logFilePath: Option[String],
+    logRollPolicy: Option[String],
+    logAppend: Option[Boolean],
+    logRotateCount: Option[Int]
+  ): Option[AccessLogger] = {
+    val policy = logRollPolicy match {
+      case None => Policy.Never
+      case Some(policyName) =>
+        Try(Policy.parse(policyName)) match {
+          // Default to Never roll policy if we can't parse one from the provided string
+          case Throw(_) => Policy.Never
+          case Return(r) => r
+        }
+    }
+    val append = logAppend.getOrElse(true)
+    val logRotate = logRotateCount.getOrElse(-1)
+
+    val filter = logFilePath match {
+      case Some(path) if path != "" =>
+        val logger = LoggerFactory(
+          node = "access_io.l5d.mesh",
+          level = Some(Level.INFO),
+          handlers = List(
+            FileHandler(
+              path,
+              policy,
+              append,
+              logRotate,
+              new Formatter(prefix = ""),
+              Some(Level.INFO)
+            )
+          ),
+          useParents = false
+        )
+        Some(AccessLogger(logger()))
+      case _ => None
+    }
+    filter
+  }
 
   @JsonIgnore
   override protected def defaultAddr = MeshIfaceInitializer.defaultAddr
@@ -50,7 +90,7 @@ class MeshIfaceConfig extends InterfaceConfig {
         val delegator = mesh.DelegatorService(store, namers, stats1)
         val resolver = mesh.ResolverService(namers, stats1)
         val service = ServerDispatcher(codec, interpreter, delegator, resolver)
-        AccessLogger.mk(
+        mkAccessLogger(
           h2AccessLog,
           h2AccessLogRollPolicy,
           h2AccessLogAppend,
