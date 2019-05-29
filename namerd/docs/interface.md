@@ -62,6 +62,10 @@ ip | loopback address | The local IP address on which to serve the namer interfa
 port | `4321` | The port number on which to serve the namer interface.
 socketOptions | none | Socket options for the mesh interface. See [Socket Options](https://linkerd.io/config/head/linkerd/index.html#socket-options)
 tls | no tls | The namer interface will serve over TLS if this parameter is provided. See [Server TLS](https://linkerd.io/config/head/linkerd#server-tls). The server TLS key file must be in PKCS#8 format.
+h2AccessLog | none | Sets the access log path.  If not specified, no access log is written.
+h2AccessLogRollPolicy | never | When to roll the logfile. Possible values: Never, Hourly, Daily, Weekly(n) (where n is a day of the week), util-style data size strings (e.g. 3.megabytes, 1.gigabyte).
+h2AccessLogAppend | true | Append to an existing logfile, or truncate it
+h2AccessLogRotateCount | -1 | How many rotated logfiles to keep around, maximum. -1 means to keep them all.
 
 ## Linkerd2 Destination Interface
 
