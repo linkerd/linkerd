@@ -22,7 +22,7 @@ class MeshIfaceConfig extends InterfaceConfig {
   var h2AccessLogRotateCount: Option[Int] = None
 
   @JsonIgnore
-  def mkAccessLogger(
+  private[this] def mkAccessLogger(
     logFilePath: Option[String],
     logRollPolicy: Option[String],
     logAppend: Option[Boolean],
@@ -40,7 +40,7 @@ class MeshIfaceConfig extends InterfaceConfig {
     val append = logAppend.getOrElse(true)
     val logRotate = logRotateCount.getOrElse(-1)
 
-    val filter = logFilePath match {
+    logFilePath match {
       case Some(path) if path != "" =>
         val logger = LoggerFactory(
           node = "access_io.l5d.mesh",
@@ -60,7 +60,6 @@ class MeshIfaceConfig extends InterfaceConfig {
         Some(AccessLogger(logger()))
       case _ => None
     }
-    filter
   }
 
   @JsonIgnore
