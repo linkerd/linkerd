@@ -59,14 +59,13 @@ class Netty4ServerDispatcher(
     val save = Local.save()
     try {
       Contexts.local.let(RemoteInfo.Upstream.AddressCtx, transport.context.remoteAddress) {
-        transport.context.peerCertificate match {
-          case None =>
+        val peerCerts = transport.context.sslSessionInfo.peerCertificates
+        if (peerCerts.isEmpty) {
+          service(req).rescue(wrapServiceEx)
+        } else {
+          Contexts.local.let(Transport.peerCertCtx, peerCerts.head) {
             service(req).rescue(wrapServiceEx)
-
-          case Some(cert) =>
-            Contexts.local.let(Transport.peerCertCtx, cert) {
-              service(req).rescue(wrapServiceEx)
-            }
+          }
         }
       }
     } finally Local.restore(save)
