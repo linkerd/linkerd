@@ -63,8 +63,12 @@ class Netty4ServerDispatcher(
         if (peerCerts.isEmpty) {
           service(req).rescue(wrapServiceEx)
         } else {
-          Contexts.local.let(Transport.peerCertCtx, peerCerts.head) {
-            service(req).rescue(wrapServiceEx)
+          peerCerts.headOption match {
+            case None => service(req).rescue(wrapServiceEx)
+            case Some(cert) =>
+              Contexts.local.let(Transport.peerCertCtx, cert) {
+                service(req).rescue(wrapServiceEx)
+              }
           }
         }
       }
