@@ -2,7 +2,8 @@ package io.buoyant.router.thrift
 
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.stats.NullStatsReceiver
-import com.twitter.finagle.thrift.{Protocols, ThriftClientRequest, ThriftServiceIface}
+import com.twitter.finagle.thrift.{Protocols, ThriftClientRequest}
+import com.twitter.finagle.thrift.service.ThriftServicePerEndpoint
 import com.twitter.finagle.{Path, Service}
 import com.twitter.scrooge.ThriftMethod
 import com.twitter.util.{Await, Future, Throw}
@@ -21,7 +22,7 @@ class IdentifierTest extends FunSuite with Awaits {
       Future.exception(RequestCaptureException(req))
     }
 
-    val req = ThriftServiceIface(method, thriftService, Protocols.binaryFactory(), NullStatsReceiver)(args).transform {
+    val req = ThriftServicePerEndpoint(method, thriftService, Protocols.binaryFactory(), NullStatsReceiver)(args).transform {
       case Throw(RequestCaptureException(request)) => Future.value(request)
       case _ => fail()
     }
