@@ -85,6 +85,7 @@ case class ConsulConfig(
 
     val service = Http.client
       .withParams(Http.client.params ++ tlsParams ++ params)
+      .withStreaming(true)
       .withLabel("client")
       .interceptInterrupts
       .failFast(failFast)
