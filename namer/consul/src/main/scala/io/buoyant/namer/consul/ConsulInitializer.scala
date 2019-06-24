@@ -1,10 +1,13 @@
 package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle._
-import com.twitter.finagle.buoyant.TlsClientConfig
-import com.twitter.finagle.tracing.NullTracer
 import com.twitter.conversions.DurationOps._
+import com.twitter.conversions.StorageUnitOps._
+import com.twitter.finagle._
+import com.twitter.finagle.buoyant.ParamsMaybeWith
+import com.twitter.finagle.buoyant.TlsClientConfig
+import com.twitter.finagle.http.param._
+import com.twitter.finagle.tracing.NullTracer
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1
@@ -61,6 +64,10 @@ case class ConsulConfig(
   failFast: Option[Boolean] = None,
   preferServiceAddress: Option[Boolean] = None,
   weights: Option[Seq[TagWeight]] = None,
+  maxHeadersKB: Option[Int],
+  maxInitialLineKB: Option[Int],
+  maxRequestKB: Option[Int],
+  maxResponseKB: Option[Int],
   tls: Option[TlsClientConfig] = None
 ) extends NamerConfig {
 
@@ -71,6 +78,19 @@ case class ConsulConfig(
   private[this] def getPort = port match {
     case Some(p) => p.port
     case None => 8500
+  }
+
+  def configuredHttpClientParams = {
+    val headersKB = maxHeadersKB.map(kb => MaxHeaderSize(kb.kilobytes))
+    val initialLineKB = maxInitialLineKB.map(kb => MaxInitialLineSize(kb.kilobytes))
+    val requestKB = maxRequestKB.map(kb => MaxRequestSize(kb.kilobytes))
+    val responseKB = maxResponseKB.map(kb => MaxResponseSize(kb.kilobytes))
+
+    Stack.Params.empty
+      .maybeWith(headersKB)
+      .maybeWith(initialLineKB)
+      .maybeWith(requestKB)
+      .maybeWith(responseKB)
   }
 
   /**
@@ -84,8 +104,7 @@ case class ConsulConfig(
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
     val service = Http.client
-      .withParams(Http.client.params ++ tlsParams ++ params)
-      .withStreaming(true)
+      .withParams(Http.client.params ++ configuredHttpClientParams ++ tlsParams ++ params)
       .withLabel("client")
       .interceptInterrupts
       .failFast(failFast)
