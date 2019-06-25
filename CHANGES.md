@@ -1,3 +1,13 @@
+## 1.6.2.2 2019-06-24
+
+This is a bug fix release which addresses #2286. In this bug, a 
+TooLongMessageException occurs when the number of service replicas is large 
+enough such that the response from consul exceeds the 5MB threshold which is 
+the default for the MaxRequestSize.
+
+To address this scenario, ConsulInitializer.scala now includes parameters 
+to configure the Http.client object that is instantiated in the `newNamer` method.
+
 ## 1.6.2.1 2019-03-28
 
 This bug fix release fixes an issue where Linkerd can send excessive load to Namerd in certain
