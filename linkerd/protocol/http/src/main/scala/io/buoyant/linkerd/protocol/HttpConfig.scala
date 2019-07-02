@@ -66,6 +66,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       .configured(router.params[hparam.MaxInitialLineSize])
       .configured(router.params[hparam.MaxRequestSize])
       .configured(router.params[hparam.MaxResponseSize])
+      .configured(router.params[Headers.param.MaxErrResponseSize])
       .configured(router.params[hparam.Streaming])
       .configured(router.params[hparam.CompressionLevel])
       .configured(router.params[HttpTracePropagatorConfig.Param])
@@ -216,6 +217,7 @@ case class HttpConfig(
   maxInitialLineKB: Option[Int],
   maxRequestKB: Option[Int],
   maxResponseKB: Option[Int],
+  maxErrResponseKB: Option[Int],
   streamingEnabled: Option[Boolean],
   compressionLevel: Option[Int],
   tracePropagator: Option[HttpTracePropagatorConfig]
@@ -256,6 +258,7 @@ case class HttpConfig(
     .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
     .maybeWith(maxRequestKB.map(kb => hparam.MaxRequestSize(kb.kilobytes)))
     .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
+    .maybeWith(maxErrResponseKB.map(kb => Headers.param.MaxErrResponseSize.apply(kb.kilobytes)))
     .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
     .maybeWith(combinedIdentifier(params))

@@ -15,6 +15,7 @@ routers:
   maxInitialLineKB: 4
   maxRequestKB: 5120
   maxResponseKB: 5120
+  maxErrResponseKB: 5120
   servers:
   - port: 5000
     addForwardedHeader:
@@ -41,6 +42,7 @@ maxHeadersKB | 8 | The maximum size of all headers in an HTTP message.
 maxInitialLineKB | 4 | The maximum size of an initial HTTP message line.
 maxRequestKB | 5120 | The maximum size of a non-chunked HTTP request payload.
 maxResponseKB | 5120 | The maximum size of a non-chunked HTTP response payload.
+maxErrResponseKB | 5120 | The maximum size of a HTTP error response payload.
 compressionLevel | `-1`, automatically compresses textual content types with compression level 6 | The compression level to use (on 0-9).
 streamingEnabled | `true` | Streaming allows Linkerd to work with HTTP messages that have large (or infinite) content bodies using chunked encoding.  Disabling this is highly discouraged.
 tracePropagator | `io.l5d.default` | A trace propagator.  See [Http-specific trace propagator](#http-1-1-trace-propagators).

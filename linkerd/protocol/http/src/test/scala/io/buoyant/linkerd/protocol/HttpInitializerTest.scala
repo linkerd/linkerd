@@ -5,6 +5,8 @@ import com.twitter.finagle.{Service, ServiceFactory, Stack, param}
 import com.twitter.finagle.http.{param => hparam}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
+import com.twitter.finagle.buoyant.linkerd.DelayedRelease
+import com.twitter.finagle.buoyant.linkerd.Headers.{param => hErrParam}
 import com.twitter.io.Pipe
 import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.linkerd.protocol.http.ResponseClassifiers
@@ -139,12 +141,14 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     val maxInitLineSize = hparam.MaxInitialLineSize(30.kilobytes)
     val maxReqSize = hparam.MaxRequestSize(40.kilobytes)
     val maxRspSize = hparam.MaxResponseSize(50.kilobytes)
+    val maxErrRspSize = hErrParam.MaxErrResponseSize(30.kilobytes)
     val streaming = hparam.Streaming(false)
     val compression = hparam.CompressionLevel(3)
 
     val router = HttpInitializer.router
       .configured(maxHeaderSize).configured(maxInitLineSize)
       .configured(maxReqSize).configured(maxRspSize)
+      .configured(maxErrRspSize)
       .configured(streaming).configured(compression)
       .serving(HttpServerConfig(None, None).mk(HttpInitializer, "yolo"))
       .initialize()
@@ -154,6 +158,7 @@ class HttpInitializerTest extends FunSuite with Awaits with Eventually {
     assert(sparams[hparam.MaxInitialLineSize] == maxInitLineSize)
     assert(sparams[hparam.MaxRequestSize] == maxReqSize)
     assert(sparams[hparam.MaxResponseSize] == maxRspSize)
+    assert(sparams[hErrParam.MaxErrResponseSize] == maxErrRspSize)
     assert(sparams[hparam.Streaming] == streaming)
     assert(sparams[hparam.CompressionLevel] == compression)
   }
