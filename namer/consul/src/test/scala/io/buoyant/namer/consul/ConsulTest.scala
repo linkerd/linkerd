@@ -13,7 +13,7 @@ class ConsulTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = ConsulConfig(None, None, None, None, None, None, None, None, None, None, None, None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = ConsulConfig(None, None, None, None, None, None, None, None, None, None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -40,10 +40,7 @@ class ConsulTest extends FunSuite {
                     |token: some-token
                     |includeTag: true
                     |useHealthCheck: true
-                    |maxHeadersKB: 4
-                    |maxInitialLineKB: 8
-                    |maxRequestKB: 5192
-                    |maxResponseKB: 5192
+                    |fixedLengthStreamedAfterKB: 5192
                     |healthStatuses:
                     | - warning
                     |setHost: true
@@ -74,10 +71,7 @@ class ConsulTest extends FunSuite {
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
     assert(consul.failFast == Some(true))
     assert(consul.preferServiceAddress == Some(false))
-    assert(consul.maxHeadersKB == Some(4))
-    assert(consul.maxInitialLineKB == Some(8))
-    assert(consul.maxRequestKB == Some(5192))
-    assert(consul.maxResponseKB == Some(5192))
+    assert(consul.fixedLengthStreamedAfterKB == Some(5192))
     assert(consul.weights == Some(Seq(TagWeight("primary", 100.0))))
     val clientAuth = ClientAuth("/certificates/cert.pem", None, "/certificates/key.pem")
     val tlsConfig = TlsClientConfig(None, Some(false), Some("consul.io"), None, Some("/certificates/cacerts-bundle.pem"), Some(clientAuth))
