@@ -6,9 +6,10 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Level
 import com.twitter.util._
 import io.buoyant.consul.v1
-import io.buoyant.consul.v1.UnexpectedResponse
+import io.buoyant.consul.v1.ServiceNode
 import io.buoyant.namer.{InstrumentedVar, Metadata}
 import java.net.{InetAddress, InetSocketAddress}
+
 import scala.util.control.NoStackTrace
 
 private[consul] case class SvcKey(name: String, tag: Option[String]) {
@@ -19,6 +20,8 @@ private[consul] case class SvcKey(name: String, tag: Option[String]) {
 }
 
 private[consul] object SvcAddr {
+
+  type MetaWithAddresses = (v1.MetaData, Set[Address])
 
   private[this] val ServiceRelease =
     new Exception("service observation released") with NoStackTrace
@@ -49,17 +52,26 @@ private[consul] object SvcAddr {
     stateWatch: v1.PollState[String, v1.IndexedServiceNodes]
   )(implicit timer: Timer = DefaultTimer): InstrumentedVar[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
-    def getAddresses(index: Option[String]): Future[v1.Indexed[Set[Address]]] = {
+
+    def getAddresses(index: Option[String]): Future[v1.Indexed[MetaWithAddresses]] = {
       val apiCall = consulApi.serviceNodes(
         key.name,
         datacenter = Some(datacenter),
         tag = key.tag,
         blockingIndex = index,
-        consistency = consistency,
-        retry = false
+        consistency = consistency
       )
       v1.InstrumentedApiCall.execute(apiCall, stateWatch)
-        .map(indexedToAddresses(preferServiceAddress, tagWeights))
+        .map {
+          case v1.Indexed(nodes, idx) => {
+            val meta: v1.MetaData = nodes.headOption match {
+              case Some(ServiceNode(_, _, _, _, _, _, _, _, Some(serviceMeta), _)) => serviceMeta
+              case _ => Map.empty[String, Any]
+            }
+            val addresses = nodesToAddresses(preferServiceAddress, tagWeights)(nodes)
+            v1.Indexed(meta -> addresses, idx)
+          }
+        }
     }
 
     // Start by fetching the service immediately, and then long-poll
@@ -113,11 +125,11 @@ private[consul] object SvcAddr {
             )
             Future.exception(NoIndexException)
 
-          case Return(v1.Indexed(addrs, xConsulIndex)) =>
+          case Return(v1.Indexed((srvMeta, addresses), xConsulIndex)) =>
             stats.updates.incr()
-            val addr = addrs match {
+            val addr = addresses match {
               case addrs if addrs.isEmpty => Addr.Neg
-              case addrs => Addr.Bound(addrs, meta)
+              case addrs => Addr.Bound(addrs, meta ++ Map(Metadata.serviceMeta -> srvMeta))
             }
             state.update(addr)
 
@@ -148,13 +160,14 @@ private[consul] object SvcAddr {
         Addr.Metadata(Metadata.authority -> authority)
     }
 
-  private[this] def indexedToAddresses(preferServiceAddress: Option[Boolean], tagWeights: Map[String, Double]): v1.IndexedServiceNodes => v1.Indexed[Set[Address]] = {
-    case v1.Indexed(nodes, idx) =>
-      val addrs = preferServiceAddress match {
-        case Some(false) => nodes.flatMap(serviceNodeToNodeAddr(_, tagWeights)).toSet
-        case _ => nodes.flatMap(serviceNodeToAddr(_, tagWeights)).toSet
-      }
-      v1.Indexed(addrs, idx)
+  private[this] def nodesToAddresses(
+    preferServiceAddress: Option[Boolean],
+    tagWeights: Map[String, Double]
+  ): Seq[ServiceNode] => Set[Address] = { nodes =>
+    preferServiceAddress match {
+      case Some(false) => nodes.flatMap(serviceNodeToNodeAddr(_, tagWeights)).toSet
+      case _ => nodes.flatMap(serviceNodeToAddr(_, tagWeights)).toSet
+    }
   }
 
   /**
@@ -162,33 +175,47 @@ private[consul] object SvcAddr {
    */
   private def serviceNodeToAddr(n: v1.ServiceNode, w: Map[String, Double]): Traversable[Address] =
     (n.Address, n.ServiceAddress, n.ServicePort) match {
-      case (_, Some(ip), Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w)
-      case (Some(ip), _, Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w)
+      case (_, Some(ip), Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w, n.NodeMeta)
+      case (Some(ip), _, Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w, n.NodeMeta)
       case _ => None
     }
 
   /**
    * Always use node IPs. Invalid addresses are ignored.
    */
-  private def serviceNodeToNodeAddr(n: v1.ServiceNode, w: Map[String, Double]): Traversable[Address] =
+  private def serviceNodeToNodeAddr(
+    n: v1.ServiceNode,
+    w: Map[String, Double]
+  ): Traversable[Address] =
     (n.Address, n.ServicePort) match {
-      case (Some(ip), Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w)
+      case (Some(ip), Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w, n.NodeMeta)
       case _ => None
     }
 
   /**
    * Apply weight to the address, taking the heaviest tag of the service.
    */
-  private[this] def weightedAddress(ip: String, port: Int, n: v1.ServiceNode, w: Map[String, Double]) = {
+  private[this] def weightedAddress(
+    ip: String,
+    port: Int,
+    n: v1.ServiceNode,
+    w: Map[String, Double],
+    m: Option[v1.MetaData]
+  ) = {
     val weight = n.ServiceTags.map(_.flatMap(w.get)) match {
       case None => 1.0
       case Some(Nil) => 1.0
       case Some(ws) => ws.max
     }
-    val meta = Addr.Metadata((Metadata.endpointWeight, weight))
-    Try(InetAddress.getAllByName(ip)
-      .toTraversable
-      .map(singleIP => Address.Inet(new InetSocketAddress(singleIP, port), meta)))
+    val meta = Addr.Metadata((Metadata.endpointWeight, weight)) ++ Map(
+      Metadata.nodeMeta -> m
+        .getOrElse(Map.empty)
+    )
+    Try(
+      InetAddress.getAllByName(ip)
+        .toTraversable
+        .map(singleIP => Address.Inet(new InetSocketAddress(singleIP, port), meta))
+    )
       .getOrElse(Seq())
   }
 

@@ -1,7 +1,6 @@
 package io.buoyant.namerd.iface
 
-import java.net.InetSocketAddress
-
+import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle.http._
@@ -302,6 +301,61 @@ class HttpControlServiceTest extends FunSuite with Awaits {
         |"bound":{"addr":{"type":"bound","addrs":[{"ip":"127.0.0.1","port":1,"meta":{}}],"meta":{}},
         |"id":"/#/io.l5d.namer/foo","path":"/"}}
         |""".stripMargin.replaceAllLiterally("\n", ""))
+  }
+
+  test("bind with metadata") {
+    val (ni, witness) = interpreter
+
+    def delegate(ns: Ns): NameInterpreter = {
+      assert(ns == "default")
+      ni
+    }
+
+    val serviceMeta = Map("service_meta" -> Map("foo_serv" -> "bar_serv"))
+    val nodeMeta = Map("node_meta" -> Map("foo_node" -> "bar_node"))
+
+    val address: Address = Address
+      .Inet(new InetSocketAddress(InetAddress.getLoopbackAddress, 1), nodeMeta)
+    val service = new HttpControlService(NullDtabStore, delegate, Map.empty)
+    val bound = "/#/io.l5d.namer/foo"
+    witness
+      .notify(
+        Return(
+          NameTree
+            .Leaf(Name.Bound(Var(Addr.Bound(Set(address), serviceMeta)), Path.read(bound)))
+        )
+      )
+
+    val resp = await(service(Request("/api/1/bind/default?path=/foo")))
+    assert(resp.status == Status.Ok)
+    assert(resp.contentString ==
+      """|
+         |{
+         |  "type": "leaf",
+         |  "bound": {
+         |    "addr": {
+         |      "type": "bound",
+         |      "addrs": [
+         |        {
+         |          "ip": "127.0.0.1",
+         |          "port": 1,
+         |          "meta": {
+         |            "node_meta": {
+         |              "foo_node": "bar_node"
+         |            }
+         |          }
+         |        }
+         |      ],
+         |      "meta": {
+         |        "service_meta": {
+         |          "foo_serv": "bar_serv"
+         |        }
+         |      }
+         |    },
+         |    "id": "/#/io.l5d.namer/foo",
+         |    "path": "/"
+         |  }
+         |}""".stripMargin.replaceAll("\\s", "") + "\n")
   }
 
   test("bind with an extra dtab") {
