@@ -10,10 +10,9 @@ import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle._
-import com.twitter.io.Buf
+import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import io.buoyant.consul.log
-
 import scala.util.control.NonFatal
 
 // a thunked version of the api call such that we can peek at the request before making the call
@@ -86,16 +85,16 @@ trait BaseApi extends Closable {
   mapper.registerModule(DefaultScalaModule)
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-  private def parse[T: Manifest](rsp: Response): Future[T] =
-    for {
-      data <- rsp match {
-        case chunked if rsp.isChunked => chunked.chunkReader.accumulate.map({ case (buf, _) => Buf.ByteArray.coerce(buf) })
-        case nonChunked => Future.value(Buf.ByteArray.coerce(nonChunked.content))
-      }
-      parsed <- data match {
-        case Buf.ByteArray.Owned(bytes, begin, end) => Future.value(mapper.readValue[T](bytes, begin, end - begin))
-      }
-    } yield parsed
+  private def parse[T: Manifest](rsp: Response): Future[T] = {
+    val content = if (rsp.isChunked)
+      Reader.readAll(rsp.reader)
+    else
+      Future.value(rsp.content)
+
+    content.map(Buf.ByteArray.coerce).map {
+      case Buf.ByteArray.Owned(bytes, begin, end) => mapper.readValue[T](bytes, begin, end - begin)
+    }
+  }
 
   private[v1] def executeJson[T: Manifest](
     req: http.Request,

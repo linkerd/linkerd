@@ -1,8 +1,6 @@
 package io.buoyant.consul
 
-import com.twitter.finagle.http.{Chunk, HeaderMap}
 import com.twitter.finagle.{Service, SimpleFilter, http}
-import com.twitter.io.{Buf, Reader}
 import com.twitter.util.Future
 
 package object v1 {
@@ -34,21 +32,4 @@ package object v1 {
       }
     }
   }
-
-  implicit class RichChunkReader(val r: Reader[Chunk]) extends AnyVal {
-    def accumulate: Future[(Buf, Option[HeaderMap])] = {
-      def loop(acc: Buf, trailers: Option[HeaderMap]): Future[(Buf, Option[HeaderMap])] =
-        r.read().flatMap {
-          case Some(chunk) =>
-            if (chunk.isLast && chunk.trailers.nonEmpty)
-              loop(acc.concat(chunk.content), Some(chunk.trailers))
-            else
-              loop(acc.concat(chunk.content), None)
-          case None =>
-            Future.value(acc -> trailers)
-        }
-      loop(Buf.Empty, None)
-    }
-  }
-
 }
