@@ -41,6 +41,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *     clientAuth:
  *       certPath: /certificates/cert.pem
  *       keyPath: /certificates/key.pem
+ *    transferMetaData: true
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -65,7 +66,8 @@ case class ConsulConfig(
   preferServiceAddress: Option[Boolean] = None,
   weights: Option[Seq[TagWeight]] = None,
   fixedLengthStreamedAfterKB: Option[Int],
-  tls: Option[TlsClientConfig] = None
+  tls: Option[TlsClientConfig] = None,
+  transferMetaData: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -87,7 +89,6 @@ case class ConsulConfig(
     val DefaultRequestTimeout = 10.minutes
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
     val DefaultStreamAfter = 5.megabytes
-
 
     val service = Http.client
       .withParams(Http.client.params ++ tlsParams ++ params)
@@ -118,11 +119,27 @@ case class ConsulConfig(
     includeTag match {
       case Some(true) =>
         ConsulNamer.tagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, tagWeights, stats
+          prefix,
+          consul,
+          agent,
+          setHost.getOrElse(false),
+          consistencyMode,
+          preferServiceAddress,
+          tagWeights,
+          stats,
+          transferMetaData
         )
       case _ =>
         ConsulNamer.untagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, tagWeights, stats
+          prefix,
+          consul,
+          agent,
+          setHost.getOrElse(false),
+          consistencyMode,
+          preferServiceAddress,
+          tagWeights,
+          stats,
+          transferMetaData
         )
     }
   }

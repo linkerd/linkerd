@@ -28,7 +28,8 @@ private[consul] class LookupCache(
   consistency: Option[v1.ConsistencyMode] = None,
   preferServiceAddress: Option[Boolean] = None,
   weights: Map[String, Double] = Map.empty,
-  stats: StatsReceiver = NullStatsReceiver
+  stats: StatsReceiver = NullStatsReceiver,
+  transferMetaData: Option[Boolean] = None
 ) {
 
   private[this] val localDcMoniker = ".local"
@@ -58,7 +59,8 @@ private[consul] class LookupCache(
             preferServiceAddress = preferServiceAddress,
             weights,
             serviceStats,
-            pollState
+            pollState,
+            transferMetaData
           )
       }
 

@@ -49,7 +49,8 @@ private[consul] object SvcAddr {
     preferServiceAddress: Option[Boolean] = None,
     tagWeights: Map[String, Double] = Map.empty,
     stats: Stats,
-    stateWatch: v1.PollState[String, v1.IndexedServiceNodes]
+    stateWatch: v1.PollState[String, v1.IndexedServiceNodes],
+    transferMetaData: Option[Boolean] = None
   )(implicit timer: Timer = DefaultTimer): InstrumentedVar[Addr] = {
     val meta = mkMeta(key, datacenter, domain)
 
@@ -64,8 +65,8 @@ private[consul] object SvcAddr {
       v1.InstrumentedApiCall.execute(apiCall, stateWatch)
         .map {
           case v1.Indexed(nodes, idx) => {
-            val meta: v1.MetaData = nodes.headOption match {
-              case Some(ServiceNode(_, _, _, _, _, _, _, _, Some(serviceMeta), _)) => serviceMeta
+            val meta: v1.MetaData = nodes.headOption.flatMap(_.ServiceMeta) -> transferMetaData match {
+              case (Some(serviceMeta), Some(true)) => serviceMeta
               case _ => Map.empty[String, Any]
             }
             val addresses = nodesToAddresses(preferServiceAddress, tagWeights)(nodes)
@@ -162,18 +163,23 @@ private[consul] object SvcAddr {
 
   private[this] def nodesToAddresses(
     preferServiceAddress: Option[Boolean],
-    tagWeights: Map[String, Double]
+    tagWeights: Map[String, Double],
+    transferMetaData: Option[Boolean] = None
   ): Seq[ServiceNode] => Set[Address] = { nodes =>
     preferServiceAddress match {
-      case Some(false) => nodes.flatMap(serviceNodeToNodeAddr(_, tagWeights)).toSet
-      case _ => nodes.flatMap(serviceNodeToAddr(_, tagWeights)).toSet
+      case Some(false) => nodes.flatMap(serviceNodeToNodeAddr(_, tagWeights, transferMetaData)).toSet
+      case _ => nodes.flatMap(serviceNodeToAddr(_, tagWeights, transferMetaData)).toSet
     }
   }
 
   /**
    * Prefer service IPs to node IPs. Invalid addresses are ignored.
    */
-  private def serviceNodeToAddr(n: v1.ServiceNode, w: Map[String, Double]): Traversable[Address] =
+  private def serviceNodeToAddr(
+    n: v1.ServiceNode,
+    w: Map[String, Double],
+    transferMetaData: Option[Boolean]
+  ): Traversable[Address] =
     (n.Address, n.ServiceAddress, n.ServicePort) match {
       case (_, Some(ip), Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w, n.NodeMeta)
       case (Some(ip), _, Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w, n.NodeMeta)
@@ -185,10 +191,12 @@ private[consul] object SvcAddr {
    */
   private def serviceNodeToNodeAddr(
     n: v1.ServiceNode,
-    w: Map[String, Double]
+    w: Map[String, Double],
+    transferMetaData: Option[Boolean] = None
   ): Traversable[Address] =
-    (n.Address, n.ServicePort) match {
-      case (Some(ip), Some(port)) if !ip.isEmpty => weightedAddress(ip, port, n, w, n.NodeMeta)
+    (n.Address, n.ServicePort, transferMetaData) match {
+      case (Some(ip), Some(port), Some(true)) if !ip.isEmpty => weightedAddress(ip, port, n, w, n.NodeMeta)
+      case (Some(ip), Some(port), _) if !ip.isEmpty => weightedAddress(ip, port, n, w, None)
       case _ => None
     }
 
