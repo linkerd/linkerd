@@ -16,7 +16,7 @@ class EndpointSerializer extends ConfigSerializer[mesh.Endpoint] {
     gen.writeStartObject()
     for (iaf <- value.inetAf) gen.writeObjectField("inetAf", iaf)
     for (addr <- value.address) gen.writeStringField("address", BufSerializers.ipv4(addr))
-    for (meta <- value.meta) gen.writeObjectField("meta", meta)
+    for (meta <- value.`meta`) gen.writeObjectField("meta", meta)
     for (port <- value.port) gen.writeStringField("port", port.toString)
     gen.writeEndObject()
   }

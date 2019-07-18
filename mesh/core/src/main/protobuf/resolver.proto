@@ -39,13 +39,7 @@ message Endpoint {
   int32 port = 3;
 
   /** Endpoint-specific diagonstic metadata */
-  message Meta {
-    /**
-     * In scheduled environments, a diagnostic name for the parent node.
-     */
-    string nodeName = 1;
-  }
-  Meta meta = 4;
+  map<string, string> meta = 4;
 }
 
 message Replicas {
@@ -60,6 +54,7 @@ message Replicas {
 
   message Bound {
     repeated Endpoint endpoints = 1;
+    map<string, string> meta = 2;
   }
 
   oneof result {

@@ -26,7 +26,7 @@ class ResolverServiceTest extends FunSuite {
       inetAf = Some(AddressFamily.INET4),
       address = Some(Buf.ByteArray.Owned(Array[Byte](1, 2, 3, 4))),
       port = Some(7777),
-      meta = Some(Endpoint.Meta(nodeName = None))
+      meta = Map.empty
     )
     val rsp = await(resolver.getReplicas(req))
     assert(rsp.result.get == Replicas.OneofResult.Bound(Replicas.Bound(Seq(endpoint))))
@@ -47,7 +47,7 @@ class ResolverServiceTest extends FunSuite {
       inetAf = Some(AddressFamily.INET4),
       address = Some(Buf.ByteArray.Owned(Array[Byte](1, 2, 3, 4))),
       port = Some(7777),
-      meta = Some(Endpoint.Meta(nodeName = None))
+      meta = Map.empty
     )
 
     val stream = resolver.streamReplicas(req)
@@ -61,7 +61,7 @@ class ResolverServiceTest extends FunSuite {
       inetAf = Some(AddressFamily.INET4),
       address = Some(Buf.ByteArray.Owned(Array[Byte](5, 6, 7, 8))),
       port = Some(7777),
-      meta = Some(Endpoint.Meta(nodeName = None))
+      meta = Map.empty
     )
     val item1 = await(resolver.streamReplicas(req).recv())
     assert(item1.value.result.get == Replicas.OneofResult.Bound(Replicas.Bound(Seq(endpoint1))))
@@ -84,7 +84,7 @@ class ResolverServiceTest extends FunSuite {
       inetAf = Some(AddressFamily.INET4),
       address = Some(Buf.ByteArray.Owned(Array[Byte](1, 2, 3, 4))),
       port = Some(7777),
-      meta = Some(Endpoint.Meta(nodeName = None))
+      meta = Map.empty
     )
     val rsp = await(resolver.getReplicas(req))
     assert(rsp.result.get == Replicas.OneofResult.Bound(Replicas.Bound(Seq(endpoint))))
@@ -106,7 +106,7 @@ class ResolverServiceTest extends FunSuite {
       inetAf = Some(AddressFamily.INET4),
       address = Some(Buf.ByteArray.Owned(Array[Byte](1, 2, 3, 4))),
       port = Some(7777),
-      meta = Some(Endpoint.Meta(nodeName = None))
+      meta = Map.empty
     )
 
     val stream = resolver.streamReplicas(req)
@@ -120,7 +120,7 @@ class ResolverServiceTest extends FunSuite {
       inetAf = Some(AddressFamily.INET4),
       address = Some(Buf.ByteArray.Owned(Array[Byte](5, 6, 7, 8))),
       port = Some(7777),
-      meta = Some(Endpoint.Meta(nodeName = None))
+      meta = Map.empty
     )
     val item1 = await(resolver.streamReplicas(req).recv())
     assert(item1.value.result.get == Replicas.OneofResult.Bound(Replicas.Bound(Seq(endpoint1))))

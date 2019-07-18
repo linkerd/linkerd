@@ -1,5 +1,8 @@
 package io.buoyant.interpreter.mesh
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.buoyant.h2.Reset
@@ -10,7 +13,7 @@ import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.config.Parser
 import io.buoyant.grpc.runtime.Stream
-import io.buoyant.namer.{DelegateTree, Delegator, InstrumentedActivity, InstrumentedVar, Metadata}
+import io.buoyant.namer.{DelegateTree, Delegator, InstrumentedActivity, InstrumentedVar}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
 import java.net.{InetAddress, InetSocketAddress}
@@ -44,6 +47,9 @@ object Client {
   private[this] val _rescueUnit: PartialFunction[Throwable, Future[Unit]] = {
     case NonFatal(_) => Future.Unit
   }
+
+  private[this] val mapper = new ObjectMapper with ScalaObjectMapper
+  mapper.registerModule(DefaultScalaModule)
 
   private[this] class Impl(
     root: Path,
@@ -334,9 +340,11 @@ object Client {
     case mesh.Endpoint(Some(_), Some(ipBuf), Some(port), pmeta) =>
       val ipBytes = Buf.ByteArray.Owned.extract(ipBuf)
       val ip = InetAddress.getByAddress(ipBytes)
-      val meta = Seq.empty[(String, Any)] ++
-        pmeta.flatMap(_.nodeName).map(Metadata.nodeName -> _)
-      Address.Inet(new InetSocketAddress(ip, port), Addr.Metadata(meta: _*))
+      Address
+        .Inet(
+          new InetSocketAddress(ip, port),
+          pmeta.mapValues(v => Try(mapper.readValue[Map[String, Any]](v)).getOrElse(v))
+        )
   }
 
   private[this] val fromReplicas: mesh.Replicas => Addr = {
@@ -347,8 +355,12 @@ object Client {
       case mesh.Replicas.OneofResult.Failed(mesh.Replicas.Failed(msg)) =>
         Addr.Failed(msg.getOrElse("unknown"))
 
-      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs)) =>
-        Addr.Bound(paddrs.collect(_collectFromEndpoint).toSet)
+      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, meta)) =>
+        Addr
+          .Bound(
+            paddrs.collect(_collectFromEndpoint).toSet,
+            meta.mapValues(v => Try(mapper.readValue[Map[String, Any]](v)).getOrElse(v))
+          )
     }
   }
 

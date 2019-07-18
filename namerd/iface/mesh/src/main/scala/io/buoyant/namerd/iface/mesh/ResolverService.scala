@@ -1,14 +1,17 @@
 package io.buoyant.namerd
 package iface.mesh
 
-import com.twitter.finagle.{Addr, Address, Dtab, Name, NameTree, Namer, Path}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.twitter.finagle.{Addr, Address, NameTree, Namer, Path}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Future, Return, Throw, Try, Var}
+import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.grpc.runtime.{Stream, VarEventStream}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
-import io.buoyant.namer.{Metadata, Paths}
+import io.buoyant.namer.Paths
 import java.net.Inet6Address
 
 object ResolverService {
@@ -49,6 +52,9 @@ object ResolverService {
     }
   }
 
+  private[this] val mapper = new ObjectMapper with ScalaObjectMapper
+  mapper.registerModule(DefaultScalaModule)
+
   private[this] val DefaultNamer: (Path, Namer) =
     Path.empty -> Namer.global
 
@@ -67,7 +73,7 @@ object ResolverService {
 
     case Addr.Bound(addrs, meta) =>
       val paddrs = addrs.collect(_collectToEndpoint).toSeq
-      mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs))
+      mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, meta.mapValues(v => mapper.writeValueAsString(v))))
   }
 
   private[this] val toReplicas: Addr => mesh.Replicas =
@@ -79,23 +85,20 @@ object ResolverService {
   private[this] val _collectToEndpoint: PartialFunction[Address, mesh.Endpoint] = {
     case Address.Inet(isa, meta) =>
       val port = isa.getPort
-      val pmeta = mesh.Endpoint.Meta(
-        nodeName = meta.get(Metadata.nodeName).map(_.toString)
-      )
       isa.getAddress match {
         case ip: Inet6Address =>
           mesh.Endpoint(
             Some(mesh.Endpoint.AddressFamily.INET6),
             Some(Buf.ByteArray.Owned(ip.getAddress)),
             Some(port),
-            Some(pmeta)
+            meta.mapValues(mapper.writeValueAsString)
           )
         case ip =>
           mesh.Endpoint(
             Some(mesh.Endpoint.AddressFamily.INET4),
             Some(Buf.ByteArray.Owned(ip.getAddress)),
             Some(port),
-            Some(pmeta)
+            meta.mapValues(mapper.writeValueAsString)
           )
       }
   }
