@@ -88,7 +88,6 @@ case class ConsulConfig(
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
     val DefaultStreamAfter = 5.megabytes
 
-
     val service = Http.client
       .withParams(Http.client.params ++ tlsParams ++ params)
       .withLabel("client")

@@ -11,8 +11,7 @@ routers:
   httpAccessLogRotateCount: -1
   maxHeadersKB: 16
   maxInitialLineKB: 16
-  maxRequestKB: 102400 # 100MB
-  maxResponseKB: 102400 # 100MB
+  streamAfterContentLengthKB: 102400 # 100MB
   compressionLevel: 9
   identifier: {kind: io.l5d.header}
   dtab: |
