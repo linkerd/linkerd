@@ -29,7 +29,7 @@ private[consul] class LookupCache(
   preferServiceAddress: Option[Boolean] = None,
   weights: Map[String, Double] = Map.empty,
   stats: StatsReceiver = NullStatsReceiver,
-  transferMetaData: Option[Boolean] = None
+  transferMetaData: Boolean = false
 ) {
 
   private[this] val localDcMoniker = ".local"

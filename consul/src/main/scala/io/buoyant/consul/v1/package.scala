@@ -8,7 +8,7 @@ package object v1 {
   type Client = Service[http.Request, http.Response]
   type IndexedServiceNodes = Indexed[Seq[ServiceNode]]
   type IndexedServiceMap = Indexed[Map[String, Seq[String]]]
-  type MetaData = Map[String, Any]
+  type Metadata = Map[String, String]
 
   trait ConsulApiError extends Throwable {
     def rsp: http.Response

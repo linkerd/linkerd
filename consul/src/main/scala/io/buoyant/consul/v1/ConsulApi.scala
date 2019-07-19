@@ -159,7 +159,7 @@ class HealthApi(
 case class Node(
   Node: Option[String],
   Address: Option[String],
-  Meta: Option[MetaData]
+  Meta: Option[Metadata]
 )
 
 case class Service_(
@@ -168,7 +168,7 @@ case class Service_(
   Address: Option[String],
   Tags: Option[Seq[String]],
   Port: Option[Int],
-  Meta: Option[MetaData]
+  Meta: Option[Metadata]
 )
 
 case class ServiceHealth(
@@ -190,6 +190,6 @@ case class ServiceNode(
   ServiceAddress: Option[String],
   ServicePort: Option[Int],
   Status: Option[HealthStatus.Value],
-  ServiceMeta: Option[MetaData],
-  NodeMeta: Option[MetaData]
+  ServiceMeta: Option[Metadata],
+  NodeMeta: Option[Metadata]
 )

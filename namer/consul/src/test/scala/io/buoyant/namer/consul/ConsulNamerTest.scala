@@ -473,7 +473,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       stats = stats,
-      transferMetaData = Some(true)
+      transferMetaData = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
@@ -482,7 +482,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
 
     assertOnAddrs(state) { (_, metadata) =>
       assert(
-        metadata == Addr.Metadata(Metadata.serviceMeta -> Map("srv_meta" -> "some_srv_meta"))
+        metadata == Addr.Metadata("srv_meta" -> "some_srv_meta")
       )
       ()
     }
@@ -512,7 +512,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       stats = stats,
-      transferMetaData = Some(false)
+      transferMetaData = false
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
@@ -520,7 +520,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
 
     assertOnAddrs(state) { (_, metadata) =>
-      metadata == Addr.Metadata(Metadata.serviceMeta -> Map.empty)
+      metadata == Addr.Metadata.empty
       ()
     }
   }
@@ -550,7 +550,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestAgentApi("consul.acme.co"),
       setHost = true,
       stats = stats,
-      transferMetaData = Some(true)
+      transferMetaData = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -560,7 +560,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
         metadata == Addr
           .Metadata(
             Metadata.authority -> "servicename.service.dc1.consul.acme.co",
-            Metadata.serviceMeta -> Map("srv_meta" -> "some_srv_meta")
+            "srv_meta" -> "some_srv_meta"
           )
       )
       ()
@@ -605,7 +605,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestAgentApi("consul.acme.co"),
       setHost = true,
       stats = stats,
-      transferMetaData = Some(true)
+      transferMetaData = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
@@ -614,7 +614,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       assert(
         metadata == Addr.Metadata(
           Metadata.authority -> "master.servicename.service.dc1.consul.acme.co",
-          Metadata.serviceMeta -> Map("srv_meta" -> "some_srv_meta")
+          "srv_meta" -> "some_srv_meta"
         )
       )
       ()
@@ -660,7 +660,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestAgentApi("consul.acme.co"),
       setHost = true,
       stats = stats,
-      transferMetaData = Some(true)
+      transferMetaData = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -670,7 +670,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       assert(
         metadata == Addr.Metadata(
           Metadata.authority -> "servicename.service.dc1.consul.acme.co",
-          Metadata.serviceMeta -> Map("srv_meta" -> "some_srv_meta")
+         "srv_meta" -> "some_srv_meta"
         )
       )
       ()
@@ -883,7 +883,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       weights = Map("primary" -> 100),
-      stats = stats
+      stats = stats,
+      transferMetaData = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -894,7 +895,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       assert(
         inet.metadata == Map(
           Metadata.endpointWeight -> 100,
-          Metadata.nodeMeta -> Map("nd_meta" -> "some_nd_meta")
+         "nd_meta" -> "some_nd_meta"
         )
       )
       ()

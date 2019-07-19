@@ -127,7 +127,7 @@ case class ConsulConfig(
           preferServiceAddress,
           tagWeights,
           stats,
-          transferMetaData
+          transferMetaData.getOrElse(false)
         )
       case _ =>
         ConsulNamer.untagged(
@@ -139,7 +139,7 @@ case class ConsulConfig(
           preferServiceAddress,
           tagWeights,
           stats,
-          transferMetaData
+          transferMetaData.getOrElse(false)
         )
     }
   }

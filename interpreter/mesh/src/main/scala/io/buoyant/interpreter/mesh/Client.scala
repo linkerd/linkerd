@@ -1,8 +1,5 @@
 package io.buoyant.interpreter.mesh
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.h2
 import com.twitter.finagle.buoyant.h2.Reset
@@ -47,10 +44,6 @@ object Client {
   private[this] val _rescueUnit: PartialFunction[Throwable, Future[Unit]] = {
     case NonFatal(_) => Future.Unit
   }
-
-  private[this] val mapper = new ObjectMapper with ScalaObjectMapper
-  mapper.registerModule(DefaultScalaModule)
-
   private[this] class Impl(
     root: Path,
     interpreter: mesh.Interpreter,
@@ -337,13 +330,13 @@ object Client {
   }
 
   private[this] val _collectFromEndpoint: PartialFunction[mesh.Endpoint, Address] = {
-    case mesh.Endpoint(Some(_), Some(ipBuf), Some(port), pmeta) =>
+    case mesh.Endpoint(Some(_), Some(ipBuf), Some(port), _, metadata) =>
       val ipBytes = Buf.ByteArray.Owned.extract(ipBuf)
       val ip = InetAddress.getByAddress(ipBytes)
       Address
         .Inet(
           new InetSocketAddress(ip, port),
-          pmeta.mapValues(v => Try(mapper.readValue[Map[String, Any]](v)).getOrElse(v))
+          metadata
         )
   }
 
@@ -355,11 +348,11 @@ object Client {
       case mesh.Replicas.OneofResult.Failed(mesh.Replicas.Failed(msg)) =>
         Addr.Failed(msg.getOrElse("unknown"))
 
-      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, meta)) =>
+      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, metadata)) =>
         Addr
           .Bound(
             paddrs.collect(_collectFromEndpoint).toSet,
-            meta.mapValues(v => Try(mapper.readValue[Map[String, Any]](v)).getOrElse(v))
+            metadata
           )
     }
   }

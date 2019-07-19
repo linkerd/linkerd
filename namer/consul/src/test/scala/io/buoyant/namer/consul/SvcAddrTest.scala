@@ -312,7 +312,8 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         None,
         Map.empty,
         Stats(NullStatsReceiver),
-        new PollState
+        new PollState,
+        transferMetaData = true
       )(timer)
 
       addr.underlying.changes.respond {
@@ -329,7 +330,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
             Addr
               .Metadata(
                 Metadata.endpointWeight -> 1.0,
-                Metadata.nodeMeta -> Map("nd_meta" -> "some_nd_meta")
+               "nd_meta" -> "some_nd_meta"
               )
           )
         case _ => fail("received unexpected Addr on initial service discovery")
@@ -344,7 +345,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
             Addr
               .Metadata(
                 Metadata.endpointWeight -> 1.0,
-                Metadata.nodeMeta -> Map("nd_meta" -> "some_nd_meta")
+                "nd_meta" -> "some_nd_meta"
               )
           )
         case _ => fail("received unexpected Addr on timed out service discovery request")
@@ -363,7 +364,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
             .Inet(
               secondAddr, Addr.Metadata(
                 Metadata.endpointWeight -> 1.0,
-                Metadata.nodeMeta -> Map("nd_meta" -> "some_nd_meta")
+               "nd_meta" -> "some_nd_meta"
               )
             )
           case _ => fail("received unexpected Addr on timed out service discovery request")
