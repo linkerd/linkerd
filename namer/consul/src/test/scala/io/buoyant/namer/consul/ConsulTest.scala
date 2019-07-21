@@ -57,7 +57,7 @@ class ConsulTest extends FunSuite {
                     |  clientAuth:
                     |    certPath: /certificates/cert.pem
                     |    keyPath: /certificates/key.pem
-                    |transferMetaData: true
+                    |transferMetadata: true
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
@@ -78,7 +78,7 @@ class ConsulTest extends FunSuite {
     val tlsConfig = TlsClientConfig(None, Some(false), Some("consul.io"), None, Some("/certificates/cacerts-bundle.pem"), Some(clientAuth))
     assert(consul.tls == Some(tlsConfig))
     assert(!consul.disabled)
-    assert(consul.transferMetaData == Some(true))
+    assert(consul.transferMetadata == Some(true))
 
   }
 }

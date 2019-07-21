@@ -313,7 +313,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         Map.empty,
         Stats(NullStatsReceiver),
         new PollState,
-        transferMetaData = true
+        transferMetadata = true
       )(timer)
 
       addr.underlying.changes.respond {

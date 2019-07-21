@@ -41,7 +41,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *     clientAuth:
  *       certPath: /certificates/cert.pem
  *       keyPath: /certificates/key.pem
- *    transferMetaData: true
+ *    transferMetadata: true
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -67,7 +67,7 @@ case class ConsulConfig(
   weights: Option[Seq[TagWeight]] = None,
   fixedLengthStreamedAfterKB: Option[Int],
   tls: Option[TlsClientConfig] = None,
-  transferMetaData: Option[Boolean] = None
+  transferMetadata: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -127,7 +127,7 @@ case class ConsulConfig(
           preferServiceAddress,
           tagWeights,
           stats,
-          transferMetaData.getOrElse(false)
+          transferMetadata.getOrElse(false)
         )
       case _ =>
         ConsulNamer.untagged(
@@ -139,7 +139,7 @@ case class ConsulConfig(
           preferServiceAddress,
           tagWeights,
           stats,
-          transferMetaData.getOrElse(false)
+          transferMetadata.getOrElse(false)
         )
     }
   }

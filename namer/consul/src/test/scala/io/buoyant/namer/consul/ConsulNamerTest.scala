@@ -449,7 +449,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
   }
 
 
-  test("Namer returns Consul metadata when transferMetaData is set to true") {
+  test("Namer returns Consul metadata when transferMetadata is set to true") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -473,7 +473,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       stats = stats,
-      transferMetaData = true
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
@@ -488,7 +488,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
     }
   }
 
-  test("Namer skips Consul metadata when transferMetaData is set to false") {
+  test("Namer skips Consul metadata when transferMetadata is set to false") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
         serviceName: String,
@@ -512,7 +512,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       stats = stats,
-      transferMetaData = false
+      transferMetadata = false
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
@@ -550,7 +550,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestAgentApi("consul.acme.co"),
       setHost = true,
       stats = stats,
-      transferMetaData = true
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -605,7 +605,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestAgentApi("consul.acme.co"),
       setHost = true,
       stats = stats,
-      transferMetaData = true
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
@@ -660,7 +660,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestAgentApi("consul.acme.co"),
       setHost = true,
       stats = stats,
-      transferMetaData = true
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -884,7 +884,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestAgentApi("consul.acme.co"),
       weights = Map("primary" -> 100),
       stats = stats,
-      transferMetaData = true
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
