@@ -141,7 +141,9 @@ class HealthApi(
           service.flatMap(_.Tags),
           service.flatMap(_.Address),
           service.flatMap(_.Port),
-          checks.reduceOption(HealthStatus.worstCase)
+          checks.reduceOption(HealthStatus.worstCase),
+          service.flatMap(_.Meta),
+          node.flatMap(_.Meta)
         )
       }
       val nodes = if (statuses == Set(HealthStatus.Passing)) {
@@ -156,7 +158,8 @@ class HealthApi(
 
 case class Node(
   Node: Option[String],
-  Address: Option[String]
+  Address: Option[String],
+  Meta: Option[Metadata]
 )
 
 case class Service_(
@@ -164,7 +167,8 @@ case class Service_(
   Service: Option[String],
   Address: Option[String],
   Tags: Option[Seq[String]],
-  Port: Option[Int]
+  Port: Option[Int],
+  Meta: Option[Metadata]
 )
 
 case class ServiceHealth(
@@ -185,5 +189,7 @@ case class ServiceNode(
   ServiceTags: Option[Seq[String]],
   ServiceAddress: Option[String],
   ServicePort: Option[Int],
-  Status: Option[HealthStatus.Value]
+  Status: Option[HealthStatus.Value],
+  ServiceMeta: Option[Metadata],
+  NodeMeta: Option[Metadata]
 )
