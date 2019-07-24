@@ -11,13 +11,12 @@ import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter, StatsFilter}
-import com.twitter.finagle.http.param.FixedLengthStreamedAfter
 import com.twitter.finagle.http.{Request, Response, param => hparam}
 import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.tracing.TraceInitializerFilter
-import com.twitter.finagle.{ServiceFactory, Stack, param => fparam}
+import com.twitter.finagle.{ServiceFactory, Stack}
 import com.twitter.logging.Policy
 import io.buoyant.linkerd.protocol.HttpRequestAuthorizerConfig.param
 import io.buoyant.linkerd.protocol.http._
@@ -214,8 +213,6 @@ case class HttpConfig(
   streamAfterContentLengthKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
-  maxRequestKB: Option[Int],
-  maxResponseKB: Option[Int],
   streamingEnabled: Option[Boolean],
   compressionLevel: Option[Int],
   tracePropagator: Option[HttpTracePropagatorConfig]
@@ -224,6 +221,15 @@ case class HttpConfig(
   var client: Option[HttpClient] = None
   var servers: Seq[HttpServerConfig] = Nil
   var service: Option[HttpSvc] = None
+
+  private val streaming = streamingEnabled -> streamAfterContentLengthKB match {
+    case (Some(true), None) => hparam.Streaming(true)
+    case (_, Some(streamAfter)) => hparam.Streaming(streamAfter.kilobytes)
+    case _ => hparam.Streaming(false)
+  }
+
+  // imposed by finagle (https://github.com/twitter/finagle/issues/780)
+  private val MaxReqRespSize = 2.gigabytes - 1.byte
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = HttpInitializer
@@ -253,10 +259,9 @@ case class HttpConfig(
     .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
     .maybeWith(streamAfterContentLengthKB.map(kb => hparam.FixedLengthStreamedAfter(kb.kilobytes)))
-    .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
-    .maybeWith(maxRequestKB.map(kb => hparam.MaxRequestSize(kb.kilobytes)))
-    .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
-    .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
+    .maybeWith(Some(streaming))
+    .maybeWith(Some(hparam.MaxRequestSize(MaxReqRespSize)))
+    .maybeWith(Some(hparam.MaxResponseSize(MaxReqRespSize)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
     .maybeWith(combinedIdentifier(params))
     .maybeWith(tracePropagator.map(tp => HttpTracePropagatorConfig.Param(tp.mk(params))))

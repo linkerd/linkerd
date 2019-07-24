@@ -74,9 +74,10 @@ class HttpEndToEndTest
       .newClient(name, "upstream").toService
   }
 
-  def basicConfig(dtab: Dtab) =
+  def basicConfig(dtab: Dtab, streaming: Boolean = false) =
     s"""|routers:
         |- protocol: http
+        |  streamingEnabled: $streaming
         |  dtab: ${dtab.show}
         |  servers:
         |  - port: 0
@@ -922,7 +923,7 @@ class HttpEndToEndTest
       /svc => /srv;
     """)
 
-    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab))
+    val linker = Linker.Initializers(Seq(HttpInitializer)).load(basicConfig(dtab, streaming = true))
     val router = linker.routers.head.initialize()
     val server = router.servers.head.serve()
     val client = upstream(server)

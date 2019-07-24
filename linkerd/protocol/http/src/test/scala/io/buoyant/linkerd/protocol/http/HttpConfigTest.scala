@@ -31,8 +31,7 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |  kind: io.l5d.methodAndHost
                   |maxHeadersKB: 8
                   |maxInitialLineKB: 4
-                  |maxRequestKB: 5120
-                  |maxResponseKB: 5120
+                  |streamingEnabled: true
                   |servers:
                   |- port: 5000
       """.stripMargin
@@ -43,8 +42,8 @@ class HttpConfigTest extends FunSuite with Awaits {
     assert(config.httpAccessLogRotateCount.get == -1)
     assert(config.maxHeadersKB.get == 8)
     assert(config.maxInitialLineKB.get == 4)
-    assert(config.maxRequestKB.get == 5120)
-    assert(config.maxResponseKB.get == 5120)
+    assert(config.streamingEnabled.contains(true))
+
   }
 
   test("default identifier") {
