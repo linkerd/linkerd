@@ -22,7 +22,7 @@ import io.buoyant.config.PolymorphicConfig
 import io.buoyant.linkerd.protocol.h2._
 import io.buoyant.router.h2.ClassifiedRetries.{BufferSize, ClassificationTimeout}
 import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest, H2AddForwardedHeader}
-import io.buoyant.router.http.ForwardClientCertFilter
+import io.buoyant.router.http.{ForwardClientCertFilter, MaxCallDepthFilter}
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
 import scala.collection.JavaConverters._
@@ -256,6 +256,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   var maxConcurrentStreamsPerConnection: Option[Int] = None
   var addForwardedHeader: Option[AddForwardedHeaderConfig] = None
+  var maxCallDepth: Option[Int] = None
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
@@ -269,7 +270,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams
-    + AddForwardedHeaderConfig.Param(addForwardedHeader))
+    + AddForwardedHeaderConfig.Param(addForwardedHeader)).maybeWith(maxCallDepth.map(MaxCallDepthFilter.Param(_)))
 }
 
 abstract class H2IdentifierConfig extends PolymorphicConfig {
