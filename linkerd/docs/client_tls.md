@@ -62,7 +62,7 @@ to destination services.
 Key               | Default Value                              | Description
 ----------------- | ------------------------------------------ | -----------
 disableValidation | false                                      | Enable this to skip hostname validation (unsafe). Setting `disableValidation: true` is incompatible with `clientAuth`.
-commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests.
+commonName        | _required_ unless disableValidation is set | The common name to use for all TLS requests. Make sure to set it (even when `disableValidation: true`) if your server requires SNI
 trustCerts        | empty list                                 | A list of file paths of CA certs to use for common name validation (deprecated, please use trustCertsBundle).
 trustCertsBundle  | empty                                      | A file path of CA certs bundle to use for common name validation
 clientAuth        | none                                       | A client auth object used to sign requests.

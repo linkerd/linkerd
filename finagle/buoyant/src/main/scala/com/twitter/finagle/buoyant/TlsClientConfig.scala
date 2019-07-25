@@ -21,8 +21,9 @@ case class TlsClientConfig(
   def params: Stack.Params = this match {
     case TlsClientConfig(Some(false), _, _, _, _, _, _) =>
       Stack.Params.empty + Transport.ClientSsl(None)
-    case TlsClientConfig(_, Some(true), _, _, _, clientAuth, enabledProtocols) =>
+    case TlsClientConfig(_, Some(true), cn, _, _, clientAuth, enabledProtocols) =>
       val tlsConfig = SslClientConfiguration(
+        hostname = cn,
         trustCredentials = TrustCredentials.Insecure,
         keyCredentials = keyCredentials(clientAuth),
         protocols = enabledProtocols.map(Protocols.Enabled).getOrElse(Protocols.Unspecified)
