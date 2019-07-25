@@ -12,7 +12,7 @@ import com.twitter.finagle.service.StatsFilter
 import io.buoyant.router.context.ResponseClassifierCtx
 import io.buoyant.router.context.h2.H2ClassifierCtx
 import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
-import io.buoyant.router.http.ForwardClientCertFilter
+import io.buoyant.router.http.{ForwardClientCertFilter, MaxCallDepthFilter}
 import io.buoyant.router.H2Instances._
 
 object H2 extends Router[Request, Response]
@@ -91,6 +91,7 @@ object H2 extends Router[Request, Response]
     val newStack: Stack[ServiceFactory[Request, Response]] = FinagleH2.Server.newStack
       .insertAfter(StackServer.Role.protoTracing, h2.ProxyRewriteFilter.module)
       .insertAfter(StackServer.Role.protoTracing, H2AddForwardedHeader.module)
+      .insertAfter(StackServer.Role.protoTracing, MaxCallDepthFilter.module[Request, Headers, Response](Headers.Via))
       .replace(StatsFilter.role, StreamStatsFilter.module)
 
     private val serverResponseClassifier =

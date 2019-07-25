@@ -64,6 +64,7 @@ Key | Default Value | Description
 --- | ------------- | -----------
 addForwardedHeader | null | If set, a `Forwarded` header is added to all requests.  See [below](#http-1-1-forwarded).
 timestampHeader | null | If set, the specified header will be added to outbound requests with a timestamp. See [below](#http-1-1-timestamp).
+maxCallDepth | 1000 | If set, limits the number of maximum hops. The number of hops is derived by inspecting the Via header. This can be used to prevent proxy loops.
 
 <a name="http-1-1-timestamp"></a>
 ### Adding Timestamp Headers ###

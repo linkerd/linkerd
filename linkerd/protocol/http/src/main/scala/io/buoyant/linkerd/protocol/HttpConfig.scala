@@ -11,7 +11,7 @@ import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter, StatsFilter}
-import com.twitter.finagle.http.{Request, Response, param => hparam}
+import com.twitter.finagle.http.{Fields, HeaderMap, Request, Response, param => hparam}
 import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
@@ -20,9 +20,10 @@ import com.twitter.finagle.{ServiceFactory, Stack}
 import com.twitter.logging.Policy
 import io.buoyant.linkerd.protocol.HttpRequestAuthorizerConfig.param
 import io.buoyant.linkerd.protocol.http._
-import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter, TimestampHeaderFilter}
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import scala.collection.JavaConverters._
+import io.buoyant.router.http._
+import io.buoyant.router.HttpInstances._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
   val name = "http"
@@ -81,6 +82,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // ensure the server-stack framing filter is placed below the stats filter
       // so that any malframed requests it fails are counted as errors
       .insertAfter(StatsFilter.role, FramingFilter.serverModule)
+      .insertAfter(FramingFilter.role, MaxCallDepthFilter.module[Request, HeaderMap, Response](Fields.Via))
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module[Request, Response])
       .remove(ServerDtabContextFilter.role)
 
@@ -179,12 +181,13 @@ trait HttpSvcConfig extends SvcConfig {
 
 case class HttpServerConfig(
   addForwardedHeader: Option[AddForwardedHeaderConfig],
-  timestampHeader: Option[String]
+  timestampHeader: Option[String],
+  maxCallDepth: Option[Int]
 ) extends ServerConfig {
 
   @JsonIgnore
   override def serverParams = {
-    super.serverParams +
+    super.serverParams.maybeWith(maxCallDepth.map(x => MaxCallDepthFilter.Param(x))) +
       AddForwardedHeaderConfig.Param(addForwardedHeader) +
       TimestampHeaderFilter.Param(timestampHeader)
   }

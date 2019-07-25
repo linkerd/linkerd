@@ -544,4 +544,38 @@ class H2EndToEndTest extends FunSuite {
       await(router.close())
     }
   }
+
+
+  test("returns 400 for requests that have more than allowed hops") {
+    val config =
+      s"""|routers:
+          |- protocol: h2
+          |  servers:
+          |  - port: 0
+          |    maxCallDepth: 2
+          |""".stripMargin
+
+    val linker = Linker.Initializers(Seq(H2Initializer)).load(config)
+    val router = linker.routers.head.initialize()
+    val server = router.servers.head.serve()
+    val client = Upstream.mk(server)
+
+    val req = Request(Headers(
+      Headers.Via -> "hop1, hop2, hop3",
+      Headers.Authority -> "dog",
+      Headers.Path -> "/",
+      Headers.Method -> "get",
+      LinkerdHeaders.Ctx.Dtab.UserKey -> "/foo=>/bar"
+    ), Stream.empty())
+
+    val rsp = await(client(req))
+    val expectedMessage = "Maximum number of calls (2) has been exceeded. Please check for proxy loops."
+    assert(rsp.status == Status.BadRequest)
+    assert(await(rsp.stream.readDataString) == expectedMessage)
+
+    await(client.close())
+    await(server.close())
+    await(router.close())
+  }
+
 }

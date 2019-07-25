@@ -11,7 +11,7 @@ import com.twitter.finagle.http.{param => _, _}
 import com.twitter.finagle.service.ExpiringService
 import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver}
 import com.twitter.finagle.tracing.{Annotation, BufferingTracer, NullTracer}
-import com.twitter.io.{Buf, Pipe, Reader}
+import com.twitter.io.{Buf, Pipe}
 import com.twitter.util._
 import io.buoyant.router.StackRouter.Client.PerClientParams
 import io.buoyant.test.{Awaits, BudgetedRetries}
@@ -937,6 +937,36 @@ class HttpEndToEndTest
 
     assert(resp.contentString.contains(responseDiscardedMsg))
   }
+
+
+
+  test("returns 400 for requests that have more than allowed hops", Retryable) {
+    val yaml =
+      s"""|routers:
+          |- protocol: http
+          |  servers:
+          |  - port: 0
+          |    maxCallDepth: 2
+          |""".stripMargin
+    val linker = Linker.load(yaml)
+    val router = linker.routers.head.initialize()
+    val s = router.servers.head.serve()
+
+    val req = Request()
+    req.headerMap.add(Fields.Via, "hop1, hop2, hop3")
+
+    val c = upstream(s)
+    try {
+      val resp = await(c(req))
+      resp.status must be (Status.BadRequest)
+      resp.contentString must be ("Maximum number of calls (2) has been exceeded. Please check for proxy loops.")
+
+    } finally {
+      await(c.close())
+      await(s.close())
+    }
+  }
+
 
   def idleTimeMsBaseTest(config:String)(assertionsF: (Router.Initialized, InMemoryStatsReceiver, Int) => Unit): Unit = {
     // Arrange
