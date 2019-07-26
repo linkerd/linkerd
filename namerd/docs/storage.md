@@ -189,6 +189,7 @@ writeConsistencyMode | `default` | Select between [Consul API consistency modes]
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 backoff |  exponential backoff from 1ms to 1min | Object that determines which backoff algorithm should be used. See [retry backoff](https://linkerd.io/config/head/linkerd#retry-backoff-parameters)
 tls | no tls | Use TLS during connection with Consul. see [Consul Encryption](https://www.consul.io/docs/agent/encryption.html) and [Namer TLS](#namer-tls).
+enableValueCompression | `false` | Enables the use of Gzip compression for values stored in Consul. Allows for larger dtabs.
 
 ### Namer TLS
 

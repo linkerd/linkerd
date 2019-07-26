@@ -1,21 +1,19 @@
 package io.buoyant.consul.v1
 
 import java.util.Base64
-
-import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.http
-import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.util._
 
 object KvApi {
-  def apply(c: Client, backoff: Stream[Duration]): KvApi = new KvApi(c, s"/$versionString", backoff)
+  def apply(c: Client, backoff: Stream[Duration], enableValueCompression: Boolean = false): KvApi = new KvApi(c, s"/$versionString", backoff, enableValueCompression)
 }
 
 class KvApi(
   val client: Client,
   val uriPrefix: String,
   val backoffs: Stream[Duration],
+  val enableValueCompression: Boolean,
   val stats: StatsReceiver = DefaultStatsReceiver
 ) extends BaseApi with Closable {
   val kvPrefix = s"$uriPrefix/kv"
@@ -64,6 +62,7 @@ class KvApi(
       "dc" -> datacenter
     ),
     call = req => executeRaw(req, retry)
+      .map(_.mapValue(v => if (enableValueCompression) GZIPStringEncoder.decodeString(v) else v))
   )
 
   /**
@@ -89,7 +88,9 @@ class KvApi(
       "dc" -> datacenter,
       "recurse" -> recurse.map(_.toString)
     ),
-    call = req => executeJson[Seq[Key]](req, retry)
+    call = req =>
+      executeJson[Seq[Key]](req, retry)
+        .map(indexed => if (enableValueCompression) indexed.mapValue(_.map(_.decompress)) else indexed)
   )
 
   /**
@@ -115,7 +116,11 @@ class KvApi(
       "dc" -> datacenter
     ),
     call = req => {
-      req.setContentString(value)
+      req.setContentString(
+        if (enableValueCompression)
+          GZIPStringEncoder.encode(value.getBytes)
+        else value
+      )
       executeJson[Boolean](req, retry).map(_.value)
     }
   )
@@ -156,4 +161,5 @@ case class Key(
   Value: Option[String]
 ) {
   lazy val decoded: Option[String] = Value.map { raw => new String(Base64.getDecoder.decode(raw)) }
+  def decompress: Key = copy(Value = Value.map(GZIPStringEncoder.decodeString))
 }

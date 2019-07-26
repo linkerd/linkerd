@@ -11,7 +11,9 @@ import org.scalatest.FunSuite
 class KvApiTest extends FunSuite with Awaits with Exceptions {
   val listBuf = Buf.Utf8("""["foo/bar/", "foo/baz/"]""")
   val getBuf = Buf.Utf8("""foobar""")
+  val getBufGzip = Buf.Utf8("""H4sIAAAAAAAAAEvLz09KLAIAlR/2ngYAAAA=""")
   val multiGetBuf = Buf.Utf8("""[{"LockIndex":0,"Key":"sample","Flags":0,"Value":"Zm9vYmFy","CreateIndex":10,"ModifyIndex":12}]""")
+  val multiGetBufGzip = Buf.Utf8("""[{"LockIndex":0,"Key":"sample","Flags":0,"Value":"H4sIAAAAAAAA/4vKtSyLzHWrBAAIZ7JnCAAAAA==","CreateIndex":10,"ModifyIndex":12}]""")
   val putOkBuf = Buf.Utf8("""true""")
   val putFailBuf = Buf.Utf8("""false""")
   val deleteOkBuf = Buf.Utf8("""true""")
@@ -78,6 +80,14 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     assert(result.value == "foobar")
   }
 
+  test("get returns an indexed value (Gzip)") {
+    val service = stubService(getBufGzip)
+
+    val result = await(KvApi(service, constBackoff, enableValueCompression = true).get("/some/path/to/key")())
+    assert(result.index == Some("4"))
+    assert(result.value == "foobar")
+  }
+
   test("get uses raw values") {
     val service = stubService(putFailBuf)
 
@@ -125,6 +135,16 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
     assert(result.value.size == 1)
     assert(result.value.head.decoded == Some("foobar"))
   }
+
+  test("multiGet returns an indexed seq of values (Gzip)") {
+    val service = stubService(multiGetBufGzip)
+
+    val result = await(KvApi(service, constBackoff, enableValueCompression = true).multiGet("/sample")())
+    assert(result.index == Some("4"))
+    assert(result.value.size == 1)
+    assert(result.value.head.decoded == Some("foobar"))
+  }
+
 
   test("multiGet by default is non-recurse") {
     val service = stubService(multiGetBuf)
@@ -184,6 +204,21 @@ class KvApiTest extends FunSuite with Awaits with Exceptions {
 
     val result = await(KvApi(service, constBackoff).put("/path/to/key", "foobar")())
     assert(!result)
+  }
+
+
+  test("put compresses value when enableValueCompression: true") {
+    val service = Service.mk[Request, Response] { req =>
+      assert(req.contentString == "H4sIAAAAAAAAAEvLz09KLAIAlR/2ngYAAAA=")
+      val rsp = Response()
+      rsp.content(Buf.Utf8("""true"""))
+      rsp.setContentTypeJson()
+      rsp.headerMap.set("X-Consul-Index", "4")
+      Future.value(rsp)
+    }
+
+    val result = await(KvApi(service, constBackoff, enableValueCompression = true).put("/path/to/key", "foobar")())
+    assert(result)
   }
 
   test("put cas flag") {

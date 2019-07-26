@@ -46,7 +46,7 @@ class ConsulInterpreterTest extends FunSuite with Inside {
 
     val config = parse(yaml)
     inside(config) {
-      case ConsulDtabInterpreterConfig(host, port, _, namespace, _, _, _, _, _, _, _) =>
+      case ConsulDtabInterpreterConfig(host, port, _, namespace, _, _, _, _, _, _, _, _) =>
         assert(host.get == "consul-node")
         assert(port.get == Port(9999))
         assert(namespace.get == "internal")

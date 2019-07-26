@@ -13,6 +13,7 @@ import com.twitter.finagle._
 import com.twitter.io.{Buf, Reader}
 import com.twitter.util._
 import io.buoyant.consul.log
+import scala.collection.immutable.Map
 import scala.util.control.NonFatal
 
 // a thunked version of the api call such that we can peek at the request before making the call
@@ -117,4 +118,6 @@ object Headers {
   val Index = "X-Consul-Index"
 }
 
-case class Indexed[T](value: T, index: Option[String])
+case class Indexed[T](value: T, index: Option[String]) {
+  def mapValue[R](f: T => R): Indexed[R] = copy(value = f(value))
+}

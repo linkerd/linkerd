@@ -23,7 +23,8 @@ case class ConsulConfig(
   writeConsistencyMode: Option[ConsistencyMode] = None,
   failFast: Option[Boolean] = None,
   backoff: Option[BackoffConfig] = None,
-  tls: Option[TlsClientConfig] = None
+  tls: Option[TlsClientConfig] = None,
+  enableValueCompression: Option[Boolean] = None
 ) extends DtabStoreConfig {
   import ConsulConfig._
 
@@ -36,6 +37,7 @@ case class ConsulConfig(
     val servicePort = port.getOrElse(DefaultPort).port
     val backoffs = backoff.map(_.mk).getOrElse(DefaultBackoff)
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+    val enableValCompression = enableValueCompression.getOrElse(false)
 
     val service = Http.client
       .interceptInterrupts
@@ -46,7 +48,7 @@ case class ConsulConfig(
       .withParams(tlsParams)
       .newService(s"/$$/inet/$serviceHost/$servicePort")
     new ConsulDtabStore(
-      KvApi(service, backoffs),
+      KvApi(service, backoffs, enableValCompression),
       root,
       datacenter = datacenter,
       readConsistency = readConsistencyMode,
