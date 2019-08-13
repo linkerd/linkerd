@@ -4,9 +4,9 @@ import com.twitter.concurrent.AsyncQueue
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Service
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
-import com.twitter.finagle.buoyant.h2.{Frame, Headers, Request, Response, Status, Stream}
+import com.twitter.finagle.buoyant.h2.{Frame, Headers, Request, Reset, Response, Status, Stream}
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
-import com.twitter.finagle.stats.{InMemoryStatsReceiver, StatsReceiver}
+import com.twitter.finagle.stats.{InMemoryStatsReceiver, NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import io.netty.buffer.{ByteBuf, Unpooled}
@@ -33,7 +33,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
   }
   implicit val timer = new MockTimer
 
-  def filter(stats: StatsReceiver) = new ClassifiedRetryFilter(
+  def filter(stats: StatsReceiver = NullStatsReceiver) = new ClassifiedRetryFilter(
     stats,
     classifier,
     SStream.continually(0.millis),
@@ -84,6 +84,12 @@ class ClassifiedRetryFilterTest extends FunSuite {
         rspQ.offer(Frame.Trailers("retry" -> (i != tries).toString, "i" -> i.toString))
         Response(Status.Ok, Stream(rspQ))
       }
+    }
+  }
+
+  object FailingService extends Service[Request, Response] {
+    override def apply(request: Request): Future[Response] = {
+      readStr(request.stream).map { _ => throw Reset.Cancel }
     }
   }
 
@@ -140,6 +146,31 @@ class ClassifiedRetryFilterTest extends FunSuite {
     assert(stats.counters.get(Seq("retries", "response_stream_too_long")).forall(_ == 0))
     assert(stats.counters.get(Seq("retries", "classification_timeout")).forall(_ == 0))
   }
+
+
+  test("buffered frames are released on failure") {
+    val reqQ = new AsyncQueue[Frame]
+    val frame1 = Frame.Data("hel", eos = false)
+    val frame2 = Frame.Data("lo", eos = true)
+
+    frame1.onRelease
+
+    reqQ.offer(frame1)
+    reqQ.offer(frame2)
+
+    val reqStream = Stream(reqQ)
+    val req = Request(Headers.empty, reqStream)
+    val svc = filter().andThen(FailingService)
+    intercept[Reset.Cancel.type] {
+      await(svc(req))
+    }
+
+    eventually {
+      assert(frame1.onRelease.isDefined && frame2.onRelease.isDefined)
+    }
+
+  }
+
 
   test("request stream too long to retry") {
     val reqQ = new AsyncQueue[Frame]

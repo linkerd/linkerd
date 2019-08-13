@@ -7,6 +7,7 @@ import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{Service, SimpleFilter}
 import com.twitter.util._
+import scala.util.control.NonFatal
 import scala.{Stream => SStream}
 
 /**
@@ -137,6 +138,12 @@ class ClassifiedRetryFilter(
         case e if responseClassifier(H2ReqRep(req, Throw(e))).contains(ResponseClass.RetryableFailure) =>
           // Request is retryable, attempt to create a new child request stream.
           retry(orElse = { retriesStat.add(count); Future.exception(e) })
+        case NonFatal(e) =>
+          // request is not retryable, we need to make sure the buffer is discarded
+          // so all buffered frames are released
+          requestBuffer.discardBuffer()
+          retriesStat.add(count)
+          Future.exception(e)
       }
     }
 
