@@ -109,12 +109,14 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         // Free and clear.
         addClosedId(id)
         streams.remove(id)
+        open.stream.releaseQeues()
         log.debug("[%s S:%d] stream closed", prefix, id)
 
       case Throw(StreamError.Remote(e)) =>
         // The remote initiated a reset, so just update the state to closed.
         addClosedId(id)
         streams.remove(id)
+        open.stream.releaseQeues()
         e match {
           case rst: Reset => log.debug("[%s S:%d] stream reset from remote: %s", prefix, id, rst)
           case e => log.error(e, "[%s S:%d] stream reset from remote", prefix, id)
@@ -122,7 +124,6 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
       case Throw(StreamError.Local(e)) =>
         // The local side initiated a reset, so send a reset to
-        // the remote.
         if (streams.replace(id, open, StreamLocalReset)) {
           log.debug("[%s S:%d] stream reset from local; resetting remote: %s", prefix, id, e)
           val rst = e match {
@@ -131,12 +132,14 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
           }
           if (!closed.get) { writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), rst); () }
         }
+        open.stream.releaseQeues()
 
       case Throw(e) =>
         if (streams.replace(id, open, StreamFailed(e))) {
           log.error(e, "[%s S:%d] stream reset", prefix, id)
           if (!closed.get) { writer.reset(H2FrameStream(id, Http2Stream.State.CLOSED), Reset.InternalError); () }
         }
+        open.stream.releaseQeues()
     }
   }
 

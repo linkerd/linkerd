@@ -1,0 +1,30 @@
+admin:
+  port: 9995
+
+routers:
+  - protocol: http
+    dtab: |
+      /svc => /$/inet/127.1/9995;
+    servers:
+      - port: 4145
+
+  # this part is from https://github.com/linkerd/linkerd/issues/2247#issuecomment-478338189
+  - protocol: h2
+    h2AccessLog: logs/access.log
+    h2AccessLogRollPolicy: daily
+    h2AccessLogAppend: true
+    h2AccessLogRotateCount: -1
+    dtab: |
+      /svc => /$/inet/127.1/9999;
+    identifier:
+      kind: io.l5d.header.token
+      header: ":authority"
+    servers:
+      - port: 4150
+        maxConcurrentStreamsPerConnection: 300
+        addForwardedHeader:
+          by: {kind: "ip:port"}
+          for: {kind: "ip:port"}
+        initialStreamWindowBytes: 1048576 # 1MB
+    client:
+      initialStreamWindowBytes: 1048576 # 1MB

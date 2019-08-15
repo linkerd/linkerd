@@ -142,7 +142,16 @@ object Stream {
   }
 
   private[h2] trait AsyncQueueReader extends Stream {
-    protected[this] val frameQ: AsyncQueue[Frame]
+    val frameQ: AsyncQueue[Frame]
+
+    override def finalize(): Unit = {
+      if (frameQ.size > 0) {
+        println("**************************************")
+        println("Reader queue not empty but being gc'd!!! " + frameQ.size)
+        println("**************************************")
+        Stream.failAndDrainFrameQueue(frameQ, Reset.Cancel)
+      }
+    }
 
     override def isEmpty = false
 
@@ -185,7 +194,16 @@ object Stream {
   }
 
   private class AsyncQueueReaderWriter extends AsyncQueueReader with Writer {
-    override protected[this] val frameQ = new AsyncQueue[Frame]
+    override val frameQ = new AsyncQueue[Frame]
+
+    override def finalize(): Unit = {
+      if (frameQ.size > 0) {
+        println("**************************************")
+        println("Writer queue not empty but being gc'd!!! " + frameQ.size)
+        println("**************************************")
+        Stream.failAndDrainFrameQueue(frameQ, Reset.Cancel)
+      }
+    }
 
     override def write(f: Frame): Future[Unit] =
       /* If this write is interrupted before the Frame is released, we fail the queue.  This is
@@ -196,7 +214,7 @@ object Stream {
 
   def apply(q: AsyncQueue[Frame]): Stream =
     new AsyncQueueReader {
-      override protected[this] val frameQ = q
+      override val frameQ = q
     }
 
   def apply(): Stream with Writer =

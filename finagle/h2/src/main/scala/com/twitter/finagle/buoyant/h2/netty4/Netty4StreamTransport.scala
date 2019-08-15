@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant.h2
 package netty4
 
 import com.twitter.concurrent.AsyncQueue
+import com.twitter.finagle.buoyant.h2.Stream.AsyncQueueReader
 import com.twitter.finagle.stats.{NullStatsReceiver => FNullStatsReceiver, StatsReceiver => FStatsReceiver}
 import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Throw}
@@ -133,7 +134,20 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
   def onReset: Future[Unit] = resetP
   private[this] val resetP = new Promise[Unit]
 
+  def onLastRead: Future[Unit] = lastRead
+  private[this] val lastRead = new Promise[Unit]
+
   def isClosed: Boolean = onReset.isDefined
+
+  @volatile var q1: Option[AsyncQueue[Frame]] = None
+  @volatile private var q2: Option[AsyncQueue[Frame]] = None
+
+  def releaseQeues(): Unit = {
+
+    q1.foreach(Stream.failAndDrainFrameQueue(_, Reset.Cancel))
+    //q2.foreach(Stream.failAndDrainFrameQueue(_, Reset.Cancel))
+
+  }
 
   /**
    * Reset the stream by doing the following:
@@ -148,6 +162,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    *         stream was already closed.
    */
   def reset(err: Reset, local: Boolean): Boolean = {
+
     def resetSend(): Unit = {
       stateRef.get match {
         case state@StreamState(SendPending, recvState) =>
@@ -255,6 +270,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
                 }
                 recvMsg.setValue(msg)
                 if (sendState == SendClosed) {
+                  //releaseQeues()
                   resetP.setDone()
                 }
                 true
@@ -265,6 +281,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           case StreamState(sendState, RecvStreaming(q)) =>
             if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
               if (sendState == SendClosed) {
+                //releaseQeues()
                 resetP.setDone()
               }
               recvFrame(toFrame(hdrs), q)
@@ -287,6 +304,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           // Pending
           case StreamState(sendState, RecvPending) =>
             val q = new AsyncQueue[Frame]
+            q1 = Some(q)
             val stream = Stream(q)
             val msg = mkRecvMsg(hdrs.headers, stream)
             if (ConnectionHeaders.detect(msg.headers)) {
@@ -299,6 +317,9 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
                   // If the recvMsg stream is cancelled, reset the stream.
                   reset(rst, local = true); ()
                 }
+
+                stream.onEnd.onSuccess(_ => { lastRead.setDone(); () })
+
                 recvMsg.setValue(msg)
                 true
               } else recv(hdrs)
@@ -332,6 +353,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
           case StreamState(sendState, RecvStreaming(q)) =>
             if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
               if (sendState == SendClosed) {
+                //releaseQeues()
                 resetP.setDone()
               }
               recvFrame(toFrame(data), q)
@@ -423,6 +445,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case state@StreamState(SendPending, recvState) if msg.stream.isEmpty =>
         if (stateRef.compareAndSet(state, StreamState(SendClosed, recvState))) {
           if (recvState == RecvClosed) {
+            //releaseQeues()
             resetP.setDone()
           }
           if (ConnectionHeaders.detect(msg.headers)) {
@@ -437,6 +460,10 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
       // Pending
       case state@StreamState(SendPending, recvState) =>
+        msg.stream match {
+          case s: AsyncQueueReader => q2 = Some(s.frameQ)
+          case _ =>
+        }
         if (stateRef.compareAndSet(state, StreamState(SendStreaming(msg), recvState))) {
           if (ConnectionHeaders.detect(msg.headers)) {
             log.debug("[%s] illegal connection headers in send message: %s", prefix, msg.headers)
@@ -505,6 +532,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
         if (stateRef.compareAndSet(state, StreamState(SendClosed, recvState))) {
           statsReceiver.recordLocalFrame(frame)
           if (recvState == RecvClosed) {
+            //releaseQeues()
             resetP.setDone()
           }
           transport.write(frameStream, frame).transform { _ =>

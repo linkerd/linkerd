@@ -64,7 +64,7 @@ class BufferedStream(underlying: Stream, bufferCapacity: Long = 16383) { buffere
           Stream.empty()
         } else {
           new AsyncQueueReader { child =>
-            override protected[this] val frameQ = q
+            override val frameQ = q
             override def read(): Future[Frame] = bufferedStream.synchronized {
               // If the queue is empty, pull a Frame from the underlying Stream (which will be
               // offered to all child Streams) before polling the queue.
