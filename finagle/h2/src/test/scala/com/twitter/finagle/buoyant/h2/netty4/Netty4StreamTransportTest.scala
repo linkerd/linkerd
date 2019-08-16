@@ -3,14 +3,15 @@ package netty4
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.finagle.Failure
+import com.twitter.finagle.buoyant.h2.netty4.Netty4StreamTransport.NullStatsReceiver
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.util._
 import io.buoyant.test.FunSuite
 import io.netty.buffer.Unpooled
-import io.netty.handler.codec.http2._
+import io.netty.handler.codec.http2.{DefaultHttp2DataFrame, _}
 import java.net.SocketAddress
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.atomic.AtomicBoolean
+import java.nio.charset.{Charset, StandardCharsets}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.collection.immutable.Queue
 
 class Netty4StreamTransportTest extends FunSuite {
@@ -696,5 +697,63 @@ class Netty4StreamTransportTest extends FunSuite {
 
     assert(await(reqF.liftToTry).isReturn)
   }
+
+
+  test("clear frames in rcvMessage stream if error response is sent") {
+
+    val writtenFrame: AtomicReference[Option[Http2Frame]] = new AtomicReference(None)
+    val frame = Frame.Data("test-frame", eos = true)
+
+    val writer = new Netty4H2Writer {
+      override protected[this] def write(f: Http2Frame): Future[Unit] = {
+        writtenFrame.set(Some(f))
+        Future.Unit
+      }
+
+      override protected[this] def close(deadline: Time): Future[Unit] = Future.Unit
+
+      override def localAddress: SocketAddress = ???
+
+      override def remoteAddress: SocketAddress = ???
+    }
+
+
+    val transport = new Netty4StreamTransport[Response, Request] {
+      override def streamId: Int = 1
+
+      override protected[this] def prefix: String = "test-transport"
+
+      override protected[this] def transport: H2Transport.Writer = writer
+
+      override protected[this] def statsReceiver: Netty4StreamTransport.StatsReceiver = NullStatsReceiver
+
+      override protected[this] def mkRecvMsg(
+        h: Http2Headers,
+        s: Stream
+      ): Request = Request(Netty4Message.Headers(h), Stream.const(frame))
+    }
+
+    val hs = new DefaultHttp2Headers
+    hs.status("222")
+    val hf = new DefaultHttp2HeadersFrame(hs, false)
+    transport.recv(hf)
+    await(transport.send(Response(Status.BadGateway, Stream.const("ERROR"))))
+
+
+    eventually {
+      assert(frame.onRelease.isDone)
+    }
+    eventually {
+      assert(
+        writtenFrame.get().exists {
+          case data: DefaultHttp2DataFrame => data.content()
+            .toString(StandardCharsets.UTF_8) == "ERROR"
+
+        }
+      )
+    }
+
+  }
+
 
 }

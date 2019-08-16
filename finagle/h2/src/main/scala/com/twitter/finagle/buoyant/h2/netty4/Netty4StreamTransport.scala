@@ -389,6 +389,17 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
    */
   def send(msg: SendMsg): Future[Future[Unit]] = {
 
+    // if we receive a response with an error status,
+    // it is important to cancel the stream of the rcvMessage
+    // since there might be frames there that will never make
+    // it to the remote and will cause a memory leak...
+    def onErrorResponseWritten(): Unit = msg match {
+      case Response(Status.ClientError(_) | Status.ServerError(_)) =>
+        onRecvMessage.onSuccess(_.stream.cancel(Reset.Refused))
+        ()
+      case _ => // do nothing if resp is ok
+    }
+
     val headersF = writeHeaders(msg).onFailure {
       // If writeHeaders fails, the state will be left in SendPending
       // so we must cancel the send stream ourselves.
@@ -397,7 +408,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     }
     val streamFF = headersF.map { _ =>
       if (msg.stream.isEmpty) Future.Unit
-      else localResetOnCancel(writeStream(msg.stream))
+      else localResetOnCancel(writeStream(msg.stream).onSuccess(_ => onErrorResponseWritten()))
     }
 
     val writeF = streamFF.flatten
