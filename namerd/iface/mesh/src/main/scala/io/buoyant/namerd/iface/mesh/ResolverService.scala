@@ -1,10 +1,10 @@
 package io.buoyant.namerd
 package iface.mesh
 
-import com.twitter.finagle.{Addr, Address, Dtab, Name, NameTree, Namer, Path}
+import com.twitter.finagle.{Addr, Address, NameTree, Namer, Path}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.io.Buf
-import com.twitter.util.{Activity, Future, Return, Throw, Try, Var}
+import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.grpc.runtime.{Stream, VarEventStream}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
@@ -48,7 +48,6 @@ object ResolverService {
       }
     }
   }
-
   private[this] val DefaultNamer: (Path, Namer) =
     Path.empty -> Namer.global
 
@@ -67,7 +66,7 @@ object ResolverService {
 
     case Addr.Bound(addrs, meta) =>
       val paddrs = addrs.collect(_collectToEndpoint).toSeq
-      mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs))
+      mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, meta.mapValues(_.toString)))
   }
 
   private[this] val toReplicas: Addr => mesh.Replicas =
@@ -88,14 +87,16 @@ object ResolverService {
             Some(mesh.Endpoint.AddressFamily.INET6),
             Some(Buf.ByteArray.Owned(ip.getAddress)),
             Some(port),
-            Some(pmeta)
+            Some(pmeta),
+            meta.mapValues(_.toString)
           )
         case ip =>
           mesh.Endpoint(
             Some(mesh.Endpoint.AddressFamily.INET4),
             Some(Buf.ByteArray.Owned(ip.getAddress)),
             Some(port),
-            Some(pmeta)
+            Some(pmeta),
+            meta.mapValues(_.toString)
           )
       }
   }

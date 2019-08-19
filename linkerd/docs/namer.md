@@ -212,7 +212,9 @@ consistencyMode | `default` | Select between [Consul API consistency modes](http
 failFast | `false` | If `false`, disable fail fast and failure accrual for Consul client. Keep it `false` when using a local agent but change it to `true` when talking directly to an HA Consul API.
 preferServiceAddress | `true` | If `true` use the service address if defined and default to the node address. If `false` always use the node address.
 weights | none | List of tag-weight configurations, for adjusting the weights of node addresses. When a node matches more than one tag, it gets the highest matching weight. In the absence of match or configuration, nodes get a default weight of `1.0`.
+fixedLengthStreamedAfterKB | 5120 | The maximum HTTP message size that can be buffered by the Consul client. After this size threshold is crossed, the message is streamed.
 tls | no tls | Use TLS during connection with Consul. see [Consul Encryption](https://www.consul.io/docs/agent/encryption.html) and [TLS](#consul-tls).
+transferMetadata | `false` | If `true` service and endpoint metadata from Consul will be carried over the HTTP interface of namerd
 
 ### Consul Path Parameters
 

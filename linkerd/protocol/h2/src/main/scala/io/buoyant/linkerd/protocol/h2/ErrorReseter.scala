@@ -8,6 +8,7 @@ import com.twitter.util.Future
 import io.buoyant.linkerd.protocol.h2.ErrorReseter.H2ResponseException
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.ResponseException
+import io.buoyant.router.http.MaxCallDepthFilter.MaxCallDepthExceeded
 
 /**
  * Coerces routing failures to the appropriate HTTP/2 error code
@@ -29,6 +30,8 @@ class ErrorReseter extends SimpleFilter[Request, Response] {
       Future.value(LinkerdHeaders.Err.respond(e.exceptionMessage(), Status.BadGateway))
     case e: RichConnectionFailedExceptionWithPath =>
       Future.value(LinkerdHeaders.Err.respond(e.exceptionMessage, Status.BadGateway))
+    case e: MaxCallDepthExceeded =>
+      Future.value(LinkerdHeaders.Err.respond(e.getMessage, Status.BadRequest))
     case H2ResponseException(rsp) =>
       Future.value(rsp)
   }

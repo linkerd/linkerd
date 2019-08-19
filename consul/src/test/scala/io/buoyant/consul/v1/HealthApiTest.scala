@@ -8,12 +8,12 @@ import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 
 class HealthApiTest extends FunSuite with Awaits {
-  val nodesBuf = Buf.Utf8("""[{"Node":{"Node":"Sarahs-MBP-2","Address":"192.168.1.37"}, "Service": {"Service":"hosted_web","Tags":["master"],"Port":8084, "Address":""}}]""")
+  val nodesBuf = Buf.Utf8("""[{"Node":{"Node":"Sarahs-MBP-2","Address":"192.168.1.37", "Meta": {"node_meta":"some_node_meta"}}, "Service": {"Service":"hosted_web","Tags":["master"],"Port":8084, "Address":"", "Meta": {"serv_meta":"some_serv_meta"}}}]""")
   val nodesWithChecksBuf = Buf.Utf8("""[
-    {"Node":{"Node":"node-passing"}, "Service": {"Service":"hosted_web"}, "Checks": [{"Status":"passing"}]},
-    {"Node":{"Node":"node-warning"}, "Service": {"Service":"hosted_web"}, "Checks": [{"Status":"warning"}]},
-    {"Node":{"Node":"node-critical"}, "Service": {"Service":"hosted_web"}, "Checks": [{"Status":"critical"}]},
-    {"Node":{"Node":"node-maintenance"}, "Service": {"Service":"hosted_web"}, "Checks": [{"Status":"maintenance"}]}
+    {"Node":{"Node":"node-passing", "Meta": {"node_meta":"some_node_meta"}}, "Service": {"Service":"hosted_web", "Meta": {"serv_meta":"some_serv_meta"}}, "Checks": [{"Status":"passing"}]},
+    {"Node":{"Node":"node-warning", "Meta": {"node_meta":"some_node_meta"}}, "Service": {"Service":"hosted_web", "Meta": {"serv_meta":"some_serv_meta"}}, "Checks": [{"Status":"warning"}]},
+    {"Node":{"Node":"node-critical", "Meta": {"node_meta":"some_node_meta"}}, "Service": {"Service":"hosted_web", "Meta": {"serv_meta":"some_serv_meta"}}, "Checks": [{"Status":"critical"}]},
+    {"Node":{"Node":"node-maintenance", "Meta": {"node_meta":"some_node_meta"}}, "Service": {"Service":"hosted_web", "Meta": {"serv_meta":"some_serv_meta"}}, "Checks": [{"Status":"maintenance"}]}
   ]""")
   var lastUri = ""
 
@@ -34,6 +34,8 @@ class HealthApiTest extends FunSuite with Awaits {
     assert(response.head.ServiceName == Some("hosted_web"))
     assert(response.head.Node == Some("Sarahs-MBP-2"))
     assert(response.head.ServiceAddress == Some(""))
+    assert(response.head.ServiceMeta == Some(Map("serv_meta" -> "some_serv_meta")))
+    assert(response.head.NodeMeta == Some(Map("node_meta" -> "some_node_meta")))
     assert(response.head.ServicePort == Some(8084))
   }
 

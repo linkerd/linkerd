@@ -1,6 +1,6 @@
 package io.buoyant.consul
 
-import com.twitter.finagle.{SimpleFilter, Service, http}
+import com.twitter.finagle.{Service, SimpleFilter, http}
 import com.twitter.util.Future
 
 package object v1 {
@@ -8,6 +8,7 @@ package object v1 {
   type Client = Service[http.Request, http.Response]
   type IndexedServiceNodes = Indexed[Seq[ServiceNode]]
   type IndexedServiceMap = Indexed[Map[String, Seq[String]]]
+  type Metadata = Map[String, String]
 
   trait ConsulApiError extends Throwable {
     def rsp: http.Response
@@ -32,5 +33,4 @@ package object v1 {
       }
     }
   }
-
 }

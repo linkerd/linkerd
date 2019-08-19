@@ -11,19 +11,19 @@ import com.twitter.finagle.buoyant.{ParamsMaybeWith, PathMatcher}
 import com.twitter.finagle.client.{AddrMetadataExtraction, StackClient}
 import com.twitter.finagle.filter.DtabStatsFilter
 import com.twitter.finagle.http.filter.{ClientDtabContextFilter, ServerDtabContextFilter, StatsFilter}
-import com.twitter.finagle.http.param.FixedLengthStreamedAfter
-import com.twitter.finagle.http.{Request, Response, param => hparam}
+import com.twitter.finagle.http.{Fields, HeaderMap, Request, Response, param => hparam}
 import com.twitter.finagle.liveness.FailureAccrualFactory
 import com.twitter.finagle.service.Retries
 import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.tracing.TraceInitializerFilter
-import com.twitter.finagle.{ServiceFactory, Stack, param => fparam}
+import com.twitter.finagle.{ServiceFactory, Stack}
 import com.twitter.logging.Policy
 import io.buoyant.linkerd.protocol.HttpRequestAuthorizerConfig.param
 import io.buoyant.linkerd.protocol.http._
-import io.buoyant.router.http.{AddForwardedHeader, ForwardClientCertFilter, TimestampHeaderFilter}
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
 import scala.collection.JavaConverters._
+import io.buoyant.router.http._
+import io.buoyant.router.HttpInstances._
 
 class HttpInitializer extends ProtocolInitializer.Simple {
   val name = "http"
@@ -83,6 +83,7 @@ class HttpInitializer extends ProtocolInitializer.Simple {
       // ensure the server-stack framing filter is placed below the stats filter
       // so that any malframed requests it fails are counted as errors
       .insertAfter(StatsFilter.role, FramingFilter.serverModule)
+      .insertAfter(FramingFilter.role, MaxCallDepthFilter.module[Request, HeaderMap, Response](Fields.Via))
       .insertBefore(AddForwardedHeader.module.role, AddForwardedHeaderConfig.module[Request, Response])
       .remove(ServerDtabContextFilter.role)
 
@@ -181,12 +182,13 @@ trait HttpSvcConfig extends SvcConfig {
 
 case class HttpServerConfig(
   addForwardedHeader: Option[AddForwardedHeaderConfig],
-  timestampHeader: Option[String]
+  timestampHeader: Option[String],
+  maxCallDepth: Option[Int]
 ) extends ServerConfig {
 
   @JsonIgnore
   override def serverParams = {
-    super.serverParams +
+    super.serverParams.maybeWith(maxCallDepth.map(x => MaxCallDepthFilter.Param(x))) +
       AddForwardedHeaderConfig.Param(addForwardedHeader) +
       TimestampHeaderFilter.Param(timestampHeader)
   }
@@ -215,8 +217,6 @@ case class HttpConfig(
   streamAfterContentLengthKB: Option[Int],
   maxHeadersKB: Option[Int],
   maxInitialLineKB: Option[Int],
-  maxRequestKB: Option[Int],
-  maxResponseKB: Option[Int],
   maxErrResponseKB: Option[Int],
   streamingEnabled: Option[Boolean],
   compressionLevel: Option[Int],
@@ -226,6 +226,15 @@ case class HttpConfig(
   var client: Option[HttpClient] = None
   var servers: Seq[HttpServerConfig] = Nil
   var service: Option[HttpSvc] = None
+
+  private val streaming = streamingEnabled -> streamAfterContentLengthKB match {
+    case (Some(true), None) => hparam.Streaming(true)
+    case (_, Some(streamAfter)) => hparam.Streaming(streamAfter.kilobytes)
+    case _ => hparam.Streaming(false)
+  }
+
+  // imposed by finagle (https://github.com/twitter/finagle/issues/780)
+  private val MaxReqRespSize = 2.gigabytes - 1.byte
 
   @JsonIgnore
   override val protocol: ProtocolInitializer = HttpInitializer
@@ -255,11 +264,10 @@ case class HttpConfig(
     .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
     .maybeWith(streamAfterContentLengthKB.map(kb => hparam.FixedLengthStreamedAfter(kb.kilobytes)))
-    .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
-    .maybeWith(maxRequestKB.map(kb => hparam.MaxRequestSize(kb.kilobytes)))
-    .maybeWith(maxResponseKB.map(kb => hparam.MaxResponseSize(kb.kilobytes)))
+    .maybeWith(Some(streaming))
+    .maybeWith(Some(hparam.MaxRequestSize(MaxReqRespSize)))
+    .maybeWith(Some(hparam.MaxResponseSize(MaxReqRespSize)))
     .maybeWith(maxErrResponseKB.map(kb => Headers.param.MaxErrResponseSize.apply(kb.kilobytes)))
-    .maybeWith(streamingEnabled.map(hparam.Streaming(_)))
     .maybeWith(compressionLevel.map(hparam.CompressionLevel(_)))
     .maybeWith(combinedIdentifier(params))
     .maybeWith(tracePropagator.map(tp => HttpTracePropagatorConfig.Param(tp.mk(params))))

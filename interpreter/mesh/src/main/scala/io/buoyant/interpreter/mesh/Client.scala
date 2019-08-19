@@ -10,7 +10,7 @@ import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.config.Parser
 import io.buoyant.grpc.runtime.Stream
-import io.buoyant.namer.{DelegateTree, Delegator, InstrumentedActivity, InstrumentedVar, Metadata}
+import io.buoyant.namer.{DelegateTree, Delegator, InstrumentedActivity, InstrumentedVar}
 import io.linkerd.mesh
 import io.linkerd.mesh.Converters._
 import java.net.{InetAddress, InetSocketAddress}
@@ -44,7 +44,6 @@ object Client {
   private[this] val _rescueUnit: PartialFunction[Throwable, Future[Unit]] = {
     case NonFatal(_) => Future.Unit
   }
-
   private[this] class Impl(
     root: Path,
     interpreter: mesh.Interpreter,
@@ -331,12 +330,14 @@ object Client {
   }
 
   private[this] val _collectFromEndpoint: PartialFunction[mesh.Endpoint, Address] = {
-    case mesh.Endpoint(Some(_), Some(ipBuf), Some(port), pmeta) =>
+    case mesh.Endpoint(Some(_), Some(ipBuf), Some(port), _, metadata) =>
       val ipBytes = Buf.ByteArray.Owned.extract(ipBuf)
       val ip = InetAddress.getByAddress(ipBytes)
-      val meta = Seq.empty[(String, Any)] ++
-        pmeta.flatMap(_.nodeName).map(Metadata.nodeName -> _)
-      Address.Inet(new InetSocketAddress(ip, port), Addr.Metadata(meta: _*))
+      Address
+        .Inet(
+          new InetSocketAddress(ip, port),
+          metadata
+        )
   }
 
   private[this] val fromReplicas: mesh.Replicas => Addr = {
@@ -347,8 +348,12 @@ object Client {
       case mesh.Replicas.OneofResult.Failed(mesh.Replicas.Failed(msg)) =>
         Addr.Failed(msg.getOrElse("unknown"))
 
-      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs)) =>
-        Addr.Bound(paddrs.collect(_collectFromEndpoint).toSet)
+      case mesh.Replicas.OneofResult.Bound(mesh.Replicas.Bound(paddrs, metadata)) =>
+        Addr
+          .Bound(
+            paddrs.collect(_collectFromEndpoint).toSet,
+            metadata
+          )
     }
   }
 

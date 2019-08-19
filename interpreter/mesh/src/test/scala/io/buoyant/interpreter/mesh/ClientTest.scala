@@ -107,7 +107,7 @@ class ClientTest extends FunSuite {
             assert(addrReq == mesh.ReplicasReq(Some(mesh.Path(Seq(Buf.Utf8("id2"))))))
 
             val ip0 = InetAddress.getByName("192.168.42.66")
-            val meta0: Map[String, Any] = Map("nodeName" -> "anode")
+            val meta0: Map[String, Any] = Map("nodeName" -> "anode", "foo1" -> "bar1", "foo2" -> "bar2")
 
             val ip1 = InetAddress.getByName("fe80::62f8:1dff:fed0:4452")
             val meta1 = Map.empty[String, Any]
@@ -117,13 +117,18 @@ class ClientTest extends FunSuite {
                 Some(mesh.Endpoint.AddressFamily.INET4),
                 Some(Buf.ByteArray.Owned(ip0.getAddress)),
                 Some(1234),
-                Some(mesh.Endpoint.Meta(nodeName = Some("anode")))
+                None,
+                Map("nodeName" -> "anode",
+                  "foo1" -> "bar1",
+                  "foo2" -> "bar2"
+                  )
               ),
               mesh.Endpoint(
                 Some(mesh.Endpoint.AddressFamily.INET6),
                 Some(Buf.ByteArray.Owned(ip1.getAddress)),
                 Some(5678),
-                Some(mesh.Endpoint.Meta())
+                None,
+                Map.empty[String, String]
               )
             )
             val send2F = addrRsps.send(mesh.Replicas(Some(

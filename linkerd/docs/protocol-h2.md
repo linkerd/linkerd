@@ -86,6 +86,7 @@ initialStreamWindowBytes | 64KB | Configures `SETTINGS_INITIAL_WINDOW_SIZE` on s
 maxConcurrentStreamsPerConnection | 1000 | Configures `SETTINGS_MAX_CONCURRENT_STREAMS` on new streams.
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
+maxCallDepth | 10 | If set, limits the number of maximum hops. The number of calls is derived by inspecting the Via header. This can be used to prevent proxy loops.
 
 ## HTTP/2 Service Parameters
 

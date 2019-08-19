@@ -23,7 +23,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
     Some(Seq.empty),
     Some(""),
     Some(8080),
-    Some(HealthStatus.Passing)
+    Some(HealthStatus.Passing),
+    Some(Map("srv_meta" -> "some_srv_meta")),
+    Some(Map("nd_meta" -> "some_nd_meta"))
   )
   val testServiceNode2 = ServiceNode(
     Some("node2"),
@@ -33,7 +35,9 @@ class ConsulNamerTest extends FunSuite with Awaits {
     Some(Seq.empty),
     Some(""),
     Some(8080),
-    Some(HealthStatus.Passing)
+    Some(HealthStatus.Passing),
+    Some(Map("srv_meta" -> "some_srv_meta")),
+    Some(Map("nd_meta" -> "some_nd_meta"))
   )
 
   val emptyRequest = http.Request()
@@ -180,7 +184,7 @@ class ConsulNamerTest extends FunSuite with Awaits {
           case Some("0") | None =>
             Future.value(Indexed(Seq.empty, Some("1")))
           case Some("1") =>
-            val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888), None)
+            val node = ServiceNode(Some("foobar"), None, None, None, None, Some("127.0.0.1"), Some(8888), None, None, None)
             blockingCallResponder before Future.value(Indexed(Seq(node), Some("2")))
           case _ => Future.never
         }
@@ -444,6 +448,83 @@ class ConsulNamerTest extends FunSuite with Awaits {
     ))
   }
 
+
+  test("Namer returns Consul metadata when transferMetadata is set to true") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case _ => Future.never //don't respond to blocking index calls
+        }
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      stats = stats,
+      transferMetadata = true
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
+      state = _
+    }
+
+    assertOnAddrs(state) { (_, metadata) =>
+      assert(
+        metadata == Addr.Metadata("srv_meta" -> "some_srv_meta")
+      )
+      ()
+    }
+  }
+
+  test("Namer skips Consul metadata when transferMetadata is set to false") {
+    class TestApi extends CatalogApi(null, "/v1") {
+      override def serviceNodes(
+        serviceName: String,
+        datacenter: Option[String],
+        tag: Option[String] = None,
+        blockingIndex: Option[String] = None,
+        consistency: Option[ConsistencyMode] = None,
+        retry: Boolean = false
+      ): ApiCall[IndexedServiceNodes] = testCall {
+        blockingIndex match {
+          case Some("0") | None =>
+            Future.value(Indexed[Seq[ServiceNode]](Seq(testServiceNode), Some("1")))
+          case _ => Future.never //don't respond to blocking index calls
+        }
+      }
+    }
+
+    val stats = new InMemoryStatsReceiver
+    val namer = ConsulNamer.untagged(
+      Path.read("/test"),
+      new TestApi(),
+      new TestAgentApi("consul.acme.co"),
+      stats = stats,
+      transferMetadata = false
+    )
+    @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
+    namer.lookup(Path.read("/dc1/servicename/residual")).states respond {
+      state = _
+    }
+
+    assertOnAddrs(state) { (_, metadata) =>
+      metadata == Addr.Metadata.empty
+      ()
+    }
+  }
+
   test("Namer returns authority in bound address metadata when setHost is true") {
     class TestApi extends CatalogApi(null, "/v1") {
       override def serviceNodes(
@@ -468,13 +549,20 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       setHost = true,
-      stats = stats
+      stats = stats,
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
     assertOnAddrs(state) { (_, metadata) =>
-      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+      assert(
+        metadata == Addr
+          .Metadata(
+            Metadata.authority -> "servicename.service.dc1.consul.acme.co",
+            "srv_meta" -> "some_srv_meta"
+          )
+      )
       ()
     }
 
@@ -516,7 +604,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       setHost = true,
-      stats = stats
+      stats = stats,
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/master/servicename/residual")).states respond { state = _ }
@@ -524,7 +613,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assertOnAddrs(state) { (_, metadata) =>
       assert(
         metadata == Addr.Metadata(
-          Metadata.authority -> "master.servicename.service.dc1.consul.acme.co"
+          Metadata.authority -> "master.servicename.service.dc1.consul.acme.co",
+          "srv_meta" -> "some_srv_meta"
         )
       )
       ()
@@ -569,14 +659,20 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       setHost = true,
-      stats = stats
+      stats = stats,
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
 
-    assertOnAddrs(state){(addrs, metadata) =>
+    assertOnAddrs(state) { (addrs, metadata) =>
       assert(addrs.size == 1)
-      assert(metadata == Addr.Metadata(Metadata.authority -> "servicename.service.dc1.consul.acme.co"))
+      assert(
+        metadata == Addr.Metadata(
+          Metadata.authority -> "servicename.service.dc1.consul.acme.co",
+         "srv_meta" -> "some_srv_meta"
+        )
+      )
       ()
     }
   }
@@ -787,7 +883,8 @@ class ConsulNamerTest extends FunSuite with Awaits {
       new TestApi(),
       new TestAgentApi("consul.acme.co"),
       weights = Map("primary" -> 100),
-      stats = stats
+      stats = stats,
+      transferMetadata = true
     )
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
     namer.lookup(Path.read("/dc1/servicename/residual")).states respond { state = _ }
@@ -795,7 +892,12 @@ class ConsulNamerTest extends FunSuite with Awaits {
     assertOnAddrs(state) { (addrs, _) =>
       assert(addrs.size == 1)
       val inet = addrs.head.asInstanceOf[Address.Inet]
-      assert(inet.metadata == Map(Metadata.endpointWeight -> 100))
+      assert(
+        inet.metadata == Map(
+          Metadata.endpointWeight -> 100,
+         "nd_meta" -> "some_nd_meta"
+        )
+      )
       ()
     }
 

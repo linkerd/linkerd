@@ -8,7 +8,7 @@ import com.twitter.finagle.{Addr, Address, Failure, IndividualRequestTimeoutExce
 import com.twitter.util._
 import io.buoyant.consul.v1._
 import io.buoyant.namer.consul.SvcAddr.Stats
-import io.buoyant.namer.InstrumentedVar
+import io.buoyant.namer.{InstrumentedVar, Metadata}
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
@@ -31,7 +31,9 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         Some(Seq.empty),
         Some(""),
         Some(port),
-        Some(HealthStatus.Passing)
+        Some(HealthStatus.Passing),
+        Some(Map("srv_meta" -> "some_srv_meta")),
+        Some(Map("nd_meta" -> "some_nd_meta"))
       ),
         new InetSocketAddress(host, port)
     )
@@ -310,7 +312,8 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
         None,
         Map.empty,
         Stats(NullStatsReceiver),
-        new PollState
+        new PollState,
+        transferMetadata = true
       )(timer)
 
       addr.underlying.changes.respond {
@@ -322,7 +325,14 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
       timer.tick()
       changes match {
         case Addr.Bound(addrs, _) => addrs.head shouldBe Address
-          .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+          .Inet(
+            firstAddr,
+            Addr
+              .Metadata(
+                Metadata.endpointWeight -> 1.0,
+               "nd_meta" -> "some_nd_meta"
+              )
+          )
         case _ => fail("received unexpected Addr on initial service discovery")
       }
 
@@ -330,7 +340,14 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
       timer.tick()
       changes match {
         case Addr.Bound(addrs, _) => addrs.head shouldBe Address
-          .Inet(firstAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+          .Inet(
+            firstAddr,
+            Addr
+              .Metadata(
+                Metadata.endpointWeight -> 1.0,
+                "nd_meta" -> "some_nd_meta"
+              )
+          )
         case _ => fail("received unexpected Addr on timed out service discovery request")
       }
 
@@ -344,7 +361,12 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
       eventually {
         changes match {
           case Addr.Bound(addrs, _) => addrs.head shouldBe Address
-            .Inet(secondAddr, Addr.Metadata("endpoint_addr_weight" -> 1.0))
+            .Inet(
+              secondAddr, Addr.Metadata(
+                Metadata.endpointWeight -> 1.0,
+               "nd_meta" -> "some_nd_meta"
+              )
+            )
           case _ => fail("received unexpected Addr on timed out service discovery request")
         }
       }

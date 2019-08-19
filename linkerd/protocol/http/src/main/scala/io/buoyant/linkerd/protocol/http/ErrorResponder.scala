@@ -8,6 +8,7 @@ import com.twitter.finagle.service.RetryPolicy.RetryableWriteException
 import com.twitter.logging.{Level, Logger}
 import io.buoyant.router.RoutingFactory
 import io.buoyant.router.RoutingFactory.ResponseException
+import io.buoyant.router.http.MaxCallDepthFilter
 import scala.util.control.NonFatal
 
 class ErrorResponder(maxHeaderSize: Int, maxErrResponseSize: Int)
@@ -29,6 +30,8 @@ class ErrorResponder(maxHeaderSize: Int, maxErrResponseSize: Int)
           Headers.Err.respond(e.exceptionMessage(), Status.BadGateway, maxHeaderSize, maxErrResponseSize)
         case e: RichConnectionFailedExceptionWithPath =>
           Headers.Err.respond(e.exceptionMessage, Status.BadGateway, maxHeaderSize, maxErrResponseSize)
+        case e: MaxCallDepthFilter.MaxCallDepthExceeded =>
+          Headers.Err.respond(e.getMessage, Status.BadRequest, maxHeaderSize, maxErrResponseSize)
         case _ =>
           val message = e.getMessage match {
             case null => e.getClass.getName

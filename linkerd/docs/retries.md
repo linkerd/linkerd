@@ -66,7 +66,7 @@ service:
 Key | Default Value | Description
 --- | ------------- | -----------
 minRetriesPerSec | `10` | The minimum rate of retries allowed in order to accommodate clients that have just started issuing requests, as well as clients that do not issue many requests per window. Must be non-negative. If `0`, no reserve is given.
-percentCanRetry | `0.2` | The percentage of calls that can be retried. This is in addition to any retries allowed via `minRetriesPerSec`.  Must be >= `0` and <= `1000`.
+percentCanRetry | `0.2` | The number of retries allowed expressed as percentage of calls made. This is in addition to any retries allowed via `minRetriesPerSec`. Must be >= `0` and <= `1000`. As an example, if `0.1` is used, then for every 10 calls, 1 retry will be allowed. If `2.0` is used then every call allows for 2 retries, while if the values is set to `1000.0` every call allows for 1000 retries.
 ttlSecs | `10` | The amount of time in seconds that successful calls are considered when calculating retry budgets.
 
 ## Retry Backoff Parameters

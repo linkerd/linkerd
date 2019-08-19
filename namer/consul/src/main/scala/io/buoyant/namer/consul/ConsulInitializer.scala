@@ -1,10 +1,13 @@
 package io.buoyant.namer.consul
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.twitter.finagle._
-import com.twitter.finagle.buoyant.TlsClientConfig
-import com.twitter.finagle.tracing.NullTracer
 import com.twitter.conversions.DurationOps._
+import com.twitter.conversions.StorageUnitOps._
+import com.twitter.finagle._
+import com.twitter.finagle.buoyant.ParamsMaybeWith
+import com.twitter.finagle.buoyant.TlsClientConfig
+import com.twitter.finagle.http.param._
+import com.twitter.finagle.tracing.NullTracer
 import io.buoyant.config.types.Port
 import io.buoyant.consul.utils.RichConsulClient
 import io.buoyant.consul.v1
@@ -38,6 +41,7 @@ import io.buoyant.namer.{NamerConfig, NamerInitializer}
  *     clientAuth:
  *       certPath: /certificates/cert.pem
  *       keyPath: /certificates/key.pem
+ *    transferMetadata: true
  * </pre>
  */
 class ConsulInitializer extends NamerInitializer {
@@ -61,7 +65,9 @@ case class ConsulConfig(
   failFast: Option[Boolean] = None,
   preferServiceAddress: Option[Boolean] = None,
   weights: Option[Seq[TagWeight]] = None,
-  tls: Option[TlsClientConfig] = None
+  fixedLengthStreamedAfterKB: Option[Int],
+  tls: Option[TlsClientConfig] = None,
+  transferMetadata: Option[Boolean] = None
 ) extends NamerConfig {
 
   @JsonIgnore
@@ -82,10 +88,12 @@ case class ConsulConfig(
     // Request timeout used to make sure long-polling requests are never stale.
     val DefaultRequestTimeout = 10.minutes
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
+    val DefaultStreamAfter = 5.megabytes
 
     val service = Http.client
       .withParams(Http.client.params ++ tlsParams ++ params)
       .withLabel("client")
+      .withStreaming(fixedLengthStreamedAfterKB.map(_.megabytes).getOrElse(DefaultStreamAfter))
       .interceptInterrupts
       .failFast(failFast)
       .setAuthToken(token)
@@ -111,11 +119,27 @@ case class ConsulConfig(
     includeTag match {
       case Some(true) =>
         ConsulNamer.tagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, tagWeights, stats
+          prefix,
+          consul,
+          agent,
+          setHost.getOrElse(false),
+          consistencyMode,
+          preferServiceAddress,
+          tagWeights,
+          stats,
+          transferMetadata.getOrElse(false)
         )
       case _ =>
         ConsulNamer.untagged(
-          prefix, consul, agent, setHost.getOrElse(false), consistencyMode, preferServiceAddress, tagWeights, stats
+          prefix,
+          consul,
+          agent,
+          setHost.getOrElse(false),
+          consistencyMode,
+          preferServiceAddress,
+          tagWeights,
+          stats,
+          transferMetadata.getOrElse(false)
         )
     }
   }

@@ -13,7 +13,7 @@ class ConsulTest extends FunSuite {
 
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = ConsulConfig(None, None, None, None, None, None, None, None, None, None).newNamer(Stack.Params.empty)
+    val _ = ConsulConfig(None, None, None, None, None, None, None, None, None, None, None, None, None, None).newNamer(Stack.Params.empty)
   }
 
   test("service registration") {
@@ -40,6 +40,7 @@ class ConsulTest extends FunSuite {
                     |token: some-token
                     |includeTag: true
                     |useHealthCheck: true
+                    |fixedLengthStreamedAfterKB: 5192
                     |healthStatuses:
                     | - warning
                     |setHost: true
@@ -56,6 +57,7 @@ class ConsulTest extends FunSuite {
                     |  clientAuth:
                     |    certPath: /certificates/cert.pem
                     |    keyPath: /certificates/key.pem
+                    |transferMetadata: true
       """.stripMargin
 
     val mapper = Parser.objectMapper(yaml, Iterable(Seq(ConsulInitializer)))
@@ -70,10 +72,13 @@ class ConsulTest extends FunSuite {
     assert(consul.consistencyMode == Some(ConsistencyMode.Stale))
     assert(consul.failFast == Some(true))
     assert(consul.preferServiceAddress == Some(false))
+    assert(consul.fixedLengthStreamedAfterKB == Some(5192))
     assert(consul.weights == Some(Seq(TagWeight("primary", 100.0))))
     val clientAuth = ClientAuth("/certificates/cert.pem", None, "/certificates/key.pem")
     val tlsConfig = TlsClientConfig(None, Some(false), Some("consul.io"), None, Some("/certificates/cacerts-bundle.pem"), Some(clientAuth))
     assert(consul.tls == Some(tlsConfig))
     assert(!consul.disabled)
+    assert(consul.transferMetadata == Some(true))
+
   }
 }

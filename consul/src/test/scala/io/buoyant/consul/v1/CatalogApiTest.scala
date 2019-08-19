@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 
 class CatalogApiTest extends FunSuite with Awaits with Exceptions {
   val datacentersBuf = Buf.Utf8("""["dc1", "dc2"]""")
-  val nodesBuf = Buf.Utf8("""[{"Node":"Sarahs-MBP-2","Address":"192.168.1.37","ServiceID":"hosted_web","ServiceName":"hosted_web","ServiceTags":["master"],"ServiceAddress":"","ServicePort":8084}]""")
+  val nodesBuf = Buf.Utf8("""[{"Node":"Sarahs-MBP-2","Address":"192.168.1.37","ServiceID":"hosted_web","ServiceName":"hosted_web","ServiceTags":["master"],"ServiceAddress":"","ServicePort":8084, "ServiceMeta":{"serv_meta":"some_serv_meta"}, "NodeMeta":{"node_meta":"some_node_meta"}}]""")
   val mapBuf = Buf.Utf8("""{"consul":[],"hosted_web":["master"],"redis":[]}""")
   var lastUri = ""
 
@@ -37,6 +37,8 @@ class CatalogApiTest extends FunSuite with Awaits with Exceptions {
     assert(response.size == 1)
     assert(response.head.ServiceName == Some("hosted_web"))
     assert(response.head.Node == Some("Sarahs-MBP-2"))
+    assert(response.head.ServiceMeta == Some(Map("serv_meta" -> "some_serv_meta")))
+    assert(response.head.NodeMeta == Some(Map("node_meta" -> "some_node_meta")))
     assert(response.head.ServiceAddress == Some(""))
     assert(response.head.ServicePort == Some(8084))
   }

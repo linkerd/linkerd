@@ -137,6 +137,7 @@ object LinkerdBuild extends Base {
 
     val baseHttp = projectDir("router/base-http")
       .dependsOn(core)
+      .withTests()
 
     val h2 = projectDir("router/h2")
       .dependsOn(baseHttp, Finagle.h2 % "compile->compile;test->test")
