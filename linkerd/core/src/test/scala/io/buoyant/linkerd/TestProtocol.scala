@@ -3,15 +3,15 @@ package io.buoyant.linkerd
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.Stack.Params
 import com.twitter.finagle._
-import com.twitter.finagle.buoyant.{ParamsMaybeWith, Dst}
+import com.twitter.finagle.buoyant.{Dst, ParamsMaybeWith}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.server.StackServer
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.util.Future
 import io.buoyant.linkerd.TestProtocol.FancyParam
-import io.buoyant.config.Parser
+import io.buoyant.router.DiscardingFactoryToService.RequestDiscarder
 import io.buoyant.router.RoutingFactory.IdentifiedRequest
-import io.buoyant.router.{RoutingFactory, StackRouter, StdStackRouter}
+import io.buoyant.router.{DiscardingFactoryToService, RoutingFactory, StackRouter, StdStackRouter}
 import java.net.SocketAddress
 
 abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple {
@@ -57,7 +57,7 @@ abstract class TestProtocol(val name: String) extends ProtocolInitializer.Simple
     def newClient(dest: Name, label: String) =
       stack.make(params + param.Label(label))
     def newService(dest: Name, label: String) =
-      new FactoryToService(stack.make(params + FactoryToService.Enabled(true)))
+      new DiscardingFactoryToService(RequestDiscarder[String](_ => ()), stack.make(params + DiscardingFactoryToService.Enabled(true)))
   }
 
   private[this] case class TestRouter(
