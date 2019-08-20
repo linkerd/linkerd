@@ -6,10 +6,13 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util.{Duration, Return, Throw}
 import io.buoyant.config.types.Port
 import io.buoyant.marathon.v2.Api
+import io.buoyant.namer.marathon.MarathonConfig.SetHost
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
+import java.net.URI
 import scala.util.control.NoStackTrace
 import scala.util.Random
 
@@ -71,6 +74,28 @@ object MarathonSecret {
       throw Invalid(s)
   }
 
+  def mkAuthenticated(s: MarathonSecret, params: Stack.Params): Authenticator.Authenticated = s match {
+    case MarathonSecret(Some(loginEndpoint), Some(privateKey), Some("RS256"), Some(uid)) =>
+      val loginUrl = new URI(loginEndpoint)
+
+      val port = loginUrl.getPort
+
+      val dest = if (port == -1) s"${loginUrl.getHost}:80" else s"${loginUrl.getHost}:$port"
+      val authRequest = Authenticator.AuthRequest(loginUrl.getPath, uid, privateKey)
+
+      val client = Http.client
+        .withParams(params)
+        .withLabel("auth-client")
+        .withTracer(NullTracer)
+        .filtered(SetHost(loginUrl.getHost))
+        .newService(dest)
+
+      new Authenticator.Authenticated(client, authRequest)
+
+    case s =>
+      throw Invalid(s)
+  }
+
   def load(): Option[MarathonSecret] =
     sys.env.get(DCOSEnvKey) match {
       case None => None
@@ -85,6 +110,7 @@ object MarathonSecret {
 object MarathonConfig {
   private val DefaultHost = "marathon.mesos"
   private val DefaultPrefix = Path.read("/io.l5d.marathon")
+  val log = Logger.get(getClass.getName)
 
   // Default TTL (in milliseconds)
   private val DefaultTtlMs = 5000
@@ -92,7 +118,7 @@ object MarathonConfig {
   // Default range by which to jitter the TTL (also in milliseconds)
   private val DefaultJitterMs = 50
 
-  private case class SetHost(host: String) extends SimpleFilter[http.Request, http.Response] {
+  private[marathon] case class SetHost(host: String) extends SimpleFilter[http.Request, http.Response] {
     def apply(req: http.Request, service: Service[http.Request, http.Response]) = {
       req.host = host
       service(req)
@@ -147,12 +173,15 @@ case class MarathonConfig(
 
     val service = (MarathonSecret.load(), sys.env.get(MarathonSecret.basicEnvKey)) match {
       case (Some(secret), _) =>
-        val auth = MarathonSecret.mkAuthRequest(secret)
-        new Authenticator.Authenticated(client, auth)
+        log.debug(s"Using $secret for marathon authentication")
+        MarathonSecret.mkAuthenticated(secret, params)
       case (None, Some(http_auth_token)) =>
+        log.debug(s"Using http token [$http_auth_token]")
         val filter = new BasicAuthenticatorFilter(http_auth_token)
         filter.andThen(client)
-      case (None, None) => client
+      case (None, None) =>
+        log.debug(s"No marathon auth specified")
+        client
 
     }
 

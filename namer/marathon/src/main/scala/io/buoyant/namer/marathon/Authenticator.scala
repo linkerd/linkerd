@@ -1,9 +1,9 @@
 package io.buoyant.namer.marathon
 
 import com.twitter.finagle.{Failure, FailureFlags, http}
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Return, Throw, Time}
 import io.buoyant.marathon.v2.Api
-import java.net.URL
 import java.util.concurrent.atomic.AtomicReference
 import pdi.jwt.{Jwt, JwtAlgorithm}
 import scala.annotation.tailrec
@@ -11,12 +11,11 @@ import scala.annotation.tailrec
 object Authenticator {
 
   case class AuthRequest(
-    loginEndpoint: String,
+    path: String,
     uid: String,
     privateKey: String,
     algorithm: JwtAlgorithm = JwtAlgorithm.RS256
   ) {
-    val path: String = new URL(loginEndpoint).getPath
     val jwt: String = {
       val token = Jwt.encode(s"""{"uid":"$uid"}""", privateKey, algorithm)
       s"""{"uid":"$uid","token":"$token"}"""
@@ -30,6 +29,8 @@ object Authenticator {
   private[this] val missingTokenExceptionF = Future.exception(missingTokenException)
 
   class Authenticated(client: Api.Client, authRequest: AuthRequest) extends Api.Client {
+
+    private[this] val log = Logger.get(getClass.getName)
     private[this] sealed trait State
     private[this] object Init extends State
     private[this] case class Authenticating(token: Future[String]) extends State
@@ -65,6 +66,7 @@ object Authenticator {
 
     private[this] def issueAuthed(req: http.Request, token: String): Future[http.Response] = {
       req.headerMap.set("Authorization", s"token=$token")
+      log.debug(s"Issuing authenticated request $req")
       client(req).flatMap {
         case rsp if rsp.status == http.Status.Unauthorized =>
           Future.exception(UnauthorizedResponse(rsp))
@@ -76,18 +78,23 @@ object Authenticator {
       val tokReq = http.Request(http.Method.Post, authRequest.path)
       tokReq.setContentTypeJson()
       tokReq.setContentString(authRequest.jwt)
+      log.debug(s"Issuing token request $tokReq")
+
       client(tokReq).flatMap {
         case rsp if rsp.status == http.Status.Ok =>
+          log.debug(s"Got successful token response $rsp")
           Api.readJson[AuthToken](rsp.content) match {
             case Return(AuthToken(Some(token))) => Future.value(token)
             case Return(AuthToken(None)) => missingTokenExceptionF
             case Throw(e) => Future.exception(e)
           }
         case rsp if rsp.status == http.Status.Unauthorized =>
+          log.debug(s"Got Unauthorized token response $rsp")
           Future.exception(UnauthorizedResponse(rsp))
         case rsp =>
+          log.debug(s"Got unexpected token response $rsp")
           Future.exception(Api.UnexpectedResponse(rsp))
-      }
+      }.onFailure(log.error(_, "Obtaining a token failed"))
     }
 
     @tailrec final override def close(d: Time): Future[Unit] = {

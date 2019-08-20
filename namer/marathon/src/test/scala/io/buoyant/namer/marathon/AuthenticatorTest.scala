@@ -1,13 +1,12 @@
 package io.buoyant.namer.marathon
 
 import com.fasterxml.jackson.core.JsonParseException
-import com.twitter.finagle.Failure
-import com.twitter.finagle.Service
+import com.twitter.finagle.{Failure, Service, StackParams}
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.marathon.v2.Api
-import io.buoyant.test.{Exceptions, Awaits}
+import io.buoyant.test.{Awaits, Exceptions}
 import org.scalatest.FunSuite
 
 class AuthenticatorTest extends FunSuite with Awaits with Exceptions {
@@ -40,8 +39,10 @@ b5VoYLNsdvZhqjVFTrYNEuhTJFYCF7jAiZLYvYm0C99BqcJnJPl7JjWynoNHNKw3
 9f6PIOE1rAmPE8Cfz/GFF5115ZKVlq+2BY8EKNxbCIy2d/vMEvisnXI=
 -----END RSA PRIVATE KEY-----"""
 
-  val loginEndpoint = "/fake_login_endpoint"
-  val authRequest = Authenticator.AuthRequest(s"http://example.com$loginEndpoint", "fakeuid", privateKeyRSA)
+
+  val loginPath = "/fake_login_endpoint"
+  val loginEndpoint =s"http://example.com$loginPath"
+  val authRequest = Authenticator.AuthRequest(loginPath, "fakeuid", privateKeyRSA)
   val authbuf = Buf.Utf8("""{"token":"foo"}""")
   val concurrencyLoad = 100
 
@@ -59,7 +60,7 @@ b5VoYLNsdvZhqjVFTrYNEuhTJFYCF7jAiZLYvYm0C99BqcJnJPl7JjWynoNHNKw3
     def service() =
       Service.mk[Request, Response] { req =>
         val rsp =
-          if (req.path == loginEndpoint) {
+          if (req.path == loginPath) {
             assert(req.contentString == authRequest.jwt)
             auths += 1
             val r = Response(nextAuthStatus)
@@ -213,9 +214,11 @@ b5VoYLNsdvZhqjVFTrYNEuhTJFYCF7jAiZLYvYm0C99BqcJnJPl7JjWynoNHNKw3
     assert(stub.requests == 0)
   }
 
-  test("AuthRequest fails on bad loginEndpoint") {
-    assertThrows[java.net.MalformedURLException] {
-      Authenticator.AuthRequest("bad endpoint", "uid", privateKeyRSA)
+  test("Authenticated creation fails on bad loginEndpoint") {
+    assertThrows[java.net.URISyntaxException] {
+      val secret = MarathonSecret(Some("bad endpoint"),Some(privateKeyRSA), Some("RS256"), Some("fakeuid") )
+      MarathonSecret.mkAuthenticated(secret, StackParams.empty)
+
     }
   }
 
