@@ -17,7 +17,7 @@ class DestinationIfaceInitializerTest extends FunSuite{
   }
 
   test("read socket options"){
-    val expectedOpts = SocketOptionsConfig(reusePort = true)
+    val expectedOpts = SocketOptionsConfig(reusePort = Some(true))
     val yaml = s"""
        |kind: io.l5d.destination
        |ip: 0.0.0.0

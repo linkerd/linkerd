@@ -7,9 +7,9 @@ import com.twitter.finagle.server.Listener
 import com.twitter.util.Duration
 
 case class SocketOptionsConfig(
-  noDelay: Boolean = true,
-  reuseAddr: Boolean = true,
-  reusePort: Boolean = false,
+  noDelay: Option[Boolean] = Some(true),
+  reuseAddr: Option[Boolean] = Some(true),
+  reusePort: Option[Boolean] = Some(false),
   @JsonDeserialize(contentAs = classOf[java.lang.Long]) writeTimeoutMs: Option[Long] = None,
   @JsonDeserialize(contentAs = classOf[java.lang.Long]) readTimeoutMs: Option[Long] = None,
   keepAlive: Option[Boolean] = None,
@@ -27,7 +27,7 @@ case class SocketOptionsConfig(
     }
 
     Stack.Params.empty +
-      Transport.Options(noDelay, reuseAddr, reusePort) +
+      Transport.Options(noDelay.getOrElse(true), reuseAddr.getOrElse(true), reusePort.getOrElse(false)) +
       Transport.Liveness(writeTimeout, readTimeout, keepAlive) +
       Listener.Backlog(backlog)
   }
