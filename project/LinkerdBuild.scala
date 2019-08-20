@@ -480,7 +480,7 @@ object LinkerdBuild extends Base {
       baseNamerdExecScript +
       gcLogOptionScript +
       execScriptJvmOptions +
-      """|if read -r 0; then
+      """|if read -r; then
          |  CONFIG_INPUT=$(cat)
          |fi
          |
