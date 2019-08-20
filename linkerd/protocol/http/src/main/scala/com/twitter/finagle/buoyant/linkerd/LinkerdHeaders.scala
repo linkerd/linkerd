@@ -5,7 +5,8 @@ import com.twitter.finagle.buoyant.{Dst => BuoyantDst}
 import com.twitter.finagle.context.{Contexts, Deadline => FDeadline}
 import com.twitter.finagle.http.{param => hparam, _}
 import com.twitter.finagle.tracing._
-import com.twitter.util.{Future, Return, Throw, Time, Try}
+import com.twitter.util.{Future, Return, StorageUnit, Throw, Time, Try}
+import com.twitter.conversions.StorageUnitOps._
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
@@ -49,6 +50,19 @@ import scala.collection.breakOut
 object Headers {
   val Prefix = "l5d-"
 
+  /**
+   * A param specific to error responses, the maximum size of a HTTP error response payload.
+   * By default it has the same value as maxResponseKB. Example:
+   * - protocol: http
+   *   maxResponseKB: 5120
+   */
+  object param {
+    final case class MaxErrResponseSize(size: StorageUnit) extends AnyVal
+    implicit object MaxErrResponseSize extends Stack.Param[MaxErrResponseSize] {
+      val default = MaxErrResponseSize(5.megabytes)
+    }
+  }
+
   object Ctx {
 
     /**
@@ -65,15 +79,15 @@ object Headers {
      * HttpTraceInitializer.serverModule.
      */
     val serverModule: Stackable[ServiceFactory[Request, Response]] =
-      new Stack.Module1[hparam.MaxHeaderSize, ServiceFactory[Request, Response]] {
+      new Stack.Module2[hparam.MaxHeaderSize, Headers.param.MaxErrResponseSize, ServiceFactory[Request, Response]] {
         val role = Stack.Role("ServerContext")
         val description = "Extracts linkerd context from http headers"
 
         val deadline = new Deadline.ServerFilter
-        def dtab(maxHeaderSize: Int) = new Dtab.ServerFilter(maxHeaderSize)
+        def dtab(maxHeaderSize: Int, maxErrResponseSize: Int) = new Dtab.ServerFilter(maxHeaderSize, maxErrResponseSize)
 
-        def make(maxHeaderSize: hparam.MaxHeaderSize, next: ServiceFactory[Request, Response]) =
-          deadline.andThen(dtab(maxHeaderSize.size.bytes.toInt)).andThen(next)
+        def make(maxHeaderSize: hparam.MaxHeaderSize, maxErrResponseSize: Headers.param.MaxErrResponseSize, next: ServiceFactory[Request, Response]) =
+          deadline.andThen(dtab(maxHeaderSize.size.bytes.toInt, maxErrResponseSize.size.bytes.toInt)).andThen(next)
       }
 
     val clearServerModule: Stackable[ServiceFactory[Request, Response]] =
@@ -255,12 +269,12 @@ object Headers {
        *
        * @todo use DtabFilter.Injector once it is released.
        */
-      class ServerFilter(maxHeaderSize: Int) extends SimpleFilter[Request, Response] {
+      class ServerFilter(maxHeaderSize: Int, maxErrResponseSize: Int) extends SimpleFilter[Request, Response] {
 
         def apply(req: Request, service: Service[Request, Response]) =
           get(req.headerMap) match {
             case Throw(e) =>
-              Future.value(Err.respond(e.getMessage, Status.BadRequest, maxHeaderSize))
+              Future.value(Err.respond(e.getMessage, Status.BadRequest, maxHeaderSize, maxErrResponseSize))
             case Return(dtab) =>
               clear(req.headerMap)
               FDtab.local ++= dtab
@@ -473,7 +487,7 @@ object Headers {
   object Err {
     val Key = Prefix + "err"
 
-    def respond(msg: String, status: Status = Status.InternalServerError, maxHeaderSize: Int): Response = {
+    def respond(msg: String, status: Status = Status.InternalServerError, maxHeaderSize: Int, maxErrResponseSize: Int): Response = {
       val rsp = Response(status)
       val header = URLEncoder.encode(msg, ISO_8859_1.toString)
       rsp.headerMap(Key) = if (header.length > maxHeaderSize) {
@@ -482,7 +496,13 @@ object Headers {
         header
       }
       rsp.contentType = MediaType.Txt
-      rsp.contentString = msg
+
+      if (msg.length > maxErrResponseSize) {
+        rsp.contentString = msg.substring(0, maxErrResponseSize)
+      } else {
+        rsp.contentString = msg
+      }
+
       rsp
     }
   }

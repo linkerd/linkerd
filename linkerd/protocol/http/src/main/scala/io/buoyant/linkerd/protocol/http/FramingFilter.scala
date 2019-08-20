@@ -39,7 +39,7 @@ object FramingFilter {
   /**
    * A filter that fails badly-framed requests.
    */
-  def clientFilter(maxHeaderSize: Int) = new SimpleFilter[Request, Response] {
+  def clientFilter(maxHeaderSize: Int, maxErrResponseSize: Int) = new SimpleFilter[Request, Response] {
     // unlike the server filter, this needs its own logger, since
     // it responds to bad requests directly, rather than bubbling up
     // exceptions to an ErrorResponder
@@ -55,7 +55,7 @@ object FramingFilter {
             // if the exception was a FramingException, turn the Future into
             // a success by responding with Bad Request
             log.error("framing error in request", e)
-            Future.value(Headers.Err.respond(e.reason, Status.BadRequest, maxHeaderSize))
+            Future.value(Headers.Err.respond(e.reason, Status.BadRequest, maxHeaderSize, maxErrResponseSize))
           case Throw(e) =>
             // other exceptions should be propagated
             Future.exception(e)
@@ -85,11 +85,12 @@ object FramingFilter {
     }
 
   val clientModule: Stackable[ServiceFactory[Request, Response]] =
-    new Stack.Module1[hparam.MaxHeaderSize, ServiceFactory[Request, Response]] {
+    new Stack.Module2[hparam.MaxHeaderSize, Headers.param.MaxErrResponseSize, ServiceFactory[Request, Response]] {
       override val role: Stack.Role = FramingFilter.role
       override val description = "Fails badly-framed HTTP responses"
-      override def make(maxHeaderSize: hparam.MaxHeaderSize, factory: ServiceFactory[Request, Response]): ServiceFactory[Request, Response] =
-        clientFilter(maxHeaderSize.size.bytes.toInt).andThen(factory)
+      override def make(maxHeaderSize: hparam.MaxHeaderSize, maxErrResponseSize: Headers.param.MaxErrResponseSize,
+        factory: ServiceFactory[Request, Response]): ServiceFactory[Request, Response] =
+        clientFilter(maxHeaderSize.size.bytes.toInt, maxErrResponseSize.size.bytes.toInt).andThen(factory)
     }
 
   case class FramingException(reason: String) extends ProtocolException(reason)
