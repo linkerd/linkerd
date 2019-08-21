@@ -46,56 +46,61 @@ b5VoYLNsdvZhqjVFTrYNEuhTJFYCF7jAiZLYvYm0C99BqcJnJPl7JjWynoNHNKw3
   val authbuf = Buf.Utf8("""{"token":"foo"}""")
   val concurrencyLoad = 100
 
-  case class stubService(
-    val authStatus: Status,
-    authContent: Buf,
-    val reqStatus: Status = Status.Ok
-  ) {
+  case class AuthService(authStatus: Status, authContent: Buf) {
     @volatile var nextAuthStatus = authStatus
-    @volatile var nextReqStatus = reqStatus
-
     @volatile var auths = 0
-    @volatile var requests = 0
 
     def service() =
       Service.mk[Request, Response] { req =>
-        val rsp =
           if (req.path == loginPath) {
             assert(req.contentString == authRequest.jwt)
             auths += 1
             val r = Response(nextAuthStatus)
             nextAuthStatus = authStatus
             r.content = authContent
-            r
+            Future.value(r)
           } else {
-            requests += 1
-            val r = Response(nextReqStatus)
-            nextReqStatus = reqStatus
-            r
+            Future.exception(new RuntimeException("incorrect path"))
           }
-
-        Future.value(rsp)
       }
   }
 
+  case class ApiService(reqStatus: Status = Status.Ok) {
+    @volatile var nextReqStatus = reqStatus
+    @volatile var requests = 0
+
+    def service() =
+      Service.mk[Request, Response] { _ =>
+          requests += 1
+          val r = Response(nextReqStatus)
+          nextReqStatus = reqStatus
+          Future.value(r)
+      }
+  }
+
+
   test("auths on first request only") {
-    val stub = stubService(Status.Ok, authbuf)
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, authbuf)
+    val apiStub = ApiService()
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     val rsp1 = await(auth(Request()))
     assert(rsp1.status == Status.Ok)
-    assert(stub.auths == 1)
-    assert(stub.requests == 1)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 1)
 
     val rsp2 = await(auth(Request()))
     assert(rsp2.status == Status.Ok)
-    assert(stub.auths == 1)
-    assert(stub.requests == 2)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 2)
   }
 
   test("auths once when called repeatedly") {
-    val stub = stubService(Status.Ok, authbuf)
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, authbuf)
+    val apiStub = ApiService()
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     val responses = await(
       Future.collect(
@@ -106,118 +111,132 @@ b5VoYLNsdvZhqjVFTrYNEuhTJFYCF7jAiZLYvYm0C99BqcJnJPl7JjWynoNHNKw3
     )
 
     assert(responses.forall(_.status == Status.Ok))
-    assert(stub.auths == 1)
-    assert(stub.requests == concurrencyLoad)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == concurrencyLoad)
   }
 
   test("retries auth on Unauthorized http response") {
-    val stub = stubService(Status.Ok, authbuf)
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, authbuf)
+    val apiStub = ApiService()
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     val rsp1 = await(auth(Request()))
     assert(rsp1.status == Status.Ok)
-    assert(stub.auths == 1)
-    assert(stub.requests == 1)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 1)
 
-    stub.nextReqStatus = Status.Unauthorized
+    apiStub.nextReqStatus = Status.Unauthorized
 
     val rsp2 = await(auth(Request()))
     assert(rsp2.status == Status.Ok)
-    assert(stub.auths == 2)
-    assert(stub.requests == 3)
+    assert(authStub.auths == 2)
+    assert(apiStub.requests == 3)
   }
 
   test("fails on BadRequest http responses") {
-    val stub = stubService(Status.Ok, authbuf, Status.BadRequest)
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, authbuf)
+    val apiStub = ApiService(Status.BadRequest)
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     val rsp1 = await(auth(Request()))
     assert(rsp1.status == Status.BadRequest)
-    assert(stub.auths == 1)
-    assert(stub.requests == 1)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 1)
 
     val rsp2 = await(auth(Request()))
     assert(rsp2.status == Status.BadRequest)
-    assert(stub.auths == 1)
-    assert(stub.requests == 2)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 2)
   }
 
   test("throws UnauthorizedResponse on subsequent Unauthorized auth failure") {
-    val stub = stubService(Status.Ok, authbuf, Status.Ok)
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, authbuf)
+    val apiStub = ApiService()
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     val rsp1 = await(auth(Request()))
     assert(rsp1.status == Status.Ok)
-    assert(stub.auths == 1)
-    assert(stub.requests == 1)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 1)
 
-    stub.nextReqStatus = Status.Unauthorized
-    stub.nextAuthStatus = Status.Unauthorized
+    apiStub.nextReqStatus = Status.Unauthorized
+    authStub.nextAuthStatus = Status.Unauthorized
 
     assertThrows[Authenticator.UnauthorizedResponse] {
       await(auth(Request()))
     }
-    assert(stub.auths == 2)
-    assert(stub.requests == 2)
+    assert(authStub.auths == 2)
+    assert(apiStub.requests == 2)
   }
 
   test("retries and fails on repeated Unauthorized http responses") {
-    val stub = stubService(Status.Ok, authbuf, Status.Unauthorized)
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, authbuf)
+    val apiStub = ApiService(Status.Unauthorized)
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     assertThrows[Authenticator.UnauthorizedResponse] {
       await(auth(Request()))
     }
-    assert(stub.auths == 1)
-    assert(stub.requests == 1)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 1)
 
     assertThrows[Authenticator.UnauthorizedResponse] {
       await(auth(Request()))
     }
-    assert(stub.auths == 2)
-    assert(stub.requests == 3)
+    assert(authStub.auths == 2)
+    assert(apiStub.requests == 3)
   }
 
   test("throws UnexpectedResponse with BadRequest auth response") {
-    val stub = stubService(Status.BadRequest, authbuf)
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.BadRequest, authbuf)
+    val apiStub = ApiService()
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     assertThrows[Api.UnexpectedResponse] {
       await(auth(Request()))
     }
 
-    assert(stub.auths == 1)
-    assert(stub.requests == 0)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 0)
   }
 
   test("throws Failure with unexpected auth response") {
-    val stub = stubService(Status.Ok, Buf.Utf8("""{"unexpected":"foo"}"""))
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, Buf.Utf8("""{"unexpected":"foo"}"""))
+    val apiStub = ApiService()
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     assertThrows[Failure] {
       await(auth(Request()))
     }
 
-    assert(stub.auths == 1)
-    assert(stub.requests == 0)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 0)
   }
 
   test("throws JsonParseException with bad auth response") {
-    val stub = stubService(Status.Ok, Buf.Utf8("bad auth"))
-    val auth = new Authenticator.Authenticated(stub.service(), authRequest)
+    val authStub = AuthService(Status.Ok, Buf.Utf8("bad auth"))
+    val apiStub = ApiService()
+
+    val auth = new Authenticator.Authenticated(authStub.service(), authRequest, apiStub.service())
 
     assertThrows[JsonParseException] {
       await(auth(Request()))
     }
 
-    assert(stub.auths == 1)
-    assert(stub.requests == 0)
+    assert(authStub.auths == 1)
+    assert(apiStub.requests == 0)
   }
 
   test("Authenticated creation fails on bad loginEndpoint") {
-    assertThrows[java.net.URISyntaxException] {
+    assertThrows[java.net.MalformedURLException] {
       val secret = MarathonSecret(Some("bad endpoint"),Some(privateKeyRSA), Some("RS256"), Some("fakeuid") )
-      MarathonSecret.mkAuthenticated(secret, StackParams.empty)
+      MarathonSecret.mkAuthenticated(ApiService().service(), secret, StackParams.empty)
 
     }
   }

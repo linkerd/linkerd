@@ -28,7 +28,7 @@ object Authenticator {
   private[this] val missingTokenException = Failure("missing token")
   private[this] val missingTokenExceptionF = Future.exception(missingTokenException)
 
-  class Authenticated(client: Api.Client, authRequest: AuthRequest) extends Api.Client {
+  class Authenticated(authClient: Api.Client, authRequest: AuthRequest, client: Api.Client) extends Api.Client {
 
     private[this] val log = Logger.get(getClass.getName)
     private[this] sealed trait State
@@ -65,8 +65,8 @@ object Authenticator {
     }
 
     private[this] def issueAuthed(req: http.Request, token: String): Future[http.Response] = {
+      log.debug(s"Issuing authenticated request to ${req.path}")
       req.headerMap.set("Authorization", s"token=$token")
-      log.debug(s"Issuing authenticated request $req")
       client(req).flatMap {
         case rsp if rsp.status == http.Status.Unauthorized =>
           Future.exception(UnauthorizedResponse(rsp))
@@ -78,21 +78,21 @@ object Authenticator {
       val tokReq = http.Request(http.Method.Post, authRequest.path)
       tokReq.setContentTypeJson()
       tokReq.setContentString(authRequest.jwt)
-      log.debug(s"Issuing token request $tokReq")
+      log.debug(s"Issuing token request to ${authRequest.path}")
 
-      client(tokReq).flatMap {
+      authClient(tokReq).flatMap {
         case rsp if rsp.status == http.Status.Ok =>
-          log.debug(s"Got successful token response $rsp")
+          log.debug(s"Got successful token response from ${authRequest.path}")
           Api.readJson[AuthToken](rsp.content) match {
             case Return(AuthToken(Some(token))) => Future.value(token)
             case Return(AuthToken(None)) => missingTokenExceptionF
             case Throw(e) => Future.exception(e)
           }
         case rsp if rsp.status == http.Status.Unauthorized =>
-          log.debug(s"Got Unauthorized token response $rsp")
+          log.debug(s"Got Unauthorized token response from ${authRequest.path}")
           Future.exception(UnauthorizedResponse(rsp))
         case rsp =>
-          log.debug(s"Got unexpected token response $rsp")
+          log.debug(s"Got unexpected token response from ${authRequest.path}. Status: ${rsp.statusCode}")
           Future.exception(Api.UnexpectedResponse(rsp))
       }.onFailure(log.error(_, "Obtaining a token failed"))
     }
@@ -102,11 +102,13 @@ object Authenticator {
         case Init =>
           if (state.compareAndSet(Init, Closed)) {
             client.close(d)
+            authClient.close(d)
           } else close(d)
         case s0@Authenticating(tokenF) =>
           if (state.compareAndSet(s0, Closed)) {
             tokenF.raise(closedException)
             client.close(d)
+            authClient.close(d)
           } else close(d)
         case Closed => Future.Unit
       }

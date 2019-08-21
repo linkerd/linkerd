@@ -12,7 +12,7 @@ import io.buoyant.config.types.Port
 import io.buoyant.marathon.v2.Api
 import io.buoyant.namer.marathon.MarathonConfig.SetHost
 import io.buoyant.namer.{NamerConfig, NamerInitializer}
-import java.net.URI
+import java.net.URL
 import scala.util.control.NoStackTrace
 import scala.util.Random
 
@@ -62,6 +62,8 @@ case class MarathonSecret(
  *   - https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL
  */
 object MarathonSecret {
+  val log = Logger.get(getClass.getName)
+
   val DCOSEnvKey = "DCOS_SERVICE_ACCOUNT_CREDENTIAL"
   val basicEnvKey = "MARATHON_HTTP_AUTH_CREDENTIAL"
 
@@ -74,23 +76,21 @@ object MarathonSecret {
       throw Invalid(s)
   }
 
-  def mkAuthenticated(s: MarathonSecret, params: Stack.Params): Authenticator.Authenticated = s match {
+  def mkAuthenticated(client: Api.Client, s: MarathonSecret, params: Stack.Params): Authenticator.Authenticated = s match {
     case MarathonSecret(Some(loginEndpoint), Some(privateKey), Some("RS256"), Some(uid)) =>
-      val loginUrl = new URI(loginEndpoint)
-
+      val loginUrl = new URL(loginEndpoint)
       val port = loginUrl.getPort
-
-      val dest = if (port == -1) s"${loginUrl.getHost}:80" else s"${loginUrl.getHost}:$port"
-      val authRequest = Authenticator.AuthRequest(loginUrl.getPath, uid, privateKey)
-
-      val client = Http.client
+      val dest = if (port == -1) s"${loginUrl.getHost}:${loginUrl.getDefaultPort}" else s"${loginUrl.getHost}:$port"
+      val path = loginUrl.getPath
+      val authRequest = Authenticator.AuthRequest(path, uid, privateKey)
+      val authClient = Http.client
         .withParams(params)
-        .withLabel("auth-client")
+        .withLabel("marathon-auth-client")
         .withTracer(NullTracer)
         .filtered(SetHost(loginUrl.getHost))
         .newService(dest)
-
-      new Authenticator.Authenticated(client, authRequest)
+      log.debug(s"Using endpoint $dest$path to obtain Marathon auth token")
+      new Authenticator.Authenticated(authClient, authRequest, client)
 
     case s =>
       throw Invalid(s)
@@ -173,10 +173,9 @@ case class MarathonConfig(
 
     val service = (MarathonSecret.load(), sys.env.get(MarathonSecret.basicEnvKey)) match {
       case (Some(secret), _) =>
-        log.debug(s"Using $secret for marathon authentication")
-        MarathonSecret.mkAuthenticated(secret, params)
+        MarathonSecret.mkAuthenticated(client, secret, params)
       case (None, Some(http_auth_token)) =>
-        log.debug(s"Using http token [$http_auth_token]")
+        log.debug(s"Using http token for Marathon auth")
         val filter = new BasicAuthenticatorFilter(http_auth_token)
         filter.andThen(client)
       case (None, None) =>
