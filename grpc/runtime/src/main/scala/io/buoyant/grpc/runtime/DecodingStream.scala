@@ -75,6 +75,9 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
    * Read from the h2 stream until the next message is fully buffered.
    */
   private[this] def read(s0: Buffer): Future[(Buffer, Try[Stream.Releasable[T]])] = {
+
+    def isEmptyEos(f: h2.Frame.Data) = f.buf.readableBytes() == 0 && f.isEnd
+
     frames.read().transform {
       case Throw(rst: h2.Reset) => Future.exception(GrpcStatus.fromReset(rst))
       case Throw(e) => Future.exception(e)
@@ -82,6 +85,9 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
         val status = getStatus(t)
         t.release()
         Future.exception(status)
+      case Return(f: h2.Frame.Data) if isEmptyEos(f) =>
+        f.release()
+        Future.value(s0 -> Throw(GrpcStatus.Ok()))
       case Return(f: h2.Frame.Data) =>
         decodeFrame(s0, f) match {
           case Decoded(s1, Some(msg)) => Future.value(s1 -> Return(msg))
