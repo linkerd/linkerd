@@ -71,6 +71,15 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       Future.const(v)
   }
 
+  private[this] def clearUndecodedData(state: Buffer, compositeBuf: CompositeByteBuf) = {
+    // we check how many bytes we have in the composite buffer
+    val bytesLeftUnconsumed = compositeBuf.readableBytes()
+    // we then construct a releaser that will release the frames that have not been decoded
+    state.releaser.consume(bytesLeftUnconsumed).releasable()._2()
+    // and lastly we skip the unread bytes from the composite buffer and discard them
+    skipAndDiscardRead(bytesLeftUnconsumed)
+  }
+
   /**
    * Read from the h2 stream until the next message is fully buffered.
    */
@@ -86,8 +95,10 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
         decodeFrame(s0, f) match {
           case Decoded(s1, Some(msg)) => Future.value(s1 -> Return(msg))
           case Decoded(s1, None) =>
-            if (f.isEnd) Future.value(s1 -> Throw(GrpcStatus.Ok()))
-            else read(s1)
+            if (f.isEnd) {
+              clearUndecodedData(s1, buf)
+              Future.value(s1 -> Throw(GrpcStatus.Ok()))
+            } else read(s1)
         }
     }
   }
@@ -153,6 +164,11 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       Decoded(s0, None)
     }
 
+  private[this] def skipAndDiscardRead(numBytesToSkip: Int) = {
+    buf.skipBytes(numBytesToSkip)
+    buf.discardReadComponents()
+  }
+
   private[this] def decodeMessage(
     hdr: Header,
     releaser: Releaser
@@ -165,9 +181,7 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       val nioBuf = buf.nioBuffer(buf.readerIndex(), hdr.size)
       val msg = decoder(nioBuf)
       // Advance the reader index past the message and release any fully read components.
-      buf.skipBytes(hdr.size)
-      buf.discardReadComponents()
-
+      skipAndDiscardRead(hdr.size)
       Decoded(Buffer(None, nextReleaser), Some(Stream.Releasable(msg, release)))
     } else Decoded(Buffer(Some(hdr), releaser), None)
 }

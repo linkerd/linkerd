@@ -231,4 +231,50 @@ class DecodingStreamTest extends FunSuite {
 
   }
 
+  test("release frames that have not been decoded to a message on stream end") {
+    val streamHarness = DecodingStreamHarness()
+    import streamHarness._
+
+    // We have three frames, and two messages
+    // The first message is complete while
+    // the second one is only partial - it will
+    // never get decoded
+    val frame1 = FrameHarness(
+      Array[Byte](0, 0, 0, 0, 5, 1, 2, 3, 4, 5)
+    )
+    val frame2 = FrameHarness(Array[Byte](0, 0, 0, 0, 4, 1, 2))
+    val frame3 = FrameHarness(Array[Byte](3), last = true)
+
+
+    val recvM1= stream.recv()
+    assert(!recvM1.isDefined)
+
+    assert(frameQ.offer(frame1.frame))
+    eventually {
+      assert(recvM1.isDefined)
+    }
+    val Stream.Releasable(v1, doRel1) = await(recvM1)
+    assert(v1 == 5)
+    assert(frame1.released == false)
+    assert(decodedLength == 5)
+
+    assert(frameQ.offer(frame2.frame))
+    assert(frameQ.offer(frame3.frame))
+
+    val recvM2_1= stream.recv()
+
+    assert(await(recvM2_1.liftToTry) == Throw(GrpcStatus.Ok()))
+    assert(decodedLength == 5)
+
+    await(doRel1())
+    eventually {
+      assert(frame1.released == true)
+    }
+
+    eventually {
+      assert(frame2.released == true)
+    }
+
+  }
+
 }
