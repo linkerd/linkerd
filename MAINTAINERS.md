@@ -4,6 +4,7 @@ The Linkerd maintainers are:
 * Alex Leong <alex@buoyant.io> @adleong (super-maintainer)
 * Risha Mars <mars@buoyant.io> @rmars: Admin UI
 * William Morgan <william@buoyant.io> @wmorgan: docs and governance
+* Adam Christian <adam@buoyant.io> @admc: docs and governance
 * Borys Pierov <pierovbg@ncbi.nlm.nih.gov> @Ashald: Consul integration
 * Zack Angelo <zack.angelo@bigcommerce.com> @zackangelo: H2 codec
 * Christopher Taylor <ccmtaylor+linkerd@gmail.com> @ccmtaylor: DNS SRV namer
