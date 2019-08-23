@@ -1,3 +1,23 @@
+## 1.6.4 2019-07-01
+Linkerd 1.6.4 updates the finagle version to 19.5.1 and adds support for
+configuring message response sizes from when using consul.  
+              
+ConsulInitializer.scala now includes the parameters below which are used 
+to configure the Http.client object that is instantiated in the `newNamer` 
+method.
+              
+Parameter Name | Default Value | Description
+-----------------|---------------|-------------
+`maxHeadersKB` | 8 | The maximum size of all headers in an HTTP message created by the Consul client
+`maxInitialLineKB` | 4 | The maximum size of an initial HTTP message line created by the Consul client
+`maxRequestKB` | 5120 | The maximum size of a non-chunked HTTP request payload sent by the Consul client
+`maxResponseKB` | 5120 | The maximum size of a non-chunked HTTP response payload received by the Consul client
+              
+Full release notes:
+* Upgrade to finagle 19.5.1 [#2284](https://github.com/linkerd/linkerd/pull/2284)
+* Support configurable response body sizes from consul [#2286](https://github.com/linkerd/linkerd/issues/2286) 
+* Log inbound requests to namerd [#2275](https://github.com/linkerd/linkerd/pull/2275) 
+
 ## 1.6.3 2019-05-10
 Linkerd 1.6.3 includes a bug fix for Namerd's `io.l5d.k8s` dtab storage module. This fix exposes
 HTTP request and response metrics for the Kubernetes API client used to store dtabs. Namerd also
