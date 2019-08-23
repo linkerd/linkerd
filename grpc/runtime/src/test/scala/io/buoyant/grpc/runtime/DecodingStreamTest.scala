@@ -147,31 +147,88 @@ class DecodingStreamTest extends FunSuite {
     )
     val frame2 = FrameHarness(Array.emptyByteArray, last = true)
 
-    val recvF1= stream.recv()
-    assert(!recvF1.isDefined)
+    val recvM1= stream.recv()
+    assert(!recvM1.isDefined)
 
     assert(frameQ.offer(frame1.frame))
     eventually {
-      assert(recvF1.isDefined)
+      assert(recvM1.isDefined)
     }
-    val Stream.Releasable(v0, doRel1) = await(recvF1)
-    assert(v0 == 5)
+    val Stream.Releasable(v1, doRel1) = await(recvM1)
+    assert(v1 == 5)
     assert(frame1.released == false)
     assert(decodedLength == 5)
     
-    val recvF2 = stream.recv()
-    assert(!recvF2.isDefined)
+    val recvM2 = stream.recv()
+    assert(!recvM2.isDefined)
 
     assert(frameQ.offer(frame2.frame))
     eventually {
-      assert(recvF2.isDefined)
+      assert(recvM2.isDefined)
     }
-    assert(await(recvF2.liftToTry) == Throw(GrpcStatus.Ok()))
+    assert(await(recvM2.liftToTry) == Throw(GrpcStatus.Ok()))
     assert(decodedLength == 5)
 
     await(doRel1())
     eventually {
       assert(frame1.released == true)
     }
+    eventually {
+      assert(frame2.released == true)
+    }
   }
+
+
+  test("release empty midstream frames") {
+    val streamHarness = DecodingStreamHarness()
+    import streamHarness._
+
+    // We have two frames, last of which is empty
+    val frame1 = FrameHarness(
+      Array[Byte](0, 0, 0, 0, 5, 1, 2, 3, 4, 5)
+    )
+    val frame2 = FrameHarness(Array.emptyByteArray)
+    val frame3 = FrameHarness(Array[Byte](0, 0, 0, 0, 2, 1, 2), last = true)
+
+    val recvM1= stream.recv()
+    assert(!recvM1.isDefined)
+
+    assert(frameQ.offer(frame1.frame))
+    eventually {
+      assert(recvM1.isDefined)
+    }
+    val Stream.Releasable(v1, doRel1) = await(recvM1)
+    assert(v1 == 5)
+    assert(frame1.released == false)
+    assert(decodedLength == 5)
+
+    assert(frameQ.offer(frame2.frame))
+
+    val recvM2= stream.recv()
+    assert(!recvM2.isDefined)
+
+    assert(frameQ.offer(frame3.frame))
+    eventually {
+      assert(recvM2.isDefined)
+    }
+    val Stream.Releasable(v2, doRel2) = await(recvM2)
+    assert(v2 == 2)
+    assert(frame3.released == false)
+    assert(decodedLength == 7)
+
+
+    await(doRel1())
+    eventually {
+      assert(frame1.released == true)
+    }
+    await(doRel2())
+    eventually {
+      assert(frame3.released == true)
+    }
+    eventually {
+      assert(frame2.released == true)
+    }
+
+  }
+
 }

@@ -75,9 +75,6 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
    * Read from the h2 stream until the next message is fully buffered.
    */
   private[this] def read(s0: Buffer): Future[(Buffer, Try[Stream.Releasable[T]])] = {
-
-    def isEmptyEos(f: h2.Frame.Data) = f.buf.readableBytes() == 0 && f.isEnd
-
     frames.read().transform {
       case Throw(rst: h2.Reset) => Future.exception(GrpcStatus.fromReset(rst))
       case Throw(e) => Future.exception(e)
@@ -85,9 +82,6 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
         val status = getStatus(t)
         t.release()
         Future.exception(status)
-      case Return(f: h2.Frame.Data) if isEmptyEos(f) =>
-        f.release()
-        Future.value(s0 -> Throw(GrpcStatus.Ok()))
       case Return(f: h2.Frame.Data) =>
         decodeFrame(s0, f) match {
           case Decoded(s1, Some(msg)) => Future.value(s1 -> Return(msg))
@@ -129,28 +123,35 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
   private[this] def decodeFrame(
     s0: Buffer,
     frame: h2.Frame.Data
-  ): Decoded = s0 match {
+  ): Decoded =
+    if (frame.buf.readableBytes() > 0)
+      s0 match {
+        case Buffer(None, releaser0) =>
+          // We don't want the composite buf to be able to release this buf component until the frame
+          // has been released, so we call retain() here.  This component should be fully released once
+          // both the frame has been released and when the composite buf has fully read and discarded
+          // this component.
+          buf.addComponent(true, frame.buf.retain())
+          val releaser = releaser0.track(frame)
+          decodeHeader(buf) match {
+            case None => Decoded(Buffer(None, releaser), None)
+            case Some(hdr) =>
+              val r = releaser.consume(GrpcFrameHeaderSz)
+              decodeMessage(hdr, r)
+          }
 
-    case Buffer(None, releaser0) =>
-      // We don't want the composite buf to be able to release this buf component until the frame
-      // has been released, so we call retain() here.  This component should be fully released once
-      // both the frame has been released and when the composite buf has fully read and discarded
-      // this component.
-      buf.addComponent(true, frame.buf.retain())
-      val releaser = releaser0.track(frame)
-      decodeHeader(buf) match {
-        case None => Decoded(Buffer(None, releaser), None)
-        case Some(hdr) =>
-          val r = releaser.consume(GrpcFrameHeaderSz)
-          decodeMessage(hdr, r)
+        case Buffer(Some(hdr), releaser) =>
+          // We've already decoded a header, but not its message. Try to
+          // decode the message.
+          buf.addComponent(true, frame.buf.retain())
+          decodeMessage(hdr, releaser.track(frame))
       }
-
-    case Buffer(Some(hdr), releaser) =>
-      // We've already decoded a header, but not its message. Try to
-      // decode the message.
-      buf.addComponent(true, frame.buf.retain())
-      decodeMessage(hdr, releaser.track(frame))
-  }
+    else {
+      // nothing too try to decode if frame is empty
+      // so just release it right away
+      frame.release()
+      Decoded(s0, None)
+    }
 
   private[this] def decodeMessage(
     hdr: Header,
