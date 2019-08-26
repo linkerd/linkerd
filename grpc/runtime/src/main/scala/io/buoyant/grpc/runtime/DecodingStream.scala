@@ -71,6 +71,15 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       Future.const(v)
   }
 
+  private[this] def clearUndecodedData(state: Buffer, compositeBuf: CompositeByteBuf) = {
+    // we check how many bytes we have in the composite buffer
+    val bytesLeftUnconsumed = compositeBuf.readableBytes()
+    // we then construct a releaser that will release the frames that have not been decoded
+    state.releaser.consume(bytesLeftUnconsumed).releasable()._2()
+    // and lastly we skip the unread bytes from the composite buffer and discard them
+    skipAndDiscardRead(bytesLeftUnconsumed)
+  }
+
   /**
    * Read from the h2 stream until the next message is fully buffered.
    */
@@ -86,8 +95,10 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
         decodeFrame(s0, f) match {
           case Decoded(s1, Some(msg)) => Future.value(s1 -> Return(msg))
           case Decoded(s1, None) =>
-            if (f.isEnd) Future.value(s1 -> Throw(GrpcStatus.Ok()))
-            else read(s1)
+            if (f.isEnd) {
+              clearUndecodedData(s1, buf)
+              Future.value(s1 -> Throw(GrpcStatus.Ok()))
+            } else read(s1)
         }
     }
   }
@@ -123,27 +134,39 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
   private[this] def decodeFrame(
     s0: Buffer,
     frame: h2.Frame.Data
-  ): Decoded = s0 match {
+  ): Decoded =
+    if (frame.buf.readableBytes() > 0)
+      s0 match {
+        case Buffer(None, releaser0) =>
+          // We don't want the composite buf to be able to release this buf component until the frame
+          // has been released, so we call retain() here.  This component should be fully released once
+          // both the frame has been released and when the composite buf has fully read and discarded
+          // this component.
+          buf.addComponent(true, frame.buf.retain())
+          val releaser = releaser0.track(frame)
+          decodeHeader(buf) match {
+            case None => Decoded(Buffer(None, releaser), None)
+            case Some(hdr) =>
+              val r = releaser.consume(GrpcFrameHeaderSz)
+              decodeMessage(hdr, r)
+          }
 
-    case Buffer(None, releaser0) =>
-      // We don't want the composite buf to be able to release this buf component until the frame
-      // has been released, so we call retain() here.  This component should be fully released once
-      // both the frame has been released and when the composite buf has fully read and discarded
-      // this component.
-      buf.addComponent(true, frame.buf.retain())
-      val releaser = releaser0.track(frame)
-      decodeHeader(buf) match {
-        case None => Decoded(Buffer(None, releaser), None)
-        case Some(hdr) =>
-          val r = releaser.consume(GrpcFrameHeaderSz)
-          decodeMessage(hdr, r)
+        case Buffer(Some(hdr), releaser) =>
+          // We've already decoded a header, but not its message. Try to
+          // decode the message.
+          buf.addComponent(true, frame.buf.retain())
+          decodeMessage(hdr, releaser.track(frame))
       }
+    else {
+      // nothing too try to decode if frame is empty
+      // so just release it right away
+      frame.release()
+      Decoded(s0, None)
+    }
 
-    case Buffer(Some(hdr), releaser) =>
-      // We've already decoded a header, but not its message. Try to
-      // decode the message.
-      buf.addComponent(true, frame.buf.retain())
-      decodeMessage(hdr, releaser.track(frame))
+  private[this] def skipAndDiscardRead(numBytesToSkip: Int) = {
+    buf.skipBytes(numBytesToSkip)
+    buf.discardReadComponents()
   }
 
   private[this] def decodeMessage(
@@ -158,9 +181,7 @@ private[runtime] trait DecodingStream[T] extends Stream[T] {
       val nioBuf = buf.nioBuffer(buf.readerIndex(), hdr.size)
       val msg = decoder(nioBuf)
       // Advance the reader index past the message and release any fully read components.
-      buf.skipBytes(hdr.size)
-      buf.discardReadComponents()
-
+      skipAndDiscardRead(hdr.size)
       Decoded(Buffer(None, nextReleaser), Some(Stream.Releasable(msg, release)))
     } else Decoded(Buffer(Some(hdr), releaser), None)
 }
