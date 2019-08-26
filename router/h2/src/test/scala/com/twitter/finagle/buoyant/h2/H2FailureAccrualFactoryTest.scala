@@ -8,6 +8,8 @@ import com.twitter.finagle.service.ResponseClass
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.finagle.{FactoryToService, Service, ServiceFactory, Status => FStatus}
 import com.twitter.util.{Duration, Future, MockTimer, Return}
+import io.buoyant.router.DiscardingFactoryToService
+import io.buoyant.router.DiscardingFactoryToService.RequestDiscarder
 import io.buoyant.router.context.h2.H2ClassifierCtx
 import io.buoyant.test.FunSuite
 import java.util
@@ -42,7 +44,7 @@ class H2FailureAccrualFactoryTest extends FunSuite {
       stats
     )
 
-    val svc = new FactoryToService(fa)
+    val svc = new DiscardingFactoryToService(RequestDiscarder[Request](_ => ()), fa)
 
     Contexts.local.let(H2ClassifierCtx, param.H2Classifier(classifier)) {
       for (_ <- 1 to 4) {

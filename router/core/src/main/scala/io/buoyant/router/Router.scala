@@ -12,6 +12,7 @@ import com.twitter.finagle.service.{FailFastFactory, Retries, StatsFilter}
 import com.twitter.finagle.stack.Endpoint
 import com.twitter.finagle.stats.DefaultStatsReceiver
 import com.twitter.util.{Future, Time}
+import io.buoyant.router.DiscardingFactoryToService.RequestDiscarder
 import io.buoyant.router.context._
 
 /**
@@ -390,21 +391,26 @@ object StackRouter {
    * We effectively treat the path stack as application-level and the
    * bound and client stacks as session-level.
    */
-  private def factoryToService[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
-    new Stack.Module0[ServiceFactory[Req, Rsp]] {
-      val role = FactoryToService.role
+  private def factoryToService[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] = {
+    implicit val discarderParam = RequestDiscarder.param[Req]
+    new Stack.Module1[RequestDiscarder[Req], ServiceFactory[Req, Rsp]] {
+      val role = DiscardingFactoryToService.role
       val description = "Ensures that underlying service factory is properly provisioned for each request"
-      def make(next: ServiceFactory[Req, Rsp]) = {
+
+      def make(discarder: RequestDiscarder[Req], next: ServiceFactory[Req, Rsp]) = {
         // To reiterate the comment in finagle's FactoryToService:
         // this is too complicated.
-        val service = Future.value(new FactoryToService(next) {
-          override def close(deadline: Time) = Future.Unit
-        })
+        val service = Future.value(
+          new DiscardingFactoryToService(discarder, next) {
+            override def close(deadline: Time) = Future.Unit
+          }
+        )
         new ServiceFactoryProxy(next) {
           override def apply(conn: ClientConnection) = service
         }
       }
     }
+  }
 
   private def failureRecording[Req, Rsp]: Stackable[ServiceFactory[Req, Rsp]] =
     new Stack.Module0[ServiceFactory[Req, Rsp]] {

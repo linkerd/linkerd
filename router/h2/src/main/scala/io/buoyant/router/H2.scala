@@ -1,6 +1,6 @@
 package io.buoyant.router
 
-import com.twitter.finagle.buoyant.h2.{H2FailureAccrualFactory, Headers, Request, Response, param => h2param}
+import com.twitter.finagle.buoyant.h2.{H2FailureAccrualFactory, Headers, Request, Response, param => h2param, Stream}
 import com.twitter.finagle.buoyant.{H2 => FinagleH2}
 import com.twitter.finagle.client.StackClient
 import com.twitter.finagle.{param, _}
@@ -14,6 +14,7 @@ import io.buoyant.router.context.h2.H2ClassifierCtx
 import io.buoyant.router.h2.{ClassifiedRetries => H2ClassifiedRetries, _}
 import io.buoyant.router.http.{ForwardClientCertFilter, MaxCallDepthFilter}
 import io.buoyant.router.H2Instances._
+import io.buoyant.router.DiscardingFactoryToService.RequestDiscarder
 
 object H2 extends Router[Request, Response]
   with Client[Request, Response]
@@ -32,6 +33,13 @@ object H2 extends Router[Request, Response]
   }
 
   object Router {
+
+    val requestDiscarder = RequestDiscarder[Request](x => {
+      Stream.readToEnd(x.stream)
+      ()
+    })
+    implicit val discarderParam = RequestDiscarder.param[Request]
+
     val pathStack: Stack[ServiceFactory[Request, Response]] = {
       val stk = h2.ViaHeaderFilter.module +: h2.ClassifierFilter.module +:
         StackRouter.newPathStack[Request, Response]
@@ -54,7 +62,7 @@ object H2 extends Router[Request, Response]
     }
 
     val defaultParams = StackRouter.defaultParams +
-      param.ProtocolLibrary("h2")
+      param.ProtocolLibrary("h2") + requestDiscarder
   }
 
   case class Router(
