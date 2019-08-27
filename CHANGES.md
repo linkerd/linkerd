@@ -1,3 +1,23 @@
+## 1.6.5 2019-08-27
+
+Full release notes:
+
+* Enable streaming in Consul HTTP client to allow for arbitrarily large
+responses from Consul
+* Updates Linkerd's JDK version for better container support
+* Adds support for including metadata from Consul responses into Namerd's
+response
+* Removes `maxRequestKB` and `maxResponseKB` from Linkerd's configuration
+options in favor of `streamAfterContentLengthKB`
+* Introduces a router parameter called `maxCallDepth` that prevents infinite 
+proxy routing
+* Fixes an issue where Linkerd cannot connect to SNI servers when using Namerd
+* Fixes a number of memory leaks in Linkerd's HTTP/2 module 
+* Adds support for limiting the maximum size of the `l5d-err` header values by
+using `maxErrResponseKB` in an HTTP router
+* Fixes an issue were some `socketOptions` were being ignored when partially
+configured 
+
 ## 1.6.4 2019-07-01
 Linkerd 1.6.4 updates the finagle version to 19.5.1 and adds support for
 configuring message response sizes from when using consul.  
