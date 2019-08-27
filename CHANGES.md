@@ -1,3 +1,34 @@
+## 1.7.0 2019-08-27
+Linkerd 1.7.0 includes a number of memory leak fixes for both linkerd as
+well ass `grpc-runtime` library. Additionally this release includes
+improvements for SNI-enabled tls communication, support for arbitrarily
+larger messages in HTTP/1 and HTTP/2 as well as improved container
+support.
+
+
+Full release notes:
+* Enable streaming in Consul HTTP client to allow for arbitrarily large
+responses from Consul
+* Updates Linkerd's JDK version for better container support
+* Adds support for including metadata from Consul responses into Namerd's
+response
+* Removes `maxRequestKB` and `maxResponseKB` from Linkerd's configuration
+options in favor of `streamAfterContentLengthKB`
+* Introduces a router parameter called `maxCallDepth` that prevents infinite
+proxy routing
+* Fixes an issue where Linkerd cannot connect to SNI servers that are addressed
+via ipv4/6
+* Fixes a number of direct and heap memory leaks in Linkerd's HTTP/2 module
+* Fixes an issue causing users of `grpc-runtime` library to experience native
+memory leaks
+* Adds support for limiting the maximum size of the `l5d-err` header values by
+using `maxErrResponseKB` in an HTTP router
+* Fixes an issue were some `socketOptions` were being ignored when partially
+configured
+
+A special thank you to [Fantayeneh](https://github.com/fantayeneh) for their
+awesome work on [#2315](https://github.com/linkerd/linkerd/pull/2315)
+
 ## 1.6.4 2019-07-01
 Linkerd 1.6.4 updates the finagle version to 19.5.1 and adds support for
 configuring message response sizes from when using consul.  
