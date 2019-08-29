@@ -1,3 +1,42 @@
+## 1.7.0 2019-08-27
+Linkerd 1.7.0 includes a number of memory leak fixes for Linkerd and its
+underlying `grpc-runtime` module. This release includes improvements for
+SNI-enabled TLS communication, support for streaming arbitrarily large HTTP
+requests and responses in HTTP/1 and HTTP/2 as well an upgraded JDK for
+improved Docker container support.
+
+A special thank you to [Fantayeneh](https://github.com/fantayeneh) for their
+awesome work on [#2315](https://github.com/linkerd/linkerd/pull/2315)
+
+Full release notes:
+* **Breaking Change**
+  * Removes `maxRequestKB` and `maxResponseKB` from Linkerd's configuration
+    options in favor of `streamAfterContentLengthKB`. These parameters were
+    primarily intended to limit the amount of memory Linkerd used when buffering
+    requests. The streamAfterContentLengthKB parameter achieves this more
+    efficiently by streaming large messages instead of buffering them.
+
+* Consul
+  * Enables streaming in the HTTP client used in the `io.l5d.consul` namer
+    to allow for arbitrarily large responses from Consul
+  * Support for the inclusion of Consul response service and node metadata
+    in Namerd 'io.l5d.mesh and 'io.l5d.httpController' responses.
+* Linkerd Configuration
+  * Introduces a router parameter called `maxCallDepth` that prevents unbounded
+    cyclic proxy request routing
+  * Adds support for limiting the maximum size of `l5d-err` header values by
+    using `maxErrResponseKB` in an HTTP router
+  * Fixes an issue were some `socketOptions` were being ignored when partially
+    configured
+* TLS
+  * Fixes an issue where Linkerd can't connect to SNI servers that are addressed
+    via IPv4 and IPv6
+* HTTP/2
+  * Fixes a number of direct and heap memory leaks in Linkerd's HTTP/2 module
+  * Fixes an issue causing users of `grpc-runtime` module to experience direct
+    memory leaks
+* Updates Linkerd's JDK version for improved container support
+
 ## 1.6.4 2019-07-01
 Linkerd 1.6.4 updates the finagle version to 19.5.1 and adds support for
 configuring message response sizes from when using consul.  
