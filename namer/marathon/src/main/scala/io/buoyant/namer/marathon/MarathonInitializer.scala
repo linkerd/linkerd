@@ -6,6 +6,7 @@ import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.io.Buf
+import com.twitter.logging.Logger
 import com.twitter.util.{Duration, Return, Throw}
 import io.buoyant.config.types.Port
 import io.buoyant.marathon.v2.Api
@@ -59,6 +60,8 @@ case class MarathonSecret(
  *   - https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL
  */
 object MarathonSecret {
+  val log = Logger.get(getClass.getName)
+
   val DCOSEnvKey = "DCOS_SERVICE_ACCOUNT_CREDENTIAL"
   val basicEnvKey = "MARATHON_HTTP_AUTH_CREDENTIAL"
 
@@ -85,6 +88,7 @@ object MarathonSecret {
 object MarathonConfig {
   private val DefaultHost = "marathon.mesos"
   private val DefaultPrefix = Path.read("/io.l5d.marathon")
+  val log = Logger.get(getClass.getName)
 
   // Default TTL (in milliseconds)
   private val DefaultTtlMs = 5000
@@ -92,7 +96,7 @@ object MarathonConfig {
   // Default range by which to jitter the TTL (also in milliseconds)
   private val DefaultJitterMs = 50
 
-  private case class SetHost(host: String) extends SimpleFilter[http.Request, http.Response] {
+  private[marathon] case class SetHost(host: String) extends SimpleFilter[http.Request, http.Response] {
     def apply(req: http.Request, service: Service[http.Request, http.Response]) = {
       req.host = host
       service(req)
@@ -135,6 +139,7 @@ case class MarathonConfig(
     val host0 = host.getOrElse(DefaultHost)
     val port0 = port.map(_.port).getOrElse(80)
     val dst0 = dst.getOrElse(s"/$$/inet/$host0/$port0")
+    log.debug(s"Using Marathon client destination: $dst0")
 
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
 
@@ -150,9 +155,12 @@ case class MarathonConfig(
         val auth = MarathonSecret.mkAuthRequest(secret)
         new Authenticator.Authenticated(client, auth)
       case (None, Some(http_auth_token)) =>
+        log.debug(s"Using http token for Marathon auth")
         val filter = new BasicAuthenticatorFilter(http_auth_token)
         filter.andThen(client)
-      case (None, None) => client
+      case (None, None) =>
+        log.debug(s"No Marathon auth specified")
+        client
 
     }
 

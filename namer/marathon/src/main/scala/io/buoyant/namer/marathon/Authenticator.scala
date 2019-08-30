@@ -1,6 +1,7 @@
 package io.buoyant.namer.marathon
 
 import com.twitter.finagle.{Failure, FailureFlags, http}
+import com.twitter.logging.Logger
 import com.twitter.util.{Future, Promise, Return, Throw, Time}
 import io.buoyant.marathon.v2.Api
 import java.net.URL
@@ -30,6 +31,8 @@ object Authenticator {
   private[this] val missingTokenExceptionF = Future.exception(missingTokenException)
 
   class Authenticated(client: Api.Client, authRequest: AuthRequest) extends Api.Client {
+
+    private[this] val log = Logger.get(getClass.getName)
     private[this] sealed trait State
     private[this] object Init extends State
     private[this] case class Authenticating(token: Future[String]) extends State
@@ -64,6 +67,7 @@ object Authenticator {
     }
 
     private[this] def issueAuthed(req: http.Request, token: String): Future[http.Response] = {
+      log.debug(s"Issuing authenticated request to ${req.path}")
       req.headerMap.set("Authorization", s"token=$token")
       client(req).flatMap {
         case rsp if rsp.status == http.Status.Unauthorized =>
@@ -78,16 +82,19 @@ object Authenticator {
       tokReq.setContentString(authRequest.jwt)
       client(tokReq).flatMap {
         case rsp if rsp.status == http.Status.Ok =>
+          log.debug(s"Got successful token response from ${authRequest.loginEndpoint}")
           Api.readJson[AuthToken](rsp.content) match {
             case Return(AuthToken(Some(token))) => Future.value(token)
             case Return(AuthToken(None)) => missingTokenExceptionF
             case Throw(e) => Future.exception(e)
           }
         case rsp if rsp.status == http.Status.Unauthorized =>
+          log.debug(s"Got Unauthorized token response from ${authRequest.loginEndpoint}")
           Future.exception(UnauthorizedResponse(rsp))
         case rsp =>
+          log.debug(s"Got unexpected token response from ${authRequest.loginEndpoint}. Status: ${rsp.statusCode}")
           Future.exception(Api.UnexpectedResponse(rsp))
-      }
+      }.onFailure(log.error(_, "Obtaining a token failed"))
     }
 
     @tailrec final override def close(d: Time): Future[Unit] = {
