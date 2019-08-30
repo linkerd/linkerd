@@ -5,12 +5,12 @@ import com.twitter.util.{Future, Time}
 import io.buoyant.router.DiscardingFactoryToService.RequestDiscarder
 
 /**
- * Turns a [[com.twitter.finagle.ServiceFactory]] into a
- * [[com.twitter.finagle.Service]] which acquires a new service for
- * each request. Additionally uses a [[RequestDiscarder]] to discard
+ * Turns a com.twitter.finagle.ServiceFactory into a
+ * com.twitter.finagle.Service which acquires a new service for
+ * each request. Additionally uses a RequestDiscarder to discard
  * the request and release any resources associated with it.
  *
- * NB: This code was copied from [[com.twitter.finagle.FactoryToService]]
+ * NB: This code was copied from com.twitter.finagle.FactoryToService
  * but modified to be able to discard the request on failure.
  */
 class DiscardingFactoryToService[Req, Rep](requestDiscarder: RequestDiscarder[Req], factory: ServiceFactory[Req, Rep]) extends Service[Req, Rep] {
