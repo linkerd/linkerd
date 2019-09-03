@@ -22,6 +22,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def stats: StatsReceiver
   protected[this] def failureThreshold: Option[FailureDetector.Config] = None
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
+  protected[this] def maxConcurrentStreams: Option[Long]
 
   protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
   /**
@@ -94,6 +95,10 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   }
 
   protected[this] def demuxing: Future[Unit]
+
+  def activeStreams: Long = streams.size()
+
+  def maxAllowedStreams: Option[Long] = maxConcurrentStreams
 
   protected[this] def registerStream(
     id: Int,
@@ -172,9 +177,13 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         if (resetStreams(Reset.Cancel)) transport.close()
         else Future.Unit
 
-      case Return(_: Http2SettingsFrame) =>
-        // We received a settings frame, keep reading from the transport
+      case Return(frame: Http2SettingsFrame) =>
+        val settings = frame.settings()
+        log.debug("[%s] Received settings frame containing: %s", prefix, settings)
+        // We received a settings frame, processe it and keep reading from remote
+        onReceiveSettings(settings)
         transport.read().transform(loop)
+
       case Return(f: Http2PingFrame) =>
         if (f.ack()) {
           // client sent a ping and got acknowledgement. Satisfy promise to let failure detector
@@ -253,6 +262,10 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def writeSettings(settingsFrame: Http2SettingsFrame): Future[Unit] = {
     transport.write(settingsFrame)
   }
+
+  protected[this] def streamLimitExhausted: Boolean = maxConcurrentStreams.exists(_ <= activeStreams)
+
+  protected[this] def onReceiveSettings(settings: Http2Settings): Unit = ()
 
   protected[this] val onTransportClose: Throwable => Unit = { e =>
     log.debug("[%s] transport closed: %s", prefix, e)

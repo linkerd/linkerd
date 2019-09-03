@@ -28,7 +28,8 @@ class Netty4ClientDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
   override protected[this] val failureThreshold: Option[FailureDetector.Config],
   protected[this] val stats: StatsReceiver
-) extends Service[Request, Response] with Netty4DispatcherBase[Request, Response] {
+) extends Service[Request, Response]
+  with Netty4DispatcherBase[Request, Response] {
   import Netty4ClientDispatcher._
 
   override protected[this] val log = Netty4ClientDispatcher.log
@@ -39,6 +40,13 @@ class Netty4ClientDispatcher(
   private[this] val streamStats = new Netty4StreamTransport.StatsReceiver(stats.scope("stream"))
 
   transport.onClose.onSuccess(onTransportClose)
+
+  @volatile protected[this] var maxConcurrentStreams: Option[Long] = None
+
+  override protected[this] def onReceiveSettings(settings: Http2Settings): Unit = {
+    val max = Option(settings.maxConcurrentStreams()).map(_.toLong)
+    maxConcurrentStreams = max
+  }
 
   override def close(deadline: Time): Future[Unit] = {
     streamsGauge.remove()
@@ -92,25 +100,26 @@ class Netty4ClientDispatcher(
    * Write a request on the underlying connection and return its
    * response when it is received.
    */
-  override def apply(req: Request): Future[Response] = {
+  override def apply(req: Request): Future[Response] =
+    if (streamLimitExhausted)
+      Future.value(Response(Status.TooManyRequests, Stream.const("Maximum allowed active streams limit has been reached")))
+    else
+      mutex.acquire().flatMap { permit =>
+        val st = newStreamTransport()
+        // Stream the request while receiving the response and
+        // continue streaming the request until it is complete,
+        // canceled,  or the response fails.
+        val sendFF = st.send(req)
 
-    mutex.acquire().flatMap { permit =>
-      val st = newStreamTransport()
-      // Stream the request while receiving the response and
-      // continue streaming the request until it is complete,
-      // canceled,  or the response fails.
-      val sendFF = st.send(req)
+        // If the stream is reset prematurely, cancel the pending write
+        st.onReset.onFailure {
+          case StreamError.Remote(rst: Reset) => sendFF.flatten.raise(rst)
+          case StreamError.Remote(e) => sendFF.flatten.raise(Reset.Cancel)
+          case e => sendFF.flatten.raise(e)
+        }
 
-      // If the stream is reset prematurely, cancel the pending write
-      st.onReset.onFailure {
-        case StreamError.Remote(rst: Reset) => sendFF.flatten.raise(rst)
-        case StreamError.Remote(e) => sendFF.flatten.raise(Reset.Cancel)
-        case e => sendFF.flatten.raise(e)
+        sendFF.ensure(permit.release())
+        sendFF.unit.before(st.onRecvMessage)
       }
-
-      sendFF.ensure(permit.release())
-      sendFF.unit.before(st.onRecvMessage)
-    }
-  }
 
 }

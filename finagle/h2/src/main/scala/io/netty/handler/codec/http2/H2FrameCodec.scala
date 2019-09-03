@@ -307,6 +307,14 @@ object H2FrameCodec {
         val pingAck = new DefaultHttp2PingFrame(data, true)
         ctx.fireChannelRead(pingAck); ()
       }
+
+      override def onSettingsRead(
+        ctx: ChannelHandlerContext,
+        settings: Http2Settings
+      ): Unit = {
+        println(s"Read settings from remote: $settings")
+        ctx.fireChannelRead(new DefaultHttp2SettingsFrame(settings)); ()
+      }
     }
   }
 }
