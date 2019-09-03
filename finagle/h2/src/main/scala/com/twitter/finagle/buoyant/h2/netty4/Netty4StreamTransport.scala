@@ -88,14 +88,14 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
 
   private[this] sealed trait RecvState
   private[this] case object RecvPending extends RecvState
-  private[this] case class RecvStreaming(recvQ: AsyncQueue[Frame]) extends RecvState
-  private[this] case object RecvClosed extends RecvState
+  private[this] case class RecvStreaming(recvQ: AsyncQueue[Frame], onEnd: Future[Unit]) extends RecvState
+  private[this] case class RecvClosed(onEnd: Option[Future[Unit]]) extends RecvState
 
   private[this] case class StreamState(send: SendState, recv: RecvState) {
     def toNettyH2State: Http2Stream.State = this match {
-      case StreamState(SendClosed, RecvClosed) => Http2Stream.State.CLOSED
+      case StreamState(SendClosed, RecvClosed(_)) => Http2Stream.State.CLOSED
       case StreamState(SendClosed, _) => Http2Stream.State.HALF_CLOSED_LOCAL
-      case StreamState(_, RecvClosed) => Http2Stream.State.HALF_CLOSED_REMOTE
+      case StreamState(_, RecvClosed(_)) => Http2Stream.State.HALF_CLOSED_REMOTE
       case StreamState(_, _) => Http2Stream.State.OPEN
     }
   }
@@ -167,18 +167,18 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
     def resetRecv(): Unit = {
       stateRef.get match {
         case state@StreamState(sendState, RecvPending) =>
-          if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
+          if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed(None)))) {
             recvMsg.setException(err)
           } else {
             resetRecv()
           }
-        case state@StreamState(sendState, RecvStreaming(q)) =>
-          if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
+        case state@StreamState(sendState, RecvStreaming(q, onEnd)) =>
+          if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed(Some(onEnd))))) {
             Stream.failAndDrainFrameQueue(q, err)
           } else {
             resetRecv()
           }
-        case StreamState(sendState, RecvClosed) => // Recv side is already closed, nothing to do.
+        case StreamState(sendState, RecvClosed(_)) => // Recv side is already closed, nothing to do.
       }
     }
 
@@ -248,7 +248,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
               reset(Reset.ProtocolError, local = true)
               false
             } else {
-              if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
+              if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed(None)))) {
                 stream.onCancel.onSuccess { rst =>
                   // If the recvMsg stream is cancelled, reset the stream.
                   reset(rst, local = true); ()
@@ -262,16 +262,24 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             }
 
           // Streaming
-          case StreamState(sendState, RecvStreaming(q)) =>
-            if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
+          case StreamState(sendState, RecvStreaming(q, onEnd)) =>
+            if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed(Some(onEnd))))) {
               if (sendState == SendClosed) {
-                resetP.setDone()
+                // instead of marking the stream as closed immediately,
+                // we wait to either drain the queue or fail the stream
+                // This ensures that it is counted towards maximumConcurrentStreams
+                // and allows us to exercise backpressure on the stream initiation
+                // process
+                onEnd.onSuccess { _ =>
+                  resetP.setDone()
+                  ()
+                }
               }
               recvFrame(toFrame(hdrs), q)
             } else recv(hdrs)
 
           // Closed
-          case StreamState(sendState, RecvClosed) =>
+          case StreamState(sendState, RecvClosed(_)) =>
             log.debug("[%s] frame received while in RecvClosed", prefix)
             reset(Reset.InternalError, local = true)
             false
@@ -294,7 +302,7 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
               reset(Reset.ProtocolError, local = true)
               false
             } else {
-              if (stateRef.compareAndSet(state, StreamState(sendState, RecvStreaming(q)))) {
+              if (stateRef.compareAndSet(state, StreamState(sendState, RecvStreaming(q, stream.onEnd)))) {
                 stream.onCancel.onSuccess { rst =>
                   // If the recvMsg stream is cancelled, reset the stream.
                   reset(rst, local = true); ()
@@ -305,13 +313,13 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             }
 
           // Streaming
-          case StreamState(sendState, RecvStreaming(_)) =>
+          case StreamState(sendState, RecvStreaming(_, _)) =>
             log.debug("[%s] headers frame with eos=false received while in RecvStreaming", prefix)
             reset(Reset.InternalError, local = true)
             false
 
           // Closed
-          case StreamState(sendState, RecvClosed) =>
+          case StreamState(sendState, RecvClosed(_)) =>
             log.debug("[%s] frame received while in RecvClosed", prefix)
             reset(Reset.InternalError, local = true)
             false
@@ -329,16 +337,24 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             false
 
           // Streaming
-          case StreamState(sendState, RecvStreaming(q)) =>
-            if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed))) {
+          case StreamState(sendState, RecvStreaming(q, onEnd)) =>
+            if (stateRef.compareAndSet(state, StreamState(sendState, RecvClosed(Some(onEnd))))) {
               if (sendState == SendClosed) {
-                resetP.setDone()
+                // instead of marking the stream as closed immediately,
+                // we wait to either drain the queue or fail the stream
+                // This ensures that it is counted towards maximumConcurrentStreams
+                // and allows us to exercise backpressure on the stream initiation
+                // process
+                onEnd.onSuccess { _ =>
+                  resetP.setDone()
+                  ()
+                }
               }
               recvFrame(toFrame(data), q)
             } else recv(data)
 
           // Closed
-          case StreamState(sendState, RecvClosed) =>
+          case StreamState(sendState, RecvClosed(_)) =>
             log.debug("[%s] frame received while in RecvClosed", prefix)
             reset(Reset.InternalError, local = true)
             false
@@ -356,11 +372,11 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
             false
 
           // Streaming
-          case StreamState(sendState, RecvStreaming(q)) =>
+          case StreamState(sendState, RecvStreaming(q, _)) =>
             recvFrame(toFrame(data), q)
 
           // Closed
-          case StreamState(sendState, RecvClosed) =>
+          case StreamState(sendState, RecvClosed(_)) =>
             log.debug("[%s] frame received while in RecvClosed", prefix)
             reset(Reset.InternalError, local = true)
             false
@@ -422,8 +438,17 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       // Pending (Header-only message)
       case state@StreamState(SendPending, recvState) if msg.stream.isEmpty =>
         if (stateRef.compareAndSet(state, StreamState(SendClosed, recvState))) {
-          if (recvState == RecvClosed) {
-            resetP.setDone()
+          recvState match {
+            case RecvClosed(Some(onEnd)) =>
+              onEnd.onSuccess { _ =>
+                resetP.setDone()
+                ()
+              }
+
+            case RecvClosed(None) =>
+              resetP.setDone()
+
+            case _ => // do nothing here..
           }
           if (ConnectionHeaders.detect(msg.headers)) {
             log.debug("[%s] illegal connection headers in send message: %s", prefix, msg.headers)
@@ -504,8 +529,16 @@ private[h2] trait Netty4StreamTransport[SendMsg <: Message, RecvMsg <: Message] 
       case state@StreamState(SendStreaming(_), recvState) if frame.isEnd =>
         if (stateRef.compareAndSet(state, StreamState(SendClosed, recvState))) {
           statsReceiver.recordLocalFrame(frame)
-          if (recvState == RecvClosed) {
-            resetP.setDone()
+          recvState match {
+            case RecvClosed(Some(onEnd)) =>
+              onEnd.onSuccess { _ =>
+                resetP.setDone()
+                ()
+              }
+            case RecvClosed(None) =>
+              resetP.setDone()
+
+            case _ => // no action
           }
           transport.write(frameStream, frame).transform { _ =>
             frame.release()

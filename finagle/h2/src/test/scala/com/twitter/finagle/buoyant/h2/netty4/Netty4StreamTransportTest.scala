@@ -123,6 +123,17 @@ class Netty4StreamTransportTest extends FunSuite {
       assert(transport.isClosed)
       ()
     }
+
+    def assertCompleteGracefully(): Unit = {
+      assert(await(transport.onReset.liftToTry).isReturn)
+      ()
+    }
+
+    def assertNotComplete(): Unit = {
+      assert(!transport.onReset.isDefined)
+      ()
+    }
+
   }
 
   test("client: response") {
@@ -454,6 +465,147 @@ class Netty4StreamTransportTest extends FunSuite {
         fail(s"unexpected frame: $f")
     }
   }
+
+
+  test("server: do not complete stream until queue drained (send close scheduling completion") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    assert(!reqF.isDefined)
+
+    val req =  assertRecvRequest(eos = false)
+    assert(transport.recv({
+      val bb = Unpooled.copiedBuffer("data", StandardCharsets.UTF_8)
+      new DefaultHttp2DataFrame(bb, true).stream(H2FrameStream(id, Http2Stream.State.OPEN))
+    }))
+
+    // we make sure to transition into SEND_CLOSED
+    val rspStreamQ = new AsyncQueue[Frame]
+    val rspStream = Stream(rspStreamQ)
+    val rsp = {
+      val hs = new DefaultHttp2Headers
+      hs.status("202")
+      Netty4Message.Response(hs, rspStream)
+    }
+
+    await(transport.send(rsp))
+    ctx.synchronized {
+      assert(written.head == {
+        val hs = new DefaultHttp2Headers
+        hs.status("202")
+        new DefaultHttp2HeadersFrame(hs, false).stream(H2FrameStream(id, Http2Stream.State.HALF_CLOSED_REMOTE))
+      })
+      written = written.tail
+    }
+
+    val buf = Unpooled.copiedBuffer("This is the end", StandardCharsets.UTF_8)
+    assert(rspStreamQ.offer(Frame.Data(buf, true)))
+    ctx.synchronized {
+      assert(written.head == new DefaultHttp2DataFrame(buf, true)
+        .stream(H2FrameStream(id, Http2Stream.State.CLOSED)))
+      written = written.tail
+    }
+
+    // at this point we are in closed state but the stream is not really complete
+    // as we have not consumed all frames.
+
+    ctx.assertNotComplete()
+
+    await(req.stream.read()) match {
+      case f: Frame.Data =>
+        assert(f.buf.toString(StandardCharsets.UTF_8) == "data")
+        assert(f.isEnd)
+        await(f.release())
+      case f =>
+        fail(s"unexpected frame: $f")
+    }
+
+    assertCompleteGracefully()
+
+  }
+
+
+  test("server: do not complete stream until queue drained (rcv close scheduling completion)") {
+    val ctx = new ServerCtx {}
+    import ctx._
+
+    assert(!reqF.isDefined)
+
+    val req =  assertRecvRequest(eos = false)
+    assert(transport.recv({
+      val bb = Unpooled.copiedBuffer("data", StandardCharsets.UTF_8)
+      new DefaultHttp2DataFrame(bb, false).stream(H2FrameStream(id, Http2Stream.State.OPEN))
+    }))
+
+
+
+    // we make sure to transition into SEND_CLOSED
+    val rspStreamQ = new AsyncQueue[Frame]
+    val rspStream = Stream(rspStreamQ)
+    val rsp = {
+      val hs = new DefaultHttp2Headers
+      hs.status("202")
+      Netty4Message.Response(hs, rspStream)
+    }
+
+    await(transport.send(rsp))
+    ctx.synchronized {
+      assert(written.head == {
+        val hs = new DefaultHttp2Headers
+        hs.status("202")
+        new DefaultHttp2HeadersFrame(hs, false).stream(H2FrameStream(id, Http2Stream.State.OPEN))
+      })
+      written = written.tail
+    }
+
+
+    val buf = Unpooled.copiedBuffer("This is the end", StandardCharsets.UTF_8)
+    assert(rspStreamQ.offer(Frame.Data(buf, true)))
+    ctx.synchronized {
+      assert(written.head == new DefaultHttp2DataFrame(buf, true)
+        .stream(H2FrameStream(id, Http2Stream.State.HALF_CLOSED_LOCAL)))
+      written = written.tail
+    }
+
+    ctx.assertNotComplete()
+
+    // we read the first frame in the queue, this will not complete the stream...
+    await(req.stream.read()) match {
+      case f: Frame.Data =>
+        assert(f.buf.toString(StandardCharsets.UTF_8) == "data")
+        assert(!f.isEnd)
+        await(f.release())
+      case f =>
+        fail(s"unexpected frame: $f")
+    }
+
+    ctx.assertNotComplete()
+
+
+    // send another end frame that will complete the stream once read and released
+    assert(transport.recv({
+      val bb = Unpooled.copiedBuffer("data2", StandardCharsets.UTF_8)
+      new DefaultHttp2DataFrame(bb, true).stream(H2FrameStream(id, Http2Stream.State.OPEN))
+    }))
+
+    ctx.assertNotComplete() // still not complete as the frame has not been consumed
+
+    // reading the last frame that will complete the stream once released
+    await(req.stream.read()) match {
+      case f: Frame.Data =>
+        assert(f.buf.toString(StandardCharsets.UTF_8) == "data2")
+        assert(f.isEnd)
+        await(f.release())
+      case f =>
+        fail(s"unexpected frame: $f")
+    }
+
+
+
+    assertCompleteGracefully()
+
+  }
+
 
   test("server: writes a response on the underlying transport") {
     val ctx = new ServerCtx {}
