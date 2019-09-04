@@ -150,12 +150,11 @@ class ServerDispatcher(services: Seq[ServerDispatcher.Service])
     }.toMap
 
   override def apply(req: h2.Request): Future[h2.Response] = {
-    // According to gRPC spec, server must return 415 if content-type is not set to
-    // application/grpc to allow for graceful error handling when plain H2 client
-    // makes request to a gRPC endpoint.
+    // According to gRPC spec (https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md)
+    // server must return 415 if content-type is not set to application/grpc to allow for graceful
+    // error handling when plain H2 client makes request to a gRPC endpoint.
     // This, however, would be a breaking change on linkerd side.
-    // Postponing content-type validation for now.
-    // https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
+    // https://github.com/linkerd/linkerd/issues/2326
     req.method match {
       case h2.Method.Post =>
         rpcByPath.get(req.path) match {
