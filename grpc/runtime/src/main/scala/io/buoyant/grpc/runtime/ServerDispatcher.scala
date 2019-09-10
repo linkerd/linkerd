@@ -3,6 +3,7 @@ package io.buoyant.grpc.runtime
 import com.twitter.finagle.{Failure, Service => FinagleService}
 import com.twitter.finagle.buoyant.h2
 import com.twitter.util.{Future, Return, Throw, Try}
+import io.buoyant.grpc.runtime.H2Headers.responseHeaders
 
 object ServerDispatcher {
 
@@ -87,7 +88,7 @@ object ServerDispatcher {
         val frames = h2.Stream()
         frames.write(h2.Frame.Data(buf, eos = false))
           .before(frames.write(GrpcStatus.Ok().toTrailers))
-        h2.Response(h2.Status.Ok, frames)
+        h2.Response(responseHeaders(), frames)
 
       case Throw(e) =>
         val status = e match {
@@ -96,7 +97,7 @@ object ServerDispatcher {
         }
         val frames = h2.Stream()
         frames.write(status.toTrailers)
-        h2.Response(h2.Status.Ok, frames)
+        h2.Response(responseHeaders(), frames)
     }
 
     private[this] def respondStreaming[Rsp](codec: Codec[Rsp], msgs: Stream[Rsp]): h2.Response = {
@@ -124,13 +125,13 @@ object ServerDispatcher {
         msgs.reset(rst)
       }
 
-      h2.Response(h2.Status.Ok, frames)
+      h2.Response(responseHeaders(), frames)
     }
   }
 
   private def fail(status: GrpcStatus): Future[h2.Response] = {
     val stream = h2.Stream.const(status.toTrailers)
-    Future.value(h2.Response(h2.Status.BadRequest, stream))
+    Future.value(h2.Response(responseHeaders(h2.Status.BadRequest), stream))
   }
 
   def apply(hd: Service, tl: Service*): ServerDispatcher =
@@ -148,7 +149,12 @@ class ServerDispatcher(services: Seq[ServerDispatcher.Service])
       }
     }.toMap
 
-  override def apply(req: h2.Request): Future[h2.Response] =
+  override def apply(req: h2.Request): Future[h2.Response] = {
+    // According to gRPC spec (https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md)
+    // server must return 415 if content-type is not set to application/grpc to allow for graceful
+    // error handling when plain H2 client makes request to a gRPC endpoint.
+    // This, however, would be a breaking change on linkerd side.
+    // https://github.com/linkerd/linkerd/issues/2326
     req.method match {
       case h2.Method.Post =>
         rpcByPath.get(req.path) match {
@@ -157,4 +163,5 @@ class ServerDispatcher(services: Seq[ServerDispatcher.Service])
         }
       case method => ServerDispatcher.fail(GrpcStatus.Unknown(s"unsupported method: $method"))
     }
+  }
 }
