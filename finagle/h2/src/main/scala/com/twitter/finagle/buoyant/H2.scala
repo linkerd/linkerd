@@ -2,6 +2,7 @@ package com.twitter.finagle.buoyant
 
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.buoyant.h2.netty4._
+import com.twitter.finagle.buoyant.h2.param.Settings.MaxConcurrentStreams
 import com.twitter.finagle.client.{StackClient, StdStackClient, Transporter}
 import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.param.{WithDefaultLoadBalancer, WithSessionPool}
@@ -109,7 +110,8 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       },
       service: Service[Request, Response]
     ): Closable = {
-      new Netty4ServerDispatcher(trans, None, service, statsReceiver)
+      val maxConcurrentStreams = params[MaxConcurrentStreams].streams
+      new Netty4ServerDispatcher(trans, None, service, statsReceiver, maxConcurrentStreams)
     }
   }
 

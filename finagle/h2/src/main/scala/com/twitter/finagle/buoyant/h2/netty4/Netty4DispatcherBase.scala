@@ -95,6 +95,8 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] def demuxing: Future[Unit]
 
+  def activeStreams: Long = streams.size()
+
   protected[this] def registerStream(
     id: Int,
     stream: Netty4StreamTransport[SendMsg, RecvMsg]
