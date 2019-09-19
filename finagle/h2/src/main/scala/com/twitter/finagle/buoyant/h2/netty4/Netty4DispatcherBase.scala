@@ -95,6 +95,14 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] def demuxing: Future[Unit]
 
+
+  // We count all streams towards active. The reason for that
+  // is the fact that under normal circumstances when the
+  // protocol is respected eventually the stream state will
+  // reach a point of being fully closed and will be removed
+  // from the map.
+  def activeStreams: Long = streams.size()
+
   protected[this] def registerStream(
     id: Int,
     stream: Netty4StreamTransport[SendMsg, RecvMsg]

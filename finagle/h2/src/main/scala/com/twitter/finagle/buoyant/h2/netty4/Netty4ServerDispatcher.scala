@@ -33,7 +33,8 @@ class Netty4ServerDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
   override protected[this] val failureThreshold: Option[FailureDetector.Config],
   service: Service[Request, Response],
-  protected[this] val stats: StatsReceiver
+  protected[this] val stats: StatsReceiver,
+  protected[this] val maxConcurrentStreams: Option[Long]
 ) extends Netty4DispatcherBase[Response, Request] with Closable {
   import Netty4ServerDispatcher._
 
@@ -128,6 +129,8 @@ class Netty4ServerDispatcher(
 
   override protected[this] val demuxing: Future[Unit] = demux()
 
+  private[this] def streamLimitExhausted: Boolean = maxConcurrentStreams.exists(_ <= activeStreams)
+
   /**
    * The stream didn't exist. We're either receiving HEADERS
    * to initiate a new request, or we're receiving an
@@ -135,6 +138,10 @@ class Netty4ServerDispatcher(
    * connection to be closed with a protocol error.
    */
   override protected[this] def demuxNewStream(f: Http2Frame): Future[Unit] = f match {
+    case frame: Http2HeadersFrame if streamLimitExhausted =>
+      log.error("[%s S:%s] Exhausted  maxConcurrentStreams limit. Sending RESET.REFUSED for stream %s", prefix, frame, frame.stream().id())
+      writer.reset(H2FrameStream(frame.stream()), Reset.Refused)
+
     case frame: Http2HeadersFrame =>
       val st = newStreamTransport(frame.stream.id)
       if (st.recv(frame)) serveStream(st)
