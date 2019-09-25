@@ -1,6 +1,8 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.twitter.conversions.StorageUnitOps._
 import com.twitter.finagle.buoyant.Dst
+import com.twitter.finagle.http.param.{FixedLengthStreamedAfter, Streaming}
 import com.twitter.finagle.http.{Method, Request}
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
@@ -12,6 +14,7 @@ import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier}
 import io.buoyant.router.http.TimestampHeaderFilter
 import io.buoyant.test.Awaits
 import io.buoyant.test.FunSuite
+
 
 class HttpConfigTest extends FunSuite with Awaits {
 
@@ -44,6 +47,76 @@ class HttpConfigTest extends FunSuite with Awaits {
     assert(config.maxInitialLineKB.get == 4)
     assert(config.streamingEnabled.contains(true))
 
+  }
+
+  test("DefaultsTest - no streaming, no streamAfterContentLengthKB") {
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.methodAndHost
+                  |maxInitialLineKB: 4
+                  |servers:
+                  |- port: 5000
+      """.stripMargin
+    val config = parse(yaml)
+
+    val streaming = config.routerParams(Stack.Params.empty)[Streaming]
+    assert(streaming.enabled)
+    /*  wish we could assert this, cause the "default" was 5meg
+    streaming match {
+      case Streaming.Enabled(fixedLengthStreamedAfter) => assert(fixedLengthStreamedAfter == 5.kilobytes)
+      case _ => fail()
+    }
+    */
+  }
+
+  test("DefaultsTest - no streaming, streamAfterContentLengthKB present") {
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.methodAndHost
+                  |maxInitialLineKB: 4
+                  |streamAfterContentLengthKB: 5
+                  |servers:
+                  |- port: 5000
+      """.stripMargin
+    val config = parse(yaml)
+
+    val streaming = config.routerParams(Stack.Params.empty)[Streaming]
+    assert(streaming.enabled)
+  }
+
+  test("DefaultsTest - Stream enabled, no streamAfter") {
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.methodAndHost
+                  |maxInitialLineKB: 4
+                  |streamAfterContentLengthKB: 5
+                  |streamingEnabled: true
+                  |servers:
+                  |- port: 5000
+      """.stripMargin
+    val config = parse(yaml)
+
+    val streaming = config.routerParams(Stack.Params.empty)[Streaming]
+    assert(streaming.disabled)
+  }
+
+  test("DefaultsTest - Stream disabled, streamAfter Set") {
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.methodAndHost
+                  |maxInitialLineKB: 4
+                  |streamingEnabled: false
+                  |servers:
+                  |- port: 5000
+      """.stripMargin
+    val config = parse(yaml)
+
+    val streaming = config.routerParams(Stack.Params.empty)[Streaming]
+    assert(streaming.enabled)
   }
 
   test("default identifier") {

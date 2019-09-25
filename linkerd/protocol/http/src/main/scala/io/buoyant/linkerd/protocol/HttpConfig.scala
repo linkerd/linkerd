@@ -228,7 +228,9 @@ case class HttpConfig(
   var service: Option[HttpSvc] = None
 
   private val streaming = streamingEnabled -> streamAfterContentLengthKB match {
-    case (Some(true), None) => hparam.Streaming(true)
+    case (Some(true), None) => hparam.Streaming(5.kilobytes)
+    case (None, None) => hparam.Streaming(5.kilobytes)
+    case (Some(false), None) => hparam.Streaming(false)
     case (_, Some(streamAfter)) => hparam.Streaming(streamAfter.kilobytes)
     case _ => hparam.Streaming(false)
   }
