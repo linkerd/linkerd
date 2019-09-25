@@ -100,7 +100,7 @@ class HttpConfigTest extends FunSuite with Awaits {
     val config = parse(yaml)
 
     val streaming = config.routerParams(Stack.Params.empty)[Streaming]
-    assert(streaming.disabled)
+    assert(streaming.enabled)
   }
 
   test("DefaultsTest - Stream disabled, streamAfter Set") {
@@ -116,7 +116,7 @@ class HttpConfigTest extends FunSuite with Awaits {
     val config = parse(yaml)
 
     val streaming = config.routerParams(Stack.Params.empty)[Streaming]
-    assert(streaming.enabled)
+    assert(streaming.disabled)
   }
 
   test("default identifier") {
