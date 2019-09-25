@@ -22,7 +22,7 @@ import scala.util.control.NoStackTrace
  *
  * The Frames that are stored in the buffer and offered to the child Streams are refcounted and
  * the underlying Frame will only be released once each child Stream releases the Frame and the
- * buffer itself releases the Frame.  Threrefore you should always call discardBuffer on a
+ * buffer itself releases the Frame.  Therefore you should always call discardBuffer on a
  * BufferedStream before it leaves scope.
  */
 class BufferedStream(underlying: Stream, bufferCapacity: Long = 16383) { bufferedStream =>

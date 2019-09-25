@@ -15,7 +15,7 @@ if [ -n "${DOCKER_CREDENTIALS:-}" ]; then
   echo "$DOCKER_CREDENTIALS" > ~/.docker/config.json
 fi
 
-# For debugging, alow this to be run without pushing.
+# For debugging, allow this to be run without pushing.
 docker_target="dockerBuildAndPush"
 if [ "${NO_PUSH:-}" = "1" ]; then
   docker_target="docker"

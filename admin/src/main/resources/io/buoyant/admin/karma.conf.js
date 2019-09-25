@@ -14,7 +14,7 @@ module.exports = function(config) {
 
 
     // list of files / patterns to load in the browser
-    // do not load js/main.js - we dont' want to start the app!
+    // do not load js/main.js - we don't want to start the app!
     files: [
       'spec/test-main.js',
       {pattern: 'spec/*.js', included: false},

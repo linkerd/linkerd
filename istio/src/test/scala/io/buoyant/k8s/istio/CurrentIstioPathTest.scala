@@ -31,7 +31,7 @@ class CurrentIstioPathTest extends FunSuite {
     assert(CurrentIstioPath(Some(bound)) == Some(id))
   }
 
-  test("returns path when path doesnt have the transfomer prefix because it came from the ingress") {
+  test("returns path when path doesn't have the transfomer prefix because it came from the ingress") {
     val id = Path.Utf8(
       "#",
       "io.l5d.k8s.istio",
