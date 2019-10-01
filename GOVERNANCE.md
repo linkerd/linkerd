@@ -2,7 +2,7 @@
 
 This document defines project governance for Linkerd.
 
-## Roles
+## Many Roles
 
 There are two roles that convey decision-making powers: maintainer and
 super-maintainer. MAINTAINERS.md defines the membership of these roles.
