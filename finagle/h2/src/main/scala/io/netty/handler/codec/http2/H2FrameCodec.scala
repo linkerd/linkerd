@@ -9,7 +9,7 @@ import io.netty.handler.codec.http2.Http2FrameCodec.DefaultHttp2FrameStream
 /**
  * This is a direct reimplementation of io.netty.handler.codec.http2.Http2FrameCodec.
  *
- * Thie Netty API is unstable at the moment and unsuitable for our
+ * This Netty API is unstable at the moment and unsuitable for our
  * current needs, especially with regard to initial settings and flow
  * control.  We SHOULD feed back whatever we need to Netty, but one
  * step at a time.

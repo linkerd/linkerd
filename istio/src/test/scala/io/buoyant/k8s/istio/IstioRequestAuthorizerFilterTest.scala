@@ -82,7 +82,7 @@ class IstioRequestAuthorizerFilterTest extends FunSuite with Awaits {
     assert(callCount == 1)
   }
 
-  test("doesnt call service if pre-condition check fails") {
+  test("doesn't call service if pre-condition check fails") {
     var callCount = 0
 
     val mixerClient = new NoOpMixerClient {

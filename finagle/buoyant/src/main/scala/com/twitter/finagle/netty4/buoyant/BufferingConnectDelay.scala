@@ -26,7 +26,7 @@ private[finagle] class BufferingConnectDelay
    * Cancellations are propagated outward--failures, inward.
    *
    * Outbound writes are buffered until `outp` is satisfied. If the
-   * outward channel was connected sucessfully, the inward promise
+   * outward channel was connected successfully, the inward promise
    * is satisfied and buffered outbound writes are written. If the
    * outward channel fails to connect, the inward promise fails and
    * the promise for each buffered request is satisfied with a
