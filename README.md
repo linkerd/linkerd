@@ -6,7 +6,7 @@
 [![Docker Pulls][docker-badge]][docker]
 [![CII Best Practices][cii-badge]][cii]
 
-:balloon: Welcome to Linkerd! :wave:
+:balloon: Welcome to Linkerd! :Wave:
 
 Linkerd is a transparent *service mesh*, designed to make modern applications
 safe and sane by transparently adding service discovery, load balancing, failure
@@ -48,7 +48,7 @@ contributing changes.
 
 ## Related Repos ##
 
-* [linkerd-examples][l5d-eg]: A variety of configuration examples and explanations
+* [linkerd-examples][l5d-eg]: A Variety of Configuration examples and explanations
 * [linkerd-tcp][l5d-tcp]: A lightweight TCP/TLS load balancer that uses Namerd
 * [linkerd-viz][l5d-viz]: Zero-configuration service dashboard for Linkerd
 * [linkerd-zipkin][l5d-zipkin]: [Zipkin][zipkin] tracing plugins
