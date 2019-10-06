@@ -1,24 +1,29 @@
 package io.buoyant.linkerd.protocol.http
 
-import io.buoyant.linkerd.protocol.ZipkinTrace
-import io.buoyant.linkerd.protocol.ZipkinTracePropagator
-import com.twitter.finagle.http.Request
+import com.twitter.finagle.http.{Request}
 import com.twitter.finagle.tracing.{Flags, SpanId, TraceId}
 import org.scalatest.FunSuite
+
+import io.buoyant.linkerd.protocol.http._//ZipkinTracePropagator
+import io.buoyant.router.HttpInstances._
 
 class ZipkinTracePropagatorTest extends FunSuite {
 
   test("get traceid from a b3 single header - empty header") {
     // b3:
-    val ztp = new ZipkinTracePropagator()
+    val ztp = new ZipkinTracePropagator
     val req = Request()
     req.headerMap.add("b3", "")
 
     val trace = ztp.traceId(req)
     // this should not have returned a traceId because there's no span
     assert(trace.isEmpty)
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
+
+    val sampler = ztp.sampler(req)
+    // no sampler should be returned
+    assert(sampler.isEmpty)
   }
 
   test("get traceid from a b3 single header - one field - don't sample - b3: 0") {
@@ -28,22 +33,14 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "0")
 
     val trace = ztp.traceId(req)
-
     // this should not have returned a traceId because there's no span
     assert(trace.isEmpty)
-
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
-    // check "x-b3-sampled" has been added to request
-    assert(req.headerMap.keys == Set("x-b3-sampled"))
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
 
     // expect to get the right sampled value which is 0
     val sampler = ZipkinTrace.getSampler(req.headerMap)
     assert(sampler.contains(0.0f))
-
-    //even after "x-b3-sampled" has been added to request this should not return a traceId because there's no span
-    val trace2 = ztp.traceId(req)
-    assert(trace2.isEmpty)
   }
 
   test("get traceid from a b3 single header - one field - sampled - b3: 1") {
@@ -53,24 +50,14 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "1")
 
     val trace = ztp.traceId(req)
-
     // this should not have returned a traceId because there's no span
     assert(trace.isEmpty)
-
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
-    // check "x-b3-sampled" has been added to request
-    assert(req.headerMap.keys == Set("x-b3-sampled"))
-
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
 
     // expect to get the right sampled value which is 1
-    // this also checks "x-b3-sampled" has been added to request
     val sampler = ZipkinTrace.getSampler(req.headerMap)
     assert(sampler.contains(1.0f))
-
-    //even after "x-b3-sampled" has been added to request this should not return a traceId because there's no span
-    val trace2 = ztp.traceId(req)
-    assert(trace2.isEmpty)
   }
 
   test("get traceid from a b3 single header - one field - debug - b3: d") {
@@ -80,19 +67,31 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "d")
 
     val trace = ztp.traceId(req)
-
     // this should not have returned a traceId because there's no span
     assert(trace.isEmpty)
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
 
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
-    // check "x-b3-flags" has been added to request
-    assert(req.headerMap.keys == Set("x-b3-flags"))
-    assert(req.headerMap.get("x-b3-flags").contains("1"))
+    // expect to get the right sampled value which is 1 when debug is set
+    val sampler = ZipkinTrace.getSampler(req.headerMap)
+    assert(sampler.contains(1.0f))
+  }
 
-    //even after "x-b3-flags" has been added to request this should not return a traceId because there's no span
-    val trace2 = ztp.traceId(req)
-    assert(trace2.isEmpty)
+  test("get traceid from a b3 single header - one field - invalid - b3: 2") {
+    //b3: d
+    val ztp = new ZipkinTracePropagator()
+    val req = Request()
+    req.headerMap.add("b3", "s")
+
+    val trace = ztp.traceId(req)
+    // this should not have returned a traceId because there's no span
+    assert(trace.isEmpty)
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
+
+    // expect to not get a sampler when sampling bit is invalid value (other than 0/1/d)
+    val sampler = ZipkinTrace.getSampler(req.headerMap)
+    assert(sampler.isEmpty)
   }
 
   test("get traceid from a b3 single header - two fields - not yet sampled root span") {
@@ -102,18 +101,23 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "a3ce929d0e0e4736-00f067aa0ba902b7")
 
     val trace = ztp.traceId(req)
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
-    // check "x-b3-traceid" and "x-b3-spanid" have been added to request
-    assert(req.headerMap.keys == Set("x-b3-traceid", "x-b3-spanid"))
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
 
-    trace match {
-      case Some(tid) =>
-        assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
-        assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
-      case None =>
-        assert(false)  // "traceId does not exist"
-    }
+    assert(trace.isDefined) //expect trace exists
+    trace.foreach { tid => {
+      assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
+      assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
+
+      // expect to not get a sampler when sampling bit is not set
+      val sampler = ZipkinTrace.getSampler(req.headerMap)
+      assert(sampler.isEmpty)
+
+      ztp.setContext(req, tid)
+      // check "b3" has been removed, "x-b3-traceid" and "x-b3-spanid" have been added to request
+      assert(req.headerMap.get("b3").isEmpty)
+      assert(Set("x-b3-traceid", "x-b3-spanid").subsetOf(req.headerMap.keys.toSet))
+    }}
 
     // after "x-b3-" have been added check they have expected values
     val trace2 = ztp.traceId(req)
@@ -127,25 +131,28 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "a3ce929d0e0e4736-00f067aa0ba902b7-1")
 
     val trace = ztp.traceId(req)
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
-    // check "x-b3-traceid" and "x-b3-spanid" and "x-b3-sampled" have been added to request
-    assert(req.headerMap.keys == Set("x-b3-traceid", "x-b3-spanid", "x-b3-sampled"))
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
 
-    trace match {
-      case Some(tid) =>
-        assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
-        assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
-        assert(tid.sampled.contains(true))
-      case None =>
-        assert(false)  // "traceId does not exist"
-    }
+    assert(trace.isDefined) //expect trace exists
+    trace.foreach { tid => {
+      assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
+      assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
+      assert(tid.sampled.contains(true))
+
+      // expect to get the right sampled value which is 1
+      val sampler = ZipkinTrace.getSampler(req.headerMap)
+      assert(sampler.contains(1.0f))
+
+      ztp.setContext(req, tid)
+      // check "b3" has been removed, "x-b3-traceid" and "x-b3-spanid" and "x-b3-sampledid" have been added to request
+      assert(req.headerMap.get("b3").isEmpty)
+      assert(Set("x-b3-traceid", "x-b3-spanid", "x-b3-sampled").subsetOf(req.headerMap.keys.toSet))
+    }}
 
     // after "x-b3-" have been added check they have the same values as above
     val trace2 = ztp.traceId(req)
     assert(trace == trace2)
-
-    //process sample
   }
 
   test("get traceid from a b3 single header - four fields - child span on debug") {
@@ -156,20 +163,27 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "a3ce929d0e0e4736-00f067aa0ba902b7-d-5b4185666d50f68b")
 
     val trace = ztp.traceId(req)
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
-    // check "x-b3-traceid" and "x-b3-spanid" and "x-b3-flags" and "x-b3-parentspanid" have been added to request
-    assert(req.headerMap.keys == Set("x-b3-traceid", "x-b3-spanid", "x-b3-flags", "x-b3-parentspanid"))
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
 
-    trace match {
-      case Some(tid) =>
-        assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
-        assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
-        assert(tid.parentId.toString().equals("5b4185666d50f68b"))
-        assert(tid.flags.toLong == 1)
-      case None =>
-        assert(false)  // "traceId does not exist"
-    }
+    assert(trace.isDefined) //expect trace exists
+    trace.foreach { tid => {
+      assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
+      assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
+      assert(tid.parentId.toString().equals("5b4185666d50f68b"))
+      assert(tid.flags.toLong == 1)
+
+      // expect to get the right sampled value which is 1
+      val sampler = ZipkinTrace.getSampler(req.headerMap)
+      assert(sampler.contains(1.0f))
+
+      ztp.setContext(req, tid)
+      // check "b3" has been removed, "x-b3-traceid" and "x-b3-spanid" and "x-b3-flags" have been added to request
+      assert(req.headerMap.get("b3").isEmpty)
+      // check sampled not set when debug flag set
+      assert(req.headerMap.get("x-b3-sampled").isEmpty)
+      assert(Set("x-b3-traceid", "x-b3-spanid", "x-b3-flags").subsetOf(req.headerMap.keys.toSet))
+    }}
 
     //test x-b3- headers have been added so we can get the same trace from them
     val trace2 = ztp.traceId(req)
@@ -184,25 +198,26 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "a3ce929d0e0e4736-00f067aa0ba902b7-0-5b4185666d50f68b")
 
     val trace = ztp.traceId(req)
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
-    // check "x-b3-traceid" and "x-b3-spanid" and "x-b3-sampled" and "x-b3-parentspanid" have been added to request
-    assert(req.headerMap.keys == Set("x-b3-traceid", "x-b3-spanid", "x-b3-sampled", "x-b3-parentspanid"))
+    //b3 has not been removed, other x-b3 have not been added
+    assert(req.headerMap.keys == Set("b3"))
 
-    trace match {
-      case Some(tid) =>
-        assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
-        assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
-        assert(tid.parentId.toString().equals("5b4185666d50f68b"))
-        assert(tid.sampled.contains(false))
-      case None =>
-        assert(false)  // "traceId does not exist"
-    }
+    assert(trace.isDefined) //expect trace exists
+    trace.foreach { tid => {
+      assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))
+      assert(tid.spanId.toString().equals("00f067aa0ba902b7"))
+      assert(tid.parentId.toString().equals("5b4185666d50f68b"))
+      assert(tid.sampled.contains(false))
 
-    // expect to get the right sampled value which is 0
-    // this also checks "x-b3-sampled" has been added to request
-    val sampler = ZipkinTrace.getSampler(req.headerMap)
-    assert(sampler.contains(0.0f))
+      // expect to get the right sampled value which is 0
+      val sampler = ZipkinTrace.getSampler(req.headerMap)
+      assert(sampler.contains(0.0f))
+
+      ztp.setContext(req, tid)
+      // check "b3" has been removed, "x-b3-traceid" and "x-b3-spanid" and "x-b3-parentspanid" have been added to request
+      assert(req.headerMap.get("b3").isEmpty)
+      // check sampled not set when debug flag set
+      assert(Set("x-b3-traceid", "x-b3-spanid", "x-b3-parentspanid", "x-b3-sampled").subsetOf(req.headerMap.keys.toSet))
+    }}
 
     //test x-b3- headers have been added so we can get the same trace from them
     val trace2 = ztp.traceId(req)
@@ -216,19 +231,17 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("b3", "80f198ee56343ba864fe8b2a57d3eff7-05e3ac9a4f6e3b90")
 
     val trace = ztp.traceId(req)
-    //b3 has been removed
-    assert(req.headerMap.get("b3").isEmpty)
+    //b3 has not been removed
+    assert(!req.headerMap.get("b3").isEmpty)
     // check "x-b3-traceid" and "x-b3-spanid" have been added to request
-    assert(req.headerMap.keys == Set("x-b3-traceid", "x-b3-spanid"))
+    //assert(req.headerMap.keys == Set("x-b3-traceid", "x-b3-spanid"))
 
-    trace match {
-      case Some(tid) =>
-        assert(tid.traceId.toString().equals("64fe8b2a57d3eff7"))
-        assert(tid.spanId.toString().equals("05e3ac9a4f6e3b90"))
-        assert(tid.traceIdHigh.toString().equals("Some(80f198ee56343ba8)"))
-      case None =>
-        assert(false)  // "traceId does not exist"
-    }
+    assert(trace.isDefined) //expect trace exists
+    trace.foreach { tid => {
+      assert(tid.traceId.toString().equals("64fe8b2a57d3eff7"))
+      assert(tid.spanId.toString().equals("05e3ac9a4f6e3b90"))
+      assert(tid.traceIdHigh.toString().contains("80f198ee56343ba8)"))
+    }}
 
     // after "x-b3-" have been added check they have expected values
     val trace2 = ztp.traceId(req)
@@ -245,14 +258,12 @@ class ZipkinTracePropagatorTest extends FunSuite {
     req.headerMap.add("x-b3-sampled", "0")
 
     val trace = ztp.traceId(req)
-    trace match {
-      case Some(tid) =>
-        assert(tid.traceId.toString().equals("a3ce929d0e0e4736")) //expect traceid from b3 not from x-b3-traceid
-        assert(tid.spanId.toString().equals("00f067aa0ba902b7")) // expect spanid from b3 not from x-b3-spanid
-        assert(tid.sampled.contains(true)) // expect samplef from b3 not from x-b3-sampled
-      case None =>
-        assert(false)  // "traceId does not exist"
-    }
+    assert(trace.isDefined)  //expect trace exists
+    trace.foreach { tid => {
+      assert(tid.traceId.toString().equals("a3ce929d0e0e4736"))  //expect traceid from b3 not from x-b3-traceid)
+      assert(tid.spanId.toString().equals("00f067aa0ba902b7")) // expect spanid from b3 not from x-b3-spanid
+      assert(tid.sampled.contains(true)) // expect samplef from b3 not from x-b3-sampled
+    }}
   }
 
   test("same trace from b3 single headers and x-b3- multi headers, 128bit traceid, UPPER CASE header don't matter") {
@@ -280,4 +291,6 @@ class ZipkinTracePropagatorTest extends FunSuite {
 
     assert(trace1 == trace2)
   }
+
+  // test with invalid format b3 single, many fields, other value of 0/1/d se on sampling location
 }

@@ -19,6 +19,8 @@ object H2Instances {
     override def set(headers: Headers, k: String, v: String): Unit = headers.set(k, v)
 
     override def remove(headers: Headers, key: String): Seq[String] = headers.remove(key)
+
+    override def iterator(headers: Headers): Iterator[(String, String)] = headers.toSeq.iterator
   }
 
   implicit object H2RequestLike extends RequestLike[Request, Headers] {
