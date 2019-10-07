@@ -9,6 +9,7 @@ import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
 import io.netty.handler.codec.http2._
 import java.util.concurrent.atomic.AtomicBoolean
+import com.twitter.finagle.liveness.FailureDetector.NullConfig
 import scala.collection.immutable.Queue
 
 class Netty4ServerDispatcherTest extends FunSuite {
@@ -62,7 +63,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     }
 
     val stats = new InMemoryStatsReceiver
-    val dispatcher = new Netty4ServerDispatcher(transport, None, service, stats, None)
+    val dispatcher = new Netty4ServerDispatcher(transport, NullConfig, service, stats, None)
 
     assert(!bartmanCalled.get)
     assert(
@@ -211,7 +212,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     val stats = new InMemoryStatsReceiver
     val dispatcher = new Netty4ServerDispatcher(
       transport,
-      None,
+      NullConfig,
       service,
       stats,
       maxConcurrentStreams = Some(1l)
@@ -314,7 +315,7 @@ class Netty4ServerDispatcherTest extends FunSuite {
     val stats = new InMemoryStatsReceiver
     val dispatcher = new Netty4ServerDispatcher(
       transport,
-      None,
+      NullConfig,
       service,
       stats,
       maxConcurrentStreams = Some(1l)

@@ -61,7 +61,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
     protected def newDispatcher(trans: Http2FrameTransport {
       type Context <: self.Context
     }): Service[Request, Response] = {
-      new Netty4ClientDispatcher(trans, Some(detectorCfg), statsReceiver)
+      new Netty4ClientDispatcher(trans, detectorCfg, statsReceiver)
     }
   }
 
@@ -102,6 +102,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       Netty4H2Listener.mk(params)
 
     private[this] lazy val statsReceiver = params[param.Stats].statsReceiver
+    private[this] lazy val FailureDetector.Param(detectorCfg) = params[FailureDetector.Param]
 
     /** A dispatcher is created for each inbound HTTP/2 connection. */
     protected def newDispatcher(
@@ -111,7 +112,7 @@ object H2 extends Client[Request, Response] with Server[Request, Response] {
       service: Service[Request, Response]
     ): Closable = {
       val maxConcurrentStreams = params[MaxConcurrentStreams].streams
-      new Netty4ServerDispatcher(trans, None, service, statsReceiver, maxConcurrentStreams)
+      new Netty4ServerDispatcher(trans, detectorCfg, service, statsReceiver, maxConcurrentStreams)
     }
   }
 

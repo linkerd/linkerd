@@ -26,7 +26,7 @@ object Netty4ClientDispatcher {
  */
 class Netty4ClientDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
-  override protected[this] val failureThreshold: Option[FailureDetector.Config],
+  override protected[this] val detectorConfig: FailureDetector.Config,
   protected[this] val stats: StatsReceiver
 ) extends Service[Request, Response] with Netty4DispatcherBase[Request, Response] {
   import Netty4ClientDispatcher._

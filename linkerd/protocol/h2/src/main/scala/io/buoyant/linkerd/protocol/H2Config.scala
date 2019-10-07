@@ -166,12 +166,14 @@ class H2PrefixConfig(prefix: PathMatcher) extends PrefixConfig(prefix) with H2Cl
 trait H2ClientConfig extends ClientConfig with H2EndpointConfig {
   var forwardClientCert: Option[Boolean] = None
   var requestAuthorizers: Option[Seq[H2RequestAuthorizerConfig]] = None
+  var failureThreshold: Option[FailureThresholdConfig] = None
 
   @JsonIgnore
   override def params(vars: Map[String, String]): Stack.Params =
     withEndpointParams(super.params(vars))
       .maybeWith(forwardClientCert.map(ForwardClientCertFilter.Enabled))
       .maybeWith(requestAuthorizerParam)
+      .maybeWith(failureThreshold.map(_.params))
 
   @JsonIgnore
   private[this] def requestAuthorizerParam = requestAuthorizers.map { configs =>
@@ -257,6 +259,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   var maxConcurrentStreamsPerConnection: Option[Int] = None
   var addForwardedHeader: Option[AddForwardedHeaderConfig] = None
   var maxCallDepth: Option[Int] = None
+  var failureThreshold: Option[FailureThresholdConfig] = None
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
@@ -270,7 +273,9 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams
-    + AddForwardedHeaderConfig.Param(addForwardedHeader)).maybeWith(maxCallDepth.map(MaxCallDepthFilter.Param(_)))
+    + AddForwardedHeaderConfig.Param(addForwardedHeader))
+    .maybeWith(maxCallDepth.map(MaxCallDepthFilter.Param(_)))
+    .maybeWith(failureThreshold.map(_.params))
 }
 
 abstract class H2IdentifierConfig extends PolymorphicConfig {

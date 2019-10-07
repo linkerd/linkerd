@@ -9,8 +9,8 @@ import com.twitter.util.{Future, Promise, Time}
 import io.buoyant.test.FunSuite
 import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http2._
-import java.net.SocketAddress
 import java.nio.charset.StandardCharsets
+import com.twitter.finagle.liveness.FailureDetector.NullConfig
 
 class Netty4ClientDispatcherTest extends FunSuite {
   setLogLevel(com.twitter.logging.Level.OFF)
@@ -36,7 +36,7 @@ class Netty4ClientDispatcherTest extends FunSuite {
     }
 
     val stats = new InMemoryStatsReceiver
-    val dispatcher = new Netty4ClientDispatcher(transport, None, stats)
+    val dispatcher = new Netty4ClientDispatcher(transport, NullConfig, stats)
     assert(dispatcher.status == SvcStatus.Open)
 
     var released = 0

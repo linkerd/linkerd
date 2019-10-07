@@ -31,7 +31,7 @@ object Netty4ServerDispatcher {
  */
 class Netty4ServerDispatcher(
   override protected[this] val transport: Transport[Http2Frame, Http2Frame],
-  override protected[this] val failureThreshold: Option[FailureDetector.Config],
+  override protected[this] val detectorConfig: FailureDetector.Config,
   service: Service[Request, Response],
   protected[this] val stats: StatsReceiver,
   protected[this] val maxConcurrentStreams: Option[Long]

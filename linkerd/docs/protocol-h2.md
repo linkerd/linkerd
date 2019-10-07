@@ -87,6 +87,7 @@ maxConcurrentStreamsPerConnection | 1000 | Configures `SETTINGS_MAX_CONCURRENT_S
 maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
 maxCallDepth | 10 | If set, limits the number of maximum hops. The number of calls is derived by inspecting the Via header. This can be used to prevent proxy loops.
+failureThreshold | minPeriodMs: 5000, closeTimeoutMs: 6000 | Sets the [failure threshold](#failure-threshold) used by Linkerd's threshold failure detector to gauge the health of remote H2 client peers
 
 ## HTTP/2 Service Parameters
 
@@ -117,6 +118,7 @@ maxFrameBytes | 16KB | Configures `SETTINGS_MAX_FRAME_SIZE` on new streams.
 maxHeaderListByts | none | Configures `SETTINGS_MAX_HEADER_LIST_SIZE` on new streams.
 forwardClientCert | false | Determines if client certificates are forwarded through the `x-forwarded-client-cert` header of a request.
 requestAuthorizers | none | A list of request authorizers.  See [H2-specific request authorizers](#http-2-request-authorizers).
+failureThreshold | minPeriodMs: 5000, closeTimeoutMs: 6000 | Sets the [failure threshold](#failure-threshold) used by Linkerd's threshold failure detector to gauge the health of remote H2 server peers
 
 <aside class="notice">
 `forwardClientCert` makes Linkerd forward client certificates using the `x-forwarded-client-cert` header to let destination services make authorization decisions on the requests

@@ -4,7 +4,7 @@ package netty4
 import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.liveness.FailureDetector.NullConfig
 import com.twitter.finagle.netty4.transport.HasExecutor
-import com.twitter.finagle.stats.StatsReceiver
+import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ChannelClosedException, Failure, FailureFlags}
 import com.twitter.logging.Logger
@@ -12,6 +12,7 @@ import com.twitter.util._
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
+
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
@@ -20,7 +21,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   protected[this] def log: Logger
   protected[this] def prefix: String
   protected[this] def stats: StatsReceiver
-  protected[this] def failureThreshold: Option[FailureDetector.Config] = None
+  protected[this] def detectorConfig: FailureDetector.Config
   protected[this] def transport: Transport[Http2Frame, Http2Frame]
 
   protected[this] lazy val writer: H2Transport.Writer = Netty4H2Writer(transport)
@@ -77,9 +78,9 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
     done
   }
 
-  protected[this] val failureDetector: FailureDetector = failureThreshold match {
-    case None => FailureDetector(NullConfig, null, null)
-    case Some(cfg) => FailureDetector(cfg, (ping _), stats.scope("failure_detector"))
+  protected[this] val failureDetector: FailureDetector = detectorConfig match {
+    case NullConfig => FailureDetector(NullConfig, () => Future.Done, NullStatsReceiver)
+    case cfg => FailureDetector(cfg, (ping _), stats.scope("failure_detector"))
   }
   failureDetector.onClose.ensure {
     log.debug(s"failure detector closed HTTP/2 connection: $prefix")
@@ -94,7 +95,6 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
   }
 
   protected[this] def demuxing: Future[Unit]
-
 
   // We count all streams towards active. The reason for that
   // is the fact that under normal circumstances when the
