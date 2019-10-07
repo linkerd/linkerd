@@ -41,6 +41,32 @@ class ZipkinTracePropagatorTest extends FunSuite {
       val sampler = ZipkinTrace.getSampler(req1.headerMap)
       assert(sampler.contains(1.0f))
     }}
+
+    // expect to get the right sampled value which is 1
+    val sampler1 = ZipkinTrace.getSampler(req1.headerMap)
+    assert(sampler1.contains(1.0f))
+    // expect to get the right sampled value which is 1
+    val sampler2 = ZipkinTrace.getSampler(req2.headerMap)
+    assert(sampler2.contains(1.0f))
   }
 
- }
+  test("get traceid from multi x-b3 headers - set/get 128bit trace, two fields") {
+    val ztp = new ZipkinTracePropagator()
+    val req = Request()
+    req.headerMap.add("x-b3-traceid", "80f198ee56343ba864fe8b2a57d3eff7")
+    req.headerMap.add("x-b3-spanid", "05e3ac9a4f6e3b90")
+
+    val trace = ztp.traceId(req)
+    assert(trace.isDefined) //expect trace exists
+    trace.foreach { tid => {
+      assert(tid.traceId.toString().equals("64fe8b2a57d3eff7"))
+      assert(tid.spanId.toString().equals("05e3ac9a4f6e3b90"))
+      assert(tid.traceIdHigh.toString().contains("80f198ee56343ba8)"))
+
+      val req2 = Request()
+      ztp.setContext(req2, tid)
+      assert(req2.headerMap.get("x-b3-traceid").contains("80f198ee56343ba864fe8b2a57d3eff7"))
+      assert(req2.headerMap.get("x-b3-spanid").contains("05e3ac9a4f6e3b90"))
+    }}
+  }
+}
