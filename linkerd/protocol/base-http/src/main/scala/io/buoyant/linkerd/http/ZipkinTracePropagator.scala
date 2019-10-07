@@ -3,7 +3,7 @@ package io.buoyant.linkerd.protocol.http
 import com.twitter.finagle.{SimpleFilter, Stack}
 import com.twitter.finagle.buoyant.Sampler
 import com.twitter.finagle.http.util.StringUtil
-import com.twitter.finagle.tracing.{Flags, SpanId, TraceId}
+import com.twitter.finagle.tracing.{Flags, SpanId, TraceId, TraceId128}
 import com.twitter.util.Try
 import io.buoyant.linkerd.{TracePropagator, TracePropagatorInitializer}
 import io.buoyant.router.http.{HeadersLike, RequestLike}
@@ -51,7 +51,12 @@ object ZipkinTrace {
   def get[H: HeadersLike](headers: H): Option[TraceId] = {
     val headersLike = implicitly[HeadersLike[H]]
 
-    val trace = caseInsensitiveGet(headers, ZipkinTraceHeader).flatMap(SpanId.fromString)
+    // expect to read a 128bit traceid field, b3 single header supports 128bit traceids
+    val trace128Bit = caseInsensitiveGet(headers, ZipkinTraceHeader) match {
+      case Some(s) => TraceId128(s)
+      case None => TraceId128.empty
+    }
+
     val parent = caseInsensitiveGet(headers, ZipkinParentHeader).flatMap(SpanId.fromString)
     val span = caseInsensitiveGet(headers, ZipkinSpanHeader).flatMap(SpanId.fromString)
     val sample = caseInsensitiveGet(headers, ZipkinSampleHeader).map(StringUtil.toBoolean)
@@ -59,8 +64,9 @@ object ZipkinTrace {
       case Some(f) => Flags(f)
       case None => Flags()
     }
+
     span.map { s =>
-      TraceId(trace, parent, s, sample, flags)
+      TraceId(trace128Bit.low, parent, s, sample, flags, trace128Bit.high)
     }
   }
 
@@ -68,7 +74,14 @@ object ZipkinTrace {
     val headersLike = implicitly[HeadersLike[H]]
 
     headersLike.set(headers, ZipkinSpanHeader, id.spanId.toString)
-    headersLike.set(headers, ZipkinTraceHeader, id.traceId.toString)
+
+    // support setting a 128bit traceid
+    if (id.traceIdHigh.isEmpty) {
+      headersLike.set(headers, ZipkinTraceHeader, id.traceId.toString)
+    } else {
+      headersLike.set(headers, ZipkinTraceHeader, id.traceIdHigh.get.toString + id.traceId.toString)
+    }
+
     headersLike.set(headers, ZipkinParentHeader, id.parentId.toString)
     headersLike.set(headers, ZipkinSampleHeader, (if ((id.sampled exists { _ == true })) 1 else 0).toString)
     headersLike.set(headers, ZipkinFlagsHeader, id.flags.toLong.toString)
