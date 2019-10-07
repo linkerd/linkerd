@@ -606,8 +606,12 @@ object LinkerdBuild extends Base {
 
     object Protocol {
 
+      val baseHttp = projectDir("linkerd/protocol/base-http")
+        .dependsOn(Router.baseHttp, core)
+        .withTests()
+
       val h2 = projectDir("linkerd/protocol/h2")
-        .dependsOn(core, Router.h2, istio, Finagle.h2 % "test->test;e2e->test", tls % Test)
+        .dependsOn(core, baseHttp, Router.h2, istio, Finagle.h2 % "test->test;e2e->test", tls % Test)
         .withTests().withE2e().withIntegration()
         .withGrpc
         .withTwitterLibs(Deps.finagle("netty4"))
@@ -617,6 +621,7 @@ object LinkerdBuild extends Base {
         .withTwitterLibs(Deps.finagle("netty4-http"))
         .dependsOn(
           core % "compile->compile;e2e->test;integration->test",
+          baseHttp,
           istio,
           istioProto,
           failureAccrual % "e2e",
@@ -642,7 +647,7 @@ object LinkerdBuild extends Base {
         .settings(publishArtifact := false)
         .withTwitterLib(Deps.twitterUtil("benchmark"))
 
-      val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift, thriftMux)
+      val all = aggregateDir("linkerd/protocol", benchmark, baseHttp, h2, http, mux, thrift, thriftMux)
     }
 
     object Announcer {
@@ -854,6 +859,7 @@ object LinkerdBuild extends Base {
   val linkerdMain = Linkerd.main
   val linkerdProtocol = Linkerd.Protocol.all
   val linkerdProtocolH2 = Linkerd.Protocol.h2
+  val LinkerdProtocolBaseHttp = Linkerd.Protocol.baseHttp
   val linkerdProtocolHttp = Linkerd.Protocol.http
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift

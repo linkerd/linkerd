@@ -17,6 +17,7 @@ class MaxCallDepthFilterTest extends FunSuite with Awaits {
     override def add(headers: HeaderMap, k: String, v: String): Unit = ???
     override def set(headers: HeaderMap, k: String, v: String): Unit = ???
     override def remove(headers: HeaderMap, key: String): Seq[String] = ???
+    override def iterator(headers: HeaderMap): Iterator[(String, String)] = ???
   }
 
   implicit object HttpRequestLike extends RequestLike[Request, HeaderMap] {
