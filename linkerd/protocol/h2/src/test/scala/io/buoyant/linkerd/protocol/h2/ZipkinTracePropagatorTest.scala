@@ -39,16 +39,13 @@ class ZipkinTracePropagatorTest extends FunSuite {
       assert(tid.sampled.contains(true))
 
       // expect to get the right sampled value which is 0
-      val sampler = ZipkinTrace.getSampler(req1.headers)
-      assert(sampler.contains(1.0f))
+      assert(ZipkinTrace.getSampler(req1.headers).contains(1.0f))
     }}
 
     // expect to get the right sampled value which is 1
-    val sampler1 = ZipkinTrace.getSampler(req1.headers)
-    assert(sampler1.contains(1.0f))
+    assert(ZipkinTrace.getSampler(req1.headers).contains(1.0f))
     // expect to get the right sampled value which is 1
-    val sampler2 = ZipkinTrace.getSampler(req2.headers)
-    assert(sampler2.contains(1.0f))
+    assert(ZipkinTrace.getSampler(req2.headers).contains(1.0f))
   }
 
   test("get traceid from multi x-b3 headers - set/get 128bit trace, two fields") {
@@ -70,4 +67,48 @@ class ZipkinTracePropagatorTest extends FunSuite {
       assert(req2.headers.get("x-b3-spanid").contains("05e3ac9a4f6e3b90"))
     }}
   }
- }
+
+  test("multi x-b3 headers - get flags/sampled test") {
+    val ztp = new ZipkinTracePropagator()
+    val req = Request("http", Method.Get, "auf", "/", Stream.empty())
+    req.headers.add("x-b3-traceid", "80f198ee56343ba864fe8b2a57d3eff7")
+    req.headers.add("x-b3-spanid", "05e3ac9a4f6e3b90")
+
+    //flags 1, no sampled => sampler 1
+    req.headers.add("x-b3-flags", "1")
+    assert(ZipkinTrace.getSampler(req.headers).contains(1.0f))
+
+    //flags 0 (invalid value), no sampled => sampler None
+    req.headers.remove("x-b3-flags")
+    req.headers.add("x-b3-flags", "0")
+    assert(ZipkinTrace.getSampler(req.headers).contains(0.0f))
+
+    //flags asd (invalid value), no sampled = > sampler None
+    req.headers.remove("x-b3-flags")
+    req.headers.add("x-b3-flags", "asd")
+    assert(ZipkinTrace.getSampler(req.headers).isEmpty)
+
+    //flags 1, sampled 1 (redundant sampled since flags is already 1)
+    req.headers.remove("x-b3-flags")
+    req.headers.add("x-b3-flags", "1")
+    req.headers.add("x-b3-sampled", "1")
+    assert(ZipkinTrace.getSampler(req.headers).contains(1.0f))
+
+    //sampled 1, no flags
+    req.headers.remove("x-b3-flags")
+    req.headers.remove("x-b3-sampled")
+    req.headers.add("x-b3-sampled", "1")
+    assert(ZipkinTrace.getSampler(req.headers).contains(1.0f))
+
+    //sampled 0, no flags
+    req.headers.remove("x-b3-flags")
+    req.headers.remove("x-b3-sampled")
+    req.headers.add("x-b3-sampled", "0")
+    assert(ZipkinTrace.getSampler(req.headers).contains(0.0f))
+
+    //no sampled, no flags
+    req.headers.remove("x-b3-flags")
+    req.headers.remove("x-b3-sampled")
+    assert(ZipkinTrace.getSampler(req.headers).isEmpty)
+  }
+}
