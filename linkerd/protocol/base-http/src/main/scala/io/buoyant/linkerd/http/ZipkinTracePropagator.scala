@@ -7,6 +7,7 @@ import com.twitter.finagle.tracing.{Flags, SpanId, TraceId, TraceId128}
 import com.twitter.util.Try
 import io.buoyant.linkerd.{TracePropagator, TracePropagatorInitializer}
 import io.buoyant.router.http.{HeadersLike, RequestLike}
+import com.twitter.logging.Logger
 
 class ZipkinTracePropagator[Req, H: HeadersLike](implicit requestLike: RequestLike[Req, H]) extends TracePropagator[Req] {
   /**
@@ -83,19 +84,47 @@ object ZipkinTrace {
     }
 
     headersLike.set(headers, ZipkinParentHeader, id.parentId.toString)
-    headersLike.set(headers, ZipkinSampleHeader, (if ((id.sampled exists { _ == true })) 1 else 0).toString)
-    headersLike.set(headers, ZipkinFlagsHeader, id.flags.toLong.toString)
+
+    //the only valid value for x-b3-flags is 1, which means debug
+    if (id.flags.isDebug) {
+      //when setting x-b3-flags to debug, 1, do not also set x-b3-sampled because it is a redundant info
+      headersLike.set(headers, ZipkinFlagsHeader, id.flags.toLong.toString)
+    } else {
+      id.sampled match {
+        // valid values fro x-b3-sampled are 1 and 0
+        case Some(true) => headersLike.set(headers, ZipkinSampleHeader, "1")
+        case Some(false) => headersLike.set(headers, ZipkinSampleHeader, "0")
+        case None => // do nothing
+      }
+    }
     ()
   }
 
   def getSampler[H: HeadersLike](headers: H): Option[Float] = {
     val headersLike = implicitly[HeadersLike[H]]
+    val samplerNone: Option[Float] = None
+    val samplerTrue: Option[Float] = Option(1.0f)
+    val samplerFalse: Option[Float] = Option(0.0f)
 
-    headersLike.get(headers, ZipkinSampleHeader).flatMap { s =>
-      Try(s.toFloat).toOption.map {
-        case v if v < 0 => 0.0f
-        case v if v > 1 => 1.0f
-        case v => v
+    // first try getting x-b3-flags, flags = 1 means debug
+    val flags = caseInsensitiveGet(headers, ZipkinFlagsHeader)
+    if (flags.isEmpty) {
+      // try getting x-b3-sampled only if x-b3-flags not present
+      caseInsensitiveGet(headers, ZipkinSampleHeader).flatMap { s =>
+        Try(s.toFloat).toOption match {
+          //x-b3-sampled present, the only valid values for x-b3-sampled are 0 and 1, any other values are invalid and should be ignored
+          case Some(v) if v == 0 => samplerFalse
+          case Some(v) if v == 1 => samplerTrue
+          case _ => samplerNone
+        }
+      }
+    } else {
+      flags.flatMap { s =>
+        Try(s.toLong).toOption match {
+          //x-b3-flags present, the only valid value for x-b3-flags is 1, any other values are invalid and should be ignored
+          case Some(v) if v == 1 => samplerTrue
+          case _ => samplerNone
+        }
       }
     }
   }
