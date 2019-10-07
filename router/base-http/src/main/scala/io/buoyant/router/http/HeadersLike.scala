@@ -12,4 +12,5 @@ trait HeadersLike[H] {
   def add(headers: H, k: String, v: String): Unit
   def set(headers: H, k: String, v: String): Unit
   def remove(headers: H, key: String): Seq[String]
+  def iterator(headers: H): Iterator[(String, String)]
 }

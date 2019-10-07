@@ -29,6 +29,8 @@ object HttpInstances {
       headers -= key
       r
     }
+
+    override def iterator(headers: HeaderMap): Iterator[(String, String)] = headers.iterator
   }
 
   implicit object HttpRequestLike extends RequestLike[Request, HeaderMap] {
