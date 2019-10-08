@@ -1,6 +1,7 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Stack
 import com.twitter.finagle.buoyant.{ClientAuth, ParamsMaybeWith, PathMatcher, SocketOptionsConfig, TlsClientConfig => FTlsClientConfig}
@@ -71,10 +72,10 @@ case class TlsClientConfig(
 }
 
 case class HostConnectionPool(
-  minSize: Option[Int],
-  maxSize: Option[Int],
-  idleTimeMs: Option[Int],
-  maxWaiters: Option[Int]
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) minSize: Option[Int],
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) maxSize: Option[Int],
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) idleTimeMs: Option[Int],
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) maxWaiters: Option[Int]
 ) {
   @JsonIgnore
   private[this] val default = DefaultPool.Param.param.default
@@ -90,8 +91,8 @@ case class HostConnectionPool(
 }
 
 case class ClientSessionConfig(
-  lifeTimeMs: Option[Int],
-  idleTimeMs: Option[Int]
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) lifeTimeMs: Option[Int],
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) idleTimeMs: Option[Int]
 ) {
   @JsonIgnore
   private[this] val default = ExpiringService.Param.param.default
