@@ -2,7 +2,9 @@ package io.buoyant.transformer
 
 import com.twitter.finagle.Name.Bound
 import com.twitter.finagle._
+import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
+import io.buoyant.admin.Admin
 import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer, RichActivity}
 
 /**
@@ -12,23 +14,29 @@ import io.buoyant.namer.{DelegateTree, DelegatingNameTreeTransformer, RichActivi
 class SubnetGatewayTransformer(
   prefix: Path,
   gatewayTree: Activity[NameTree[Bound]],
-  netmask: Netmask
-) extends GatewayTransformer(prefix, gatewayTree, netmask.local)
+  netmask: Netmask,
+  handlers: Seq[Admin.Handler] = Seq.empty
+) extends GatewayTransformer(prefix, gatewayTree, netmask.local, handlers)
 
 class MetadataGatewayTransformer(
   prefix: Path,
   gatewayTree: Activity[NameTree[Bound]],
-  metadataField: String
+  metadataField: String,
+  handlers: Seq[Admin.Handler] = Seq.empty
 ) extends GatewayTransformer(prefix, gatewayTree, {
   case (Address.Inet(_, a), Address.Inet(_, b)) => a.get(metadataField) == b.get(metadataField)
   case _ => true
-})
+},
+  handlers)
 
 class GatewayTransformer(
   prefix: Path,
   gatewayTree: Activity[NameTree[Bound]],
-  gatewayPredicate: (Address, Address) => Boolean
-) extends DelegatingNameTreeTransformer {
+  gatewayPredicate: (Address, Address) => Boolean,
+  handlers: Seq[Admin.Handler] = Seq.empty
+) extends DelegatingNameTreeTransformer with Admin.WithHandlers {
+
+  override def adminHandlers: Seq[Admin.Handler] = handlers
 
   override protected def transformDelegate(tree: DelegateTree[Bound]): Future[DelegateTree[Bound]] =
     gatewayTree.toFuture.map { gateways =>

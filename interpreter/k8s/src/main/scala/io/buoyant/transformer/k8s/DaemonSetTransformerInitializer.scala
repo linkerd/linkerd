@@ -16,6 +16,8 @@ class DaemonSetTransformerInitializer extends TransformerInitializer {
   override val configId = "io.l5d.k8s.daemonset"
 }
 
+object DaemonSetTransformerInitializer extends DaemonSetTransformerInitializer
+
 case class DaemonSetTransformerConfig(
   k8sHost: Option[String],
   k8sPort: Option[Port],
@@ -44,11 +46,13 @@ case class DaemonSetTransformerConfig(
   override def mk(params: Params): NameTreeTransformer = {
     val client = mkClient(params).configured(param.Label("client"))
     def mkNs(ns: String) = Api(client.newService(dst)).withNamespace(ns)
-    val namer = new MultiNsNamer(Path.empty, None, mkNs)
+
+    val namer = new MultiNsNamer(prefix, None, mkNs)
+
     val daemonSet = namer.bind(NameTree.Leaf(Path.Utf8(namespace, port, service)))
     if (hostNetwork.getOrElse(false))
-      new MetadataGatewayTransformer(prefix, daemonSet, Metadata.nodeName)
+      new MetadataGatewayTransformer(prefix, daemonSet, Metadata.nodeName, namer.adminHandlers)
     else
-      new SubnetGatewayTransformer(prefix, daemonSet, Netmask("255.255.255.0"))
+      new SubnetGatewayTransformer(prefix, daemonSet, Netmask("255.255.255.0"), namer.adminHandlers)
   }
 }

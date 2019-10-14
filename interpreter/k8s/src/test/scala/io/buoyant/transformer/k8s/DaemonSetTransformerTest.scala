@@ -6,10 +6,16 @@ import com.twitter.finagle.naming.NameInterpreter
 import com.twitter.util.{Activity, Future, Var}
 import io.buoyant.namer.{Metadata, RichActivity}
 import io.buoyant.test.FunSuite
-import io.buoyant.transformer.{MetadataGatewayTransformer, Netmask, SubnetGatewayTransformer}
+import io.buoyant.transformer.{MetadataGatewayTransformer, Netmask, SubnetGatewayTransformer, GatewayTransformer}
+import io.buoyant.namer.{DelegatingNameTreeTransformer, Delegator, Paths, TransformerConfig, WithNameTreeTransformer}
 import java.net.InetSocketAddress
+import io.buoyant.config.Parser
+import io.buoyant.config.types.Port
+import com.twitter.finagle.{Dtab}
+import org.scalatest.Inside
 
-class DaemonSetTransformerTest extends FunSuite {
+class DaemonSetTransformerTest extends FunSuite
+  with Inside {
 
   test("daemonset transformer uses daemonset") {
     val daemonset = Activity.value(
@@ -134,4 +140,161 @@ class DaemonSetTransformerTest extends FunSuite {
       assert(bound.addr.sample == Addr.Neg)
     }
   }
+
+  private[this] def parse(yaml: String): DaemonSetTransformerConfig =
+    Parser.objectMapper(yaml, Iterable(Seq(DaemonSetTransformerInitializer)))
+      .readValue[TransformerConfig](yaml)
+      .asInstanceOf[DaemonSetTransformerConfig]
+
+  val yaml_hostNetwork_false =
+    s"""|kind: io.l5d.k8s.daemonset
+        |k8sHost: "foo"
+        |k8sPort: 8888
+        |namespace: "test-namespace"
+        |service: "test-service"
+        |port: test-port
+        |hostNetwork: false
+        |""".stripMargin
+
+  val yaml_hostNetwork_true =
+    s"""|kind: io.l5d.k8s.daemonset
+        |k8sHost: "foo"
+        |k8sPort: 9999
+        |namespace: "test-namespace2"
+        |service: "test-service2"
+        |port: test-port2
+        |hostNetwork: true
+        |""".stripMargin
+
+  test("daemonset transformer has admin handler with expected url path") {
+    val config = parse(yaml_hostNetwork_false)
+    inside(config) {
+      case DaemonSetTransformerConfig(k8sHost, k8sPort, namespace, service, port, hostNetwork) =>
+        assert(k8sHost.contains("foo"))
+        assert(k8sPort.contains(Port(8888)))
+        assert(namespace.contains("test-namespace"))
+        assert(service.contains("test-service"))
+        assert(port.contains("test-port"))
+        assert(hostNetwork.contains(false))
+    }
+
+    val transfomer: GatewayTransformer = config.mk(Stack.Params.empty).asInstanceOf[GatewayTransformer]
+    transfomer.adminHandlers.headOption match {
+      case Some(h) =>
+        assert(h.url == "/namer_state/io.l5d.k8s.daemonset/test-namespace/test-port/test-service.json")
+      case None =>
+        fail("DaemonSetTransformer does not have a watch state handler configured")
+    }
+  }
+
+  test("when wrapping a interpreter, the new transformed interpreter implements trait WithNameTreeTransformer and is able to stack transformers") {
+    val transformer = parse(yaml_hostNetwork_false).mk(Stack.Params.empty)
+
+    val interpreter = new NameInterpreter {
+      override def bind(
+                         dtab: Dtab,
+                         path: Path
+                       ): Activity[NameTree[Bound]] = {
+        val Path.Utf8(ip, nodeName) = path
+        Activity.value(
+          NameTree.Leaf(Name.Bound(Var(Addr.Bound(
+            Address.Inet(new InetSocketAddress(ip, 8888), Map(Metadata.nodeName -> nodeName))
+          )), path, Path.empty))
+        )
+      }
+    }
+
+    val transformed = transformer.wrap(interpreter)
+    transformed match {
+      case withNameTreeTransformer: WithNameTreeTransformer =>
+        assert(withNameTreeTransformer.transformers == Seq(transformer))
+      case _ =>
+          fail("new namer does not have trait WithNameTreeTransformer")
+      }
+
+    val transformer2 = parse(yaml_hostNetwork_true).mk(Stack.Params.empty)
+    val transformed2 = transformer2.wrap(transformed)
+    transformed2 match {
+      case withNameTreeTransformer: WithNameTreeTransformer =>
+        assert(withNameTreeTransformer.transformers == Seq(transformer, transformer2))
+      case _ =>
+        fail("new namer does not have trait WithNameTreeTransformer")
+    }
+  }
+
+  test("when wrapping a delegating interpreter, the new transformed interpreter implements trait WithNameTreeTransformer and is able to stack transformers") {
+    val transformer = parse(yaml_hostNetwork_false).mk(Stack.Params.empty).asInstanceOf[DelegatingNameTreeTransformer]
+
+    val states = Var[Activity.State[Dtab]](Activity.Pending)
+    val interpreter = new NameInterpreter with Delegator {
+      override def delegate(dtab: Dtab, tree: NameTree[Name.Path]) = ???
+      //override def bind(dtab: Dtab, path: Path) = ???
+      override def bind(
+                         dtab: Dtab,
+                         path: Path
+                       ): Activity[NameTree[Bound]] = {
+        val Path.Utf8(ip, nodeName) = path
+        Activity.value(
+          NameTree.Leaf(Name.Bound(Var(Addr.Bound(
+            Address.Inet(new InetSocketAddress(ip, 8888), Map(Metadata.nodeName -> nodeName))
+          )), path, Path.empty))
+        )
+      }
+
+      override def dtab: Activity[Dtab] = Activity(states)
+    }
+
+    val transformed = transformer.delegatingWrap(interpreter)
+    transformed match {
+      case withNameTreeTransformer: WithNameTreeTransformer =>
+        assert(withNameTreeTransformer.transformers == Seq(transformer))
+      case _ =>
+        fail("new namer does not have trait WithNameTreeTransformer")
+    }
+
+    val transformer2 = parse(yaml_hostNetwork_true).mk(Stack.Params.empty).asInstanceOf[DelegatingNameTreeTransformer]
+    val transformed2 = transformer2.delegatingWrap(transformed)
+    transformed2 match {
+      case withNameTreeTransformer: WithNameTreeTransformer =>
+        assert(withNameTreeTransformer.transformers == Seq(transformer, transformer2))
+      case _ =>
+        fail("new namer does not have trait WithNameTreeTransformer")
+    }
+  }
+
+  test("when wrapping a namer, the new transformed namer implements trait WithNameTreeTransformer and is able to stack transformers") {
+    val transformer = parse(yaml_hostNetwork_false).mk(Stack.Params.empty)
+
+    val prefix = Paths.ConfiguredNamerPrefix ++ Path.read("/test-namer")
+    val namer = new Namer {
+      def lookup(path: Path) = Activity.exception(TestNamingError(prefix ++ path))
+    }
+
+    val transformed = transformer.wrap(namer)
+    transformed match {
+      case withNameTreeTransformer: WithNameTreeTransformer =>
+        assert(withNameTreeTransformer.transformers == Seq(transformer))
+      case _ =>
+        fail("new namer does not have trait WithNameTreeTransformer")
+    }
+
+    val transformer2 = parse(yaml_hostNetwork_true).mk(Stack.Params.empty)
+    val transformed2 = transformer2.wrap(transformed)
+    transformed2 match {
+      case withNameTreeTransformer: WithNameTreeTransformer =>
+        assert(withNameTreeTransformer.transformers == Seq(transformer, transformer2))
+      case _ =>
+        fail("new namer does not have trait WithNameTreeTransformer")
+    }
+  }
+
+  case class TestNamingError(path: Path) extends Throwable(s"error naming ${path.show}") {
+    override def toString = s"TestNamingError(${path.show})"
+  }
+
+  //Test extracting handlers from namer multiple transformers
+
+  //Test extracting handlers from interpreter multiple transformers
+
+  //Test watch state from endpoint
 }

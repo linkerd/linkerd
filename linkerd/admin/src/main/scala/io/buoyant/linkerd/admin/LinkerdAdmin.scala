@@ -10,7 +10,7 @@ import com.twitter.server.handler.ResourceHandler
 import io.buoyant.admin.Admin.{Handler, NavItem}
 import io.buoyant.admin.names.{BoundNamesHandler, DelegateApiHandler, DelegateHandler}
 import io.buoyant.admin.{Admin, ConfigHandler, StaticFilter, _}
-import io.buoyant.namer.EnumeratingNamer
+import io.buoyant.namer.{EnumeratingNamer, WithNameTreeTransformer}
 import io.buoyant.router.{Http, RoutingFactory}
 
 object LinkerdAdmin {
@@ -83,6 +83,22 @@ object LinkerdAdmin {
     }
   }
 
+  def extractTransformersNamerHandlers(namers: Seq[Namer]): Seq[Admin.Handler] = {
+    namers.flatMap(namer =>
+      namer match {
+        case withNameTreeTransformer: WithNameTreeTransformer =>
+          withNameTreeTransformer.transformers.toSeq.flatMap(transformer =>
+            transformer match {
+              case withHandlers: Admin.WithHandlers =>
+                withHandlers.adminHandlers
+              case _ =>
+                Seq()
+            })
+        case _ =>
+          Seq()
+      })
+  }
+
   def extractInterpreterHandlers(routers: Seq[Router]): Seq[Admin.Handler] = {
     routers.flatMap { router =>
       router.interpreter match {
@@ -94,6 +110,21 @@ object LinkerdAdmin {
           Nil
       }
     }
+  }
+
+  def extractInterpreterTransformerHandlers(routers: Seq[Router]): Seq[Admin.Handler] = {
+    routers.flatMap(router =>
+      router.interpreter match {
+        case withNameTreeTransformer: WithNameTreeTransformer =>
+          withNameTreeTransformer.transformers.toSeq.flatMap(transformer =>
+            transformer match {
+              case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
+              case _ =>
+                Seq()
+            })
+        case _ =>
+          Seq()
+      })
   }
 
   def apply(lc: Linker.LinkerConfig, linker: Linker): Seq[Handler] = {
@@ -119,7 +150,9 @@ object LinkerdAdmin {
       linker.namers.map(_._2) ++
         linker.routers ++
         linker.telemeters
-    ) ++ extractInterpreterHandlers(linker.routers))
+    ) ++ extractTransformersNamerHandlers(linker.namers.map(_._2))
+      ++ extractInterpreterHandlers(linker.routers)
+      ++ extractInterpreterTransformerHandlers(linker.routers))
       .map {
         case Handler(url, service, css) =>
           val adminFilter = new AdminFilter(adminHandler, css)

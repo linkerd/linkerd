@@ -67,7 +67,9 @@ This can be used to redirect traffic to a reverse-proxy that runs as a
 daemonset.
 
 This transformer assumes that there is a Kubernetes service for the daemonset
-which can be used to find all pods in the daemonset.
+which can be used to find all pods in the daemonset. The internal state of each daemonset namer can be viewed at the
+admin endpoint: `/namer_state/io.l5d.k8s.daemonset/$namespace/$port/$service.json`, where $namespace/$port/$service are the required key configs for the DaemonSetTransformer.
+
 
 Key | Default Value | Description
 --- | ------------- | -----------
