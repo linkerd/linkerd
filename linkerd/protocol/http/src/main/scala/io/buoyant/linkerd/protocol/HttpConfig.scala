@@ -18,6 +18,7 @@ import com.twitter.finagle.stack.nilStack
 import com.twitter.finagle.tracing.TraceInitializerFilter
 import com.twitter.finagle.{ServiceFactory, Stack}
 import com.twitter.logging.Policy
+import io.buoyant.config.ConflictingStreamingOptions
 import io.buoyant.linkerd.protocol.HttpRequestAuthorizerConfig.param
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
@@ -231,6 +232,7 @@ case class HttpConfig(
     case (Some(true), None) => hparam.Streaming(5.kilobytes)
     case (None, None) => hparam.Streaming(5.kilobytes)
     case (Some(false), None) => hparam.Streaming(false)
+    case (Some(false), Some(_)) => throw ConflictingStreamingOptions(_label.getOrElse("unknown"))  //tried label property, but it NPE's in test
     case (_, Some(streamAfter)) => hparam.Streaming(streamAfter.kilobytes)
     case _ => hparam.Streaming(false)
   }

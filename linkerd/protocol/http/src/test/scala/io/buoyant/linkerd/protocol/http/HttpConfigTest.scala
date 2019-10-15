@@ -1,12 +1,13 @@
 package io.buoyant.linkerd.protocol.http
 
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
 import com.twitter.conversions.StorageUnitOps._
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.param.{FixedLengthStreamedAfter, Streaming}
 import com.twitter.finagle.http.{Method, Request}
 import com.twitter.finagle.{Dtab, Path, Stack}
 import com.twitter.util.Future
-import io.buoyant.config.Parser
+import io.buoyant.config.{ConflictingStreamingOptions, Parser}
 import io.buoyant.linkerd.{IdentifierInitializer, RouterConfig}
 import io.buoyant.linkerd.protocol.{HttpConfig, HttpIdentifierConfig, HttpInitializer}
 import io.buoyant.router.Http
@@ -101,6 +102,26 @@ class HttpConfigTest extends FunSuite with Awaits {
 
     val streaming = config.routerParams(Stack.Params.empty)[Streaming]
     assert(streaming.enabled)
+  }
+
+  test("ConfigErrorTest - Stream disabled, streamAfter Set") {
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.methodAndHost
+                  |maxInitialLineKB: 4
+                  |streamAfterContentLengthKB: 5
+                  |streamingEnabled: false
+                  |servers:
+                  |- port: 5000
+      """.stripMargin
+    try {
+      parse(yaml)
+      fail()
+    } catch {
+      case _: InvalidDefinitionException => //Expected
+      case e: Throwable => fail(e)
+    }
   }
 
   test("DefaultsTest - Stream disabled, streamAfter Set") {

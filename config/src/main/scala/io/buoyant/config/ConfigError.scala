@@ -17,6 +17,9 @@ case class ConflictingSubtypes(t0: NamedType, t1: NamedType) extends ConfigError
 case class ConflictingLabels(name: String) extends ConfigError {
   def message = s"Multiple routers with the label $name"
 }
+case class ConflictingStreamingOptions(name: String) extends ConfigError {
+  def message = s"Conflicting streaming options set. Can't disable streaming and set streamAfterContentLengthKB in $name"
+}
 
 case class ConflictingPorts(
   addr0: InetSocketAddress,
