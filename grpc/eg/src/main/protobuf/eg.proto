@@ -6,6 +6,13 @@ import "base.proto";
 
 option java_outer_classname = "Eg";
 
+message Seq {}
+message Map {}
+message Option {}
+message Some {}
+message None {}
+message Nil {}
+
 enum Enumeration {
   ZERO = 0;
   ONE = 1;
