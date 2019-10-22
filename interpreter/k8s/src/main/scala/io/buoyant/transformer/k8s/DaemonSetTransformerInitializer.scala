@@ -16,8 +16,6 @@ class DaemonSetTransformerInitializer extends TransformerInitializer {
   override val configId = "io.l5d.k8s.daemonset"
 }
 
-object DaemonSetTransformerInitializer extends DaemonSetTransformerInitializer
-
 case class DaemonSetTransformerConfig(
   k8sHost: Option[String],
   k8sPort: Option[Port],

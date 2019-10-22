@@ -27,53 +27,53 @@ trait NameTreeTransformer {
    */
   def wrapWithHandlersAndTransformer(underlying: NameInterpreter, transformer: NameTreeTransformer): NameInterpreter =
     new NameInterpreter with Admin.WithHandlers with WithNameTreeTransformer {
-    override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
-      underlying.bind(dtab, path).flatMap(transform)
+      override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
+        underlying.bind(dtab, path).flatMap(transform)
 
-    override def adminHandlers: Seq[Admin.Handler] = underlying match {
-      case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
-      case _ => Nil
-    }
+      override def adminHandlers: Seq[Admin.Handler] = underlying match {
+        case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
+        case _ => Nil
+      }
 
-    override def transformers: Seq[NameTreeTransformer] = underlying match {
-      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
-      case _ => Seq(transformer)
+      override def transformers: Seq[NameTreeTransformer] = underlying match {
+        case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
+        case _ => Seq(transformer)
+      }
     }
-  }
 
   def wrap(underlying: NameInterpreter): NameInterpreter = wrapWithHandlersAndTransformer(underlying, this)
 
   def wrapWithHandlersAndTransformer(underlying: Namer, transformer: NameTreeTransformer): Namer =
     new Namer with Admin.WithHandlers with WithNameTreeTransformer {
-    private[this] def isBound(tree: NameTree[Name]): Boolean = {
-      tree match {
-        case NameTree.Neg | NameTree.Empty | NameTree.Fail => true
-        case NameTree.Alt(trees@_*) => trees.forall(isBound)
-        case NameTree.Union(trees@_*) => trees.map(_.tree).forall(isBound)
-        case NameTree.Leaf(_: Name.Bound) => true
-        case NameTree.Leaf(_) => false
+      private[this] def isBound(tree: NameTree[Name]): Boolean = {
+        tree match {
+          case NameTree.Neg | NameTree.Empty | NameTree.Fail => true
+          case NameTree.Alt(trees@_*) => trees.forall(isBound)
+          case NameTree.Union(trees@_*) => trees.map(_.tree).forall(isBound)
+          case NameTree.Leaf(_: Name.Bound) => true
+          case NameTree.Leaf(_) => false
+        }
+      }
+
+      override def lookup(path: Path): Activity[NameTree[Name]] = {
+        underlying.lookup(path).flatMap { tree =>
+          if (isBound(tree))
+            transform(tree.asInstanceOf[NameTree[Name.Bound]])
+          else
+            Activity.value(tree)
+        }
+      }
+
+      override def transformers: Seq[NameTreeTransformer] = underlying match {
+        case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
+        case _ => Seq(transformer)
+      }
+
+      override def adminHandlers: Seq[Admin.Handler] = underlying match {
+        case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
+        case _ => Nil
       }
     }
-
-    override def lookup(path: Path): Activity[NameTree[Name]] = {
-      underlying.lookup(path).flatMap { tree =>
-        if (isBound(tree))
-          transform(tree.asInstanceOf[NameTree[Name.Bound]])
-        else
-          Activity.value(tree)
-      }
-    }
-
-    override def transformers: Seq[NameTreeTransformer] = underlying match {
-      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
-      case _ => Seq(transformer)
-    }
-
-    override def adminHandlers: Seq[Admin.Handler] = underlying match {
-      case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
-      case _ => Nil
-    }
-  }
 
   def wrap(underlying: Namer): Namer = wrapWithHandlersAndTransformer(underlying, this)
 }
@@ -90,27 +90,27 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
   /** Like wrap, but preserving the ability of the NameInterpreter to delegate */
   def delegatingWrapWithHandlersAndTransformer(underlying: NameInterpreter with Delegator, transformer: NameTreeTransformer): NameInterpreter with Delegator =
     new NameInterpreter with Delegator with Admin.WithHandlers with WithNameTreeTransformer {
-    override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
-      underlying.bind(dtab, path).flatMap(transform)
+      override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
+        underlying.bind(dtab, path).flatMap(transform)
 
-    override def delegate(
-      dtab: Dtab,
-      tree: NameTree[Name.Path]
-    ): Future[DelegateTree[Bound]] =
-      underlying.delegate(dtab, tree).flatMap(transformDelegate)
+      override def delegate(
+        dtab: Dtab,
+        tree: NameTree[Name.Path]
+      ): Future[DelegateTree[Bound]] =
+        underlying.delegate(dtab, tree).flatMap(transformDelegate)
 
-    override def dtab: Activity[Dtab] = underlying.dtab
+      override def dtab: Activity[Dtab] = underlying.dtab
 
-    override def adminHandlers: Seq[Admin.Handler] = underlying match {
-      case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
-      case _ => Nil
+      override def adminHandlers: Seq[Admin.Handler] = underlying match {
+        case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
+        case _ => Nil
+      }
+
+      override def transformers: Seq[NameTreeTransformer] = underlying match {
+        case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
+        case _ => Seq(transformer)
+      }
     }
-
-    override def transformers: Seq[NameTreeTransformer] = underlying match {
-      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
-      case _ => Seq(transformer)
-    }
-  }
 
   def delegatingWrap(underlying: NameInterpreter with Delegator): NameInterpreter with Delegator = delegatingWrapWithHandlersAndTransformer(underlying, this)
 }

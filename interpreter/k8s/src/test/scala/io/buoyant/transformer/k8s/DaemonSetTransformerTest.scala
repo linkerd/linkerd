@@ -142,7 +142,7 @@ class DaemonSetTransformerTest extends FunSuite
   }
 
   private[this] def parse(yaml: String): DaemonSetTransformerConfig =
-    Parser.objectMapper(yaml, Iterable(Seq(DaemonSetTransformerInitializer)))
+    Parser.objectMapper(yaml, Iterable(Seq(new DaemonSetTransformerInitializer)))
       .readValue[TransformerConfig](yaml)
       .asInstanceOf[DaemonSetTransformerConfig]
 

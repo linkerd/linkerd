@@ -106,8 +106,8 @@ object LinkerdAdmin {
 
   def extractInterpreterTransformerHandlers(routers: Seq[Router]): Seq[Admin.Handler] = {
     for {
-      r <- routers.collect { case r: WithNameTreeTransformer => r }
-      t <- r.transformers.collect { case t: Admin.WithHandlers => t }
+      i <- routers.map(_.interpreter).collect { case i: WithNameTreeTransformer => i }
+      t <- i.transformers.collect { case t: Admin.WithHandlers => t }
       h <- t.adminHandlers
     } yield h
   }
