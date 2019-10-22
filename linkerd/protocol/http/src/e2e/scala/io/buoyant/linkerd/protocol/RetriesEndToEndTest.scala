@@ -565,7 +565,7 @@ class RetriesEndToEndTest extends FunSuite {
     }
   }
 
-  test("l5d-retryable header takes precedence over repsonse classifier") {
+  test("l5d-retryable header takes precedence over response classifier") {
     var i = 0
     val downstream = Downstream("ds", Service.mk { req =>
       val rsp = i match {

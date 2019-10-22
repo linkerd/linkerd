@@ -672,7 +672,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
     interfaces.
 * HTTP/2
   * Reset h2 remote streams that continue to send frames after the local stream
-    has been interrupted.  This fixes a bug that occationally caused the
+    has been interrupted.  This fixes a bug that occasionally caused the
     io.l5d.mesh interpreter to hang.
   * Add support for HTTP/2 tracing.
 * Kubernetes
@@ -828,7 +828,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
   generation of gRPC clients and servers for Finagle.
 * Various bug fixes to the Linkerd admin dashboard.
 * The default docker images now use a 64 bit JVM.  A `-32b` docker image is
-  also availble but does not support the boringssl TLS extensions required for
+  also available but does not support the boringssl TLS extensions required for
   ALPN, etc.
 * Marathon:
   * Support "ip per task" feature

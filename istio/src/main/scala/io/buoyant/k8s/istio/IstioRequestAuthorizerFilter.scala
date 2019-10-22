@@ -20,7 +20,7 @@ abstract class IstioRequestAuthorizerFilter[Req, Resp](mixerClient: MixerClient)
     logger.trace("checking Istio pre-conditions for request %s", istioRequest)
     mixerClient.checkPreconditions(istioRequest).flatMap { status =>
       if (status.success) {
-        logger.trace("Succesful pre-condition check for request: %s", istioRequest)
+        logger.trace("Successful pre-condition check for request: %s", istioRequest)
         callService(req, svc, istioRequest)
       } else {
         logger.info("request [%s] failed Istio pre-condition check: %s", istioRequest, status)

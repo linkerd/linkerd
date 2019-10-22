@@ -131,7 +131,7 @@ struct Transformation {
 }
 
 union DelegateContents {
-  1: string excpetion
+  1: string error
   2: Void empty
   3: Void fail
   4: Void neg

@@ -276,7 +276,7 @@ object ThriftNamerInterface {
   ): (thrift.DelegateNode, Map[Int, thrift.DelegateNode], Int) =
     dt match {
       case DelegateTree.Exception(path, dentry, thrown) =>
-        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Excpetion(thrown.getMessage)), Map.empty, nextId)
+        (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Error(thrown.getMessage)), Map.empty, nextId)
       case DelegateTree.Empty(path, dentry) =>
         (thrift.DelegateNode(TPath(path), dentry.show, thrift.DelegateContents.Empty(TVoid)), Map.empty, nextId)
       case DelegateTree.Fail(path, dentry) =>
@@ -322,7 +322,7 @@ object ThriftNamerInterface {
   def parseDelegateTree(dt: thrift.DelegateTree): DelegateTree[Name.Path] = {
     def parseDelegateNode(node: thrift.DelegateNode): DelegateTree[Name.Path] = {
       node.contents match {
-        case thrift.DelegateContents.Excpetion(thrown) =>
+        case thrift.DelegateContents.Error(thrown) =>
           DelegateTree
             .Exception(
               mkPath(node.path),

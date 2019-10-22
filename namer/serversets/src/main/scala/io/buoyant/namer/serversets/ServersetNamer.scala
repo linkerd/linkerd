@@ -11,7 +11,7 @@ import com.twitter.util.{Activity, Var}
  * hosts/path...
  * }}}
  *
- * and returns a dynamic represention of the resolution of the path into a
+ * and returns a dynamic representing of the resolution of the path into a
  * tree of Names.
  *
  * The namer synthesizes nodes for each endpoint in the serverset.

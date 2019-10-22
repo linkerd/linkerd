@@ -29,7 +29,7 @@ case class DeregisterLoadBalancerFactory(lbf: LoadBalancerFactory) extends LoadB
       case svcFacProxy: ServiceFactoryProxy[Req, Rep] =>
         svcFacProxy.self match {
           case bal: Balancer[Req, Rep] => globalBalancerRegistry.unregister(bal)
-          case _ => () // There are other types of balancers that aren't registerd i.e. heap. Do nothing
+          case _ => () // There are other types of balancers that aren't registered i.e. heap. Do nothing
         }
       case _ => ()
     }
