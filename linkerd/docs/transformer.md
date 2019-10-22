@@ -80,7 +80,7 @@ hostNetwork | `false` | If true, use nodeName instead of /24 subnet to determine
 
 <aside class="notice">
 The Kubernetes namer does not support TLS.  Instead, you should run `kubectl proxy` on each host,
-which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/doc/latest/k8s/] for more information.
+which will create a local proxy for securely talking to the Kubernetes cluster API. See (the k8s guide)[https://linkerd.io/1/getting-started/k8s/] for more information.
 </aside>
 
 ## Localnode (Kubernetes)

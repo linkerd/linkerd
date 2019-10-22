@@ -90,7 +90,7 @@ socketOptions | none | Socket options to set for the router interface. See [Sock
 tls | no tls | The server will serve over TLS if this parameter is provided. see [TLS](#server-tls).
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
-clearContext | `false` | If `true`, all headers that set Linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks.
+clearContext | `false` | If `true`, all headers that set Linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks. **NOTE**: Setting this to `true` will interfere with [Diagnostic Tracing](https://linkerd.io/2018/06/19/debugging-production-issues-with-linkerds-diagnostic-tracing/). You will need to set this to `false` to see diagnostic tracing output.
 
 ## Service Configuration
 
