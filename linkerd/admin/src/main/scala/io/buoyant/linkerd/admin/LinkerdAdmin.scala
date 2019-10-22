@@ -84,19 +84,11 @@ object LinkerdAdmin {
   }
 
   def extractTransformersNamerHandlers(namers: Seq[Namer]): Seq[Admin.Handler] = {
-    namers.flatMap(namer =>
-      namer match {
-        case withNameTreeTransformer: WithNameTreeTransformer =>
-          withNameTreeTransformer.transformers.toSeq.flatMap(transformer =>
-            transformer match {
-              case withHandlers: Admin.WithHandlers =>
-                withHandlers.adminHandlers
-              case _ =>
-                Seq()
-            })
-        case _ =>
-          Seq()
-      })
+    for {
+      n <- namers.collect { case n: WithNameTreeTransformer => n }
+      t <- n.transformers.collect { case t: Admin.WithHandlers => t }
+      h <- t.adminHandlers
+    } yield h
   }
 
   def extractInterpreterHandlers(routers: Seq[Router]): Seq[Admin.Handler] = {
@@ -113,18 +105,11 @@ object LinkerdAdmin {
   }
 
   def extractInterpreterTransformerHandlers(routers: Seq[Router]): Seq[Admin.Handler] = {
-    routers.flatMap(router =>
-      router.interpreter match {
-        case withNameTreeTransformer: WithNameTreeTransformer =>
-          withNameTreeTransformer.transformers.toSeq.flatMap(transformer =>
-            transformer match {
-              case withHandlers: Admin.WithHandlers => withHandlers.adminHandlers
-              case _ =>
-                Seq()
-            })
-        case _ =>
-          Seq()
-      })
+    for {
+      r <- routers.collect { case r: WithNameTreeTransformer => r }
+      t <- r.transformers.collect { case t: Admin.WithHandlers => t }
+      h <- t.adminHandlers
+    } yield h
   }
 
   def apply(lc: Linker.LinkerConfig, linker: Linker): Seq[Handler] = {

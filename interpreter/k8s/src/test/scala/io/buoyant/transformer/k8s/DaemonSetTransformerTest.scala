@@ -191,10 +191,7 @@ class DaemonSetTransformerTest extends FunSuite
     val transformer = parse(yaml_hostNetwork_false).mk(Stack.Params.empty)
 
     val interpreter = new NameInterpreter {
-      override def bind(
-                         dtab: Dtab,
-                         path: Path
-                       ): Activity[NameTree[Bound]] = {
+      override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] = {
         val Path.Utf8(ip, nodeName) = path
         Activity.value(
           NameTree.Leaf(Name.Bound(Var(Addr.Bound(

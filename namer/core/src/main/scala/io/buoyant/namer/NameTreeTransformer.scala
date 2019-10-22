@@ -25,7 +25,8 @@ trait NameTreeTransformer {
    * Create a new NameInterpreter by applying this transformer to the output of
    * an existing one.
    */
-  def wrap(underlying: NameInterpreter): NameInterpreter = new NameInterpreter with Admin.WithHandlers with WithNameTreeTransformer {
+  def wrapWithHandlersAndTransformer(underlying: NameInterpreter, transformer: NameTreeTransformer): NameInterpreter =
+    new NameInterpreter with Admin.WithHandlers with WithNameTreeTransformer {
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
       underlying.bind(dtab, path).flatMap(transform)
 
@@ -35,14 +36,15 @@ trait NameTreeTransformer {
     }
 
     override def transformers: Seq[NameTreeTransformer] = underlying match {
-      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(getSelf())
-      case _ => Seq(getSelf())
+      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
+      case _ => Seq(transformer)
     }
   }
 
-  def getSelf(): NameTreeTransformer = this
+  def wrap(underlying: NameInterpreter): NameInterpreter = wrapWithHandlersAndTransformer(underlying, this)
 
-  def wrap(underlying: Namer): Namer = new Namer with Admin.WithHandlers with WithNameTreeTransformer {
+  def wrapWithHandlersAndTransformer(underlying: Namer, transformer: NameTreeTransformer): Namer =
+    new Namer with Admin.WithHandlers with WithNameTreeTransformer {
     private[this] def isBound(tree: NameTree[Name]): Boolean = {
       tree match {
         case NameTree.Neg | NameTree.Empty | NameTree.Fail => true
@@ -63,8 +65,8 @@ trait NameTreeTransformer {
     }
 
     override def transformers: Seq[NameTreeTransformer] = underlying match {
-      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(getSelf())
-      case _ => Seq(getSelf())
+      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
+      case _ => Seq(transformer)
     }
 
     override def adminHandlers: Seq[Admin.Handler] = underlying match {
@@ -72,6 +74,8 @@ trait NameTreeTransformer {
       case _ => Nil
     }
   }
+
+  def wrap(underlying: Namer): Namer = wrapWithHandlersAndTransformer(underlying, this)
 }
 
 /**
@@ -84,7 +88,8 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
   protected def transformDelegate(tree: DelegateTree[Name.Bound]): Future[DelegateTree[Name.Bound]]
 
   /** Like wrap, but preserving the ability of the NameInterpreter to delegate */
-  def delegatingWrap(underlying: NameInterpreter with Delegator): NameInterpreter with Delegator = new NameInterpreter with Delegator with Admin.WithHandlers with WithNameTreeTransformer {
+  def delegatingWrapWithHandlersAndTransformer(underlying: NameInterpreter with Delegator, transformer: NameTreeTransformer): NameInterpreter with Delegator =
+    new NameInterpreter with Delegator with Admin.WithHandlers with WithNameTreeTransformer {
     override def bind(dtab: Dtab, path: Path): Activity[NameTree[Bound]] =
       underlying.bind(dtab, path).flatMap(transform)
 
@@ -102,10 +107,12 @@ trait DelegatingNameTreeTransformer extends NameTreeTransformer {
     }
 
     override def transformers: Seq[NameTreeTransformer] = underlying match {
-      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(getSelf())
-      case _ => Seq(getSelf())
+      case withNameTreeTransformer: WithNameTreeTransformer => withNameTreeTransformer.transformers ++ Seq(transformer)
+      case _ => Seq(transformer)
     }
   }
+
+  def delegatingWrap(underlying: NameInterpreter with Delegator): NameInterpreter with Delegator = delegatingWrapWithHandlersAndTransformer(underlying, this)
 }
 
 object DelegatingNameTreeTransformer {
