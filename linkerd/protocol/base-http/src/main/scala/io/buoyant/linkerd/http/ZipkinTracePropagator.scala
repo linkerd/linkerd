@@ -70,18 +70,11 @@ object ZipkinTrace {
   def clear[H: HeadersLike](headers: H): Unit = {
     val headersLike = implicitly[HeadersLike[H]]
 
-    headersLike.remove(headers, ZipkinSpanHeader)
-    headersLike.remove(headers, ZipkinTraceHeader)
-    headersLike.remove(headers, ZipkinParentHeader)
-    headersLike.remove(headers, ZipkinSampleHeader)
-    headersLike.remove(headers, ZipkinFlagsHeader)
-
-    headersLike.remove(headers, ZipkinSpanHeader.toUpperCase())
-    headersLike.remove(headers, ZipkinTraceHeader.toUpperCase())
-    headersLike.remove(headers, ZipkinParentHeader.toUpperCase())
-    headersLike.remove(headers, ZipkinSampleHeader.toUpperCase())
-    headersLike.remove(headers, ZipkinFlagsHeader.toUpperCase())
-
+    caseInsensitiveGetKey(headers, ZipkinSpanHeader).map(headersLike.remove(headers, _))
+    caseInsensitiveGetKey(headers, ZipkinTraceHeader).map(headersLike.remove(headers, _))
+    caseInsensitiveGetKey(headers, ZipkinParentHeader).map(headersLike.remove(headers, _))
+    caseInsensitiveGetKey(headers, ZipkinSampleHeader).map(headersLike.remove(headers, _))
+    caseInsensitiveGetKey(headers, ZipkinFlagsHeader).map(headersLike.remove(headers, _))
     ()
   }
 
@@ -94,6 +87,11 @@ object ZipkinTrace {
     headersLike.set(headers, ZipkinSampleHeader, (if ((id.sampled exists { _ == true })) 1 else 0).toString)
     headersLike.set(headers, ZipkinFlagsHeader, id.flags.toLong.toString)
     ()
+  }
+
+  private def caseInsensitiveGetKey[H: HeadersLike](headers: H, key: String): Option[String] = {
+    val headersLike = implicitly[HeadersLike[H]]
+    headersLike.toSeq(headers).iterator.collectFirst { case (k, v) if key.equalsIgnoreCase(k) => k }
   }
 
   private def caseInsensitiveGet[H: HeadersLike](headers: H, key: String): Option[String] = {
