@@ -232,7 +232,7 @@ case class HttpConfig(
     case (Some(true), None) => hparam.Streaming(5.kilobytes)
     case (None, None) => hparam.Streaming(5.kilobytes)
     case (Some(false), None) => hparam.Streaming(false)
-    case (Some(false), Some(_)) => throw ConflictingStreamingOptions(_label.getOrElse("unknown"))  //tried label property, but it NPE's in test
+    case (Some(false), Some(_)) => throw ConflictingStreamingOptions(label)
     case (_, Some(streamAfter)) => hparam.Streaming(streamAfter.kilobytes)
     case _ => hparam.Streaming(false)
   }
