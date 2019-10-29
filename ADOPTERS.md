@@ -22,7 +22,7 @@ These organizations are publicly using Linkerd in production:
 - [Taboola](https://www.taboola.com/)
 - [UserZoom](https://www.userzoom.com/)
 - [WePay](https://www.wepay.com/)
-- [Yotpo] (https://www.yotpo.com/)
+- [Yotpo](https://www.yotpo.com/)
 - [Zooz](https://www.zooz.com/)
 
 If you're using Linkerd and aren't on this list, feel free to
