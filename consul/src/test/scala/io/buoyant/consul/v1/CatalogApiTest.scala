@@ -139,7 +139,7 @@ class CatalogApiTest extends FunSuite with Awaits with Exceptions {
       Future.value(rsp)
     }
     assertThrows[UnexpectedResponse](
-      await(CatalogApi(failureService).serviceMap(datacenter = Some("non-existant dc"))())
+      await(CatalogApi(failureService).serviceMap(datacenter = Some("non-existent dc"))())
     )
   }
 }

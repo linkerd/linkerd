@@ -276,7 +276,7 @@ class ThriftNamerClient(
   private[this] def mkDelegateTree(dt: thrift.DelegateTree): DelegateTree[Name.Bound] = {
     def mk(node: thrift.DelegateNode): DelegateTree[Name.Bound] = {
       node.contents match {
-        case thrift.DelegateContents.Excpetion(thrown) =>
+        case thrift.DelegateContents.Error(thrown) =>
           DelegateTree
             .Exception(
               mkPath(node.path),

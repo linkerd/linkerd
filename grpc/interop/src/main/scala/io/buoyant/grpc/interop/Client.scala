@@ -132,7 +132,7 @@ class Client(
               val sz = buf.length
               release().before {
                 if (sz != expected) {
-                  Future.exception(new IllegalArgumentException(s"recieved ${sz}B, expected ${expected}B"))
+                  Future.exception(new IllegalArgumentException(s"received ${sz}B, expected ${expected}B"))
                 } else read(rest)
               }
 
@@ -167,7 +167,7 @@ class Client(
                 val sz = buf.length
                 release().before {
                   if (sz != rspSz) {
-                    Future.exception(new IllegalArgumentException(s"recieved ${sz}B, expected ${rspSz}B"))
+                    Future.exception(new IllegalArgumentException(s"received ${sz}B, expected ${rspSz}B"))
                   } else sendRecv(rest)
                 }
 

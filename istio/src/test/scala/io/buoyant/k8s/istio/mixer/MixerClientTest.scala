@@ -75,7 +75,7 @@ class MixerClientTest extends FunSuite with Awaits with Exceptions {
     assert(rsp.success)
   }
 
-  test("check - returns denial if status wasnt 'ok'") {
+  test("check - returns denial if status wasn't 'ok'") {
     var calls = 0
     val service = new Mixer {
       override def report(req: Stream[ReportRequest]) = ???

@@ -14,7 +14,7 @@ message Path {
 message PathNameTree {
 
   /**
-   * A PathNameTree is a hierachy of nodes:
+   * A PathNameTree is a hierarchy of nodes:
    */
   oneof node {
     Neg neg = 1;

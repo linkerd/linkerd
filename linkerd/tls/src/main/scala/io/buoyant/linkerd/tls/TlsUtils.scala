@@ -134,7 +134,7 @@ object TlsUtils {
     |default_md = sha256
     |distinguished_name = req_distinguished_name
     |req_extensions = v3_req
-    |encyrpt_key = no
+    |encrypt_key = no
     |
     |[ req_distinguished_name ]
     |

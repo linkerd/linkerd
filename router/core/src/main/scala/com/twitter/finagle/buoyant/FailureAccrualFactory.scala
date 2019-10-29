@@ -12,7 +12,7 @@ import com.twitter.util.Timer
 import io.buoyant.router.context.ResponseClassifierCtx
 
 /**
- * A replacement for Finagle's FailureAccrualFactory that reads the respones classifier from the
+ * A replacement for Finagle's FailureAccrualFactory that reads the response classifier from the
  * request local context.
  */
 object FailureAccrualFactory {

@@ -34,12 +34,12 @@ class RancherNamer(
     case phd@Path.Utf8(port, stack, service) => lookupPort(port) match {
       case Some(portNum) =>
         val containers: Activity[Option[Addr]] = client.activity.map { allContainers =>
-          val eligable: Set[Address] = allContainers
+          val eligible: Set[Address] = allContainers
             .filter(c => stack.equalsIgnoreCase(c.stackName) && service.equalsIgnoreCase(c.serviceName))
             .flatMap(_.toAddr(portNum))
             .toSet
 
-          Option(eligable).filter(_.nonEmpty).map(Addr.Bound(_))
+          Option(eligible).filter(_.nonEmpty).map(Addr.Bound(_))
         }
         val stabilized: Activity[Option[Var[Addr]]] = containers.stabilizeExistence
         stabilized.map {

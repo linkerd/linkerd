@@ -342,7 +342,7 @@ object StackRouter {
      * - Then, factoryToService is used to manage properly manage
      *   sessions. We need to ensure that the underlying factory
      *   (provided by the lower stacks) is provisioned for each
-     *   request to accomdate terminated requests (e.g. HTTP/1.0)
+     *   request to accommodate terminated requests (e.g. HTTP/1.0)
      *
      * - The failureRecording module records errors encountered when
      *   acquiring a service from the underlying service factory. This
@@ -381,7 +381,7 @@ object StackRouter {
       param.Stats(DefaultStatsReceiver.scope("rt"))
 
   /**
-   * Analagous to c.t.f.FactoryToService.module, but is applied
+   * Analogous to c.t.f.FactoryToService.module, but is applied
    * unconditionally.
    *
    * Finagle's FactoryToService is not directly used because we don't

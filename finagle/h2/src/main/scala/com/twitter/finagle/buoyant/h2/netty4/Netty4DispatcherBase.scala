@@ -28,7 +28,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
    * The various states a stream can be in (particularly closed).
    *
    * The failures are distinguished so that the dispatcher can be
-   * smart about (not) emiting resets to the remote.
+   * smart about (not) emitting resets to the remote.
    *
    * TODO only track closed streams for a TTL after it has closed.
    */

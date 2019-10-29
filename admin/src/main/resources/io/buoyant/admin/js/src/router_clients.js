@@ -51,7 +51,7 @@ define([
     }
 
     function shouldExpandClient(routerName, initialClients) {
-      // if there are many clients, collapse them by default to improve page perfomance
+      // if there are many clients, collapse them by default to improve page performance
       if (clientExpandState[routerName] === expandStates.custom) {
         return true;
       } else if (initialClients) {
