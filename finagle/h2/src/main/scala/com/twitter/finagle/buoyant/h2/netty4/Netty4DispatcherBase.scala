@@ -95,7 +95,6 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] def demuxing: Future[Unit]
 
-
   // We count all streams towards active. The reason for that
   // is the fact that under normal circumstances when the
   // protocol is respected eventually the stream state will
