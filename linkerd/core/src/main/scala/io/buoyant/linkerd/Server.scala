@@ -1,15 +1,15 @@
 package io.buoyant.linkerd
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.twitter.concurrent.AsyncSemaphore
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.{ParamsMaybeWith, SocketOptionsConfig, TlsServerConfig}
 import com.twitter.finagle.filter.RequestSemaphoreFilter
 import com.twitter.finagle.netty4.ssl.server.Netty4ServerEngineFactory
-import com.twitter.finagle.service.TimeoutFilter
+import com.twitter.finagle.service.{ExpiringService, TimeoutFilter}
 import com.twitter.finagle.ssl.server.SslServerEngineFactory
 import com.twitter.finagle.{ListeningServer, Path, Stack}
-import com.twitter.finagle.transport.Transport
 import io.buoyant.config.types.Port
 import java.net.{InetAddress, InetSocketAddress}
 
@@ -84,7 +84,7 @@ class ServerConfig { config =>
   var maxConcurrentRequests: Option[Int] = None
   var announce: Option[Seq[String]] = None
   var timeoutMs: Option[Int] = None
-
+  var serverSession: Option[ServerSessionConfig] = None
   var clearContext: Option[Boolean] = None
 
   private[this] def requestSemaphore =
@@ -95,7 +95,8 @@ class ServerConfig { config =>
     .maybeWith(socketOptions.map(_.params))
     .maybeWith(tls.map(_.params(alpnProtocols, sslServerEngine)))
     .maybeWith(clearContext.map(ClearContext.Enabled(_)))
-    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis))) +
+    .maybeWith(timeoutMs.map(timeout => TimeoutFilter.Param(timeout.millis)))
+    .maybeWith(serverSession.map(_.param)) +
     RequestSemaphoreFilter.Param(requestSemaphore)
 
   @JsonIgnore
@@ -115,3 +116,8 @@ class ServerConfig { config =>
     announce.toSeq.flatten.map(Path.read)
   )
 }
+
+case class ServerSessionConfig(
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) lifeTimeMs: Option[Int],
+  @JsonDeserialize(contentAs = classOf[java.lang.Integer]) idleTimeMs: Option[Int]
+) extends SessionConfig

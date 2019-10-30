@@ -91,6 +91,16 @@ tls | no tls | The server will serve over TLS if this parameter is provided. see
 maxConcurrentRequests | unlimited | The maximum number of concurrent requests the server will accept.
 announce | an empty list | A list of concrete names to announce using the router's [announcers](#announcers).
 clearContext | `false` | If `true`, all headers that set Linkerd contexts are removed from inbound requests. Useful for servers exposed on untrusted networks. **NOTE**: Setting this to `true` will interfere with [Diagnostic Tracing](https://linkerd.io/2018/06/19/debugging-production-issues-with-linkerds-diagnostic-tracing/). You will need to set this to `false` to see diagnostic tracing output.
+serverSession | An empty object | see [serverSession](#server-session) 
+
+### Server Session
+
+Configures the behavior of established server sessions.
+
+Key | Default Value | Description
+--- | ------------- | -----------
+idleTimeMs | forever | The max amount of time for which a connection is allowed to be idle. When this time exceeded the connection will close itself.
+lifeTimeMs | forever | Max lifetime of a connection.
 
 ## Service Configuration
 

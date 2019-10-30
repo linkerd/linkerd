@@ -3,11 +3,12 @@ package io.buoyant.linkerd
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.Path
 import com.twitter.finagle.filter.RequestSemaphoreFilter
-import com.twitter.finagle.service.TimeoutFilter
+import com.twitter.finagle.service.{ExpiringService, TimeoutFilter}
 import com.twitter.finagle.transport.Transport
 import com.twitter.util.{Return, Try}
 import io.buoyant.config.Parser
 import java.net.{InetAddress, InetSocketAddress}
+
 import org.scalatest.FunSuite
 
 class ServerTest extends FunSuite {
@@ -114,4 +115,24 @@ fancyRouter: true
       """.stripMargin
     assert(parse(TestProtocol.Plain, yaml).get.announce == Seq(Path.read("/#/io.l5d.foo/bar")))
   }
+
+  test("serverSession") {
+    val Return(server) = parse(TestProtocol.Plain,
+      """
+        |serverSession:
+        |  lifeTimeMs: 10000
+        |  idleTimeMs: 5000
+      """.stripMargin)
+    assert(server.params.apply[ExpiringService.Param].idleTime == 5000.millis)
+    assert(server.params.apply[ExpiringService.Param].lifeTime == 10000.millis)
+  }
+
+  test("serverSession empty") {
+    val Return(server) = parse(TestProtocol.Plain,
+      """
+        |  port: 1234
+      """.stripMargin)
+    assert(server.params.apply[ExpiringService.Param] == ExpiringService.Param.param.default)
+  }
+
 }
