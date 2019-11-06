@@ -859,13 +859,12 @@ class HttpEndToEndTest
 
     serverIdleTimeMsBaseTest(config){ (router:Router.Initialized, stats:InMemoryStatsReceiver) =>
       // Assert
-      def connectsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "connects"))
+      def connectsCount = stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "connects"))
       def activeConnectionsCount = stats.gauges(Seq("rt", "http", "server", "127.0.0.1/0", "connections"))
       def idleConnectionsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "idle"))
-      def lifetimeConnectionsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "lifetime"))
 
       // An incoming request through the Http.Router will establish an active connection; We expect to see it here
-      assert(connectsCount() == 1.0)
+      assert(connectsCount == 1.0)
       assert(activeConnectionsCount() == 1.0)
 
       eventually(timeout(Span(5, Seconds)), interval(Span(250, Millis))) {
@@ -894,13 +893,12 @@ class HttpEndToEndTest
 
     serverIdleTimeMsBaseTest(config){ (router:Router.Initialized, stats:InMemoryStatsReceiver) =>
       // Assert
-      def connectsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "connects"))
+      def connectsCount = stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "connects"))
       def activeConnectionsCount = stats.gauges(Seq("rt", "http", "server", "127.0.0.1/0", "connections"))
-      def idleConnectionsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "idle"))
       def lifetimeConnectionsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "lifetime"))
 
       // An incoming request through the Http.Router will establish an active connection; We expect to see it here
-      assert(connectsCount() == 1.0)
+      assert(connectsCount == 1.0)
       assert(activeConnectionsCount() == 1.0)
 
       eventually(timeout(Span(5, Seconds)), interval(Span(250, Millis))) {
@@ -926,13 +924,11 @@ class HttpEndToEndTest
 
     serverIdleTimeMsBaseTest(config){ (router:Router.Initialized, stats:InMemoryStatsReceiver) =>
       // Assert
-      def connectsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "connects"))
+      def connectsCount = stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "connects"))
       def activeConnectionsCount = stats.gauges(Seq("rt", "http", "server", "127.0.0.1/0", "connections"))
-      def idleConnectionsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "idle"))
-      def lifetimeConnectionsCount = () => stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "lifetime"))
 
       // An incoming request through the Http.Router will establish an active connection; We expect to see it here
-      assert(connectsCount() == 1.0)
+      assert(connectsCount == 1.0)
       assert(activeConnectionsCount() == 1.0)
 
       assert(router.servers.head.params[ExpiringService.Param].idleTime == Duration.Top)
