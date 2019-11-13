@@ -86,7 +86,7 @@ message RouteRule {
   // unspecified.
   int32 precedence = 2;
 
-  // Match condtions to be satisfied for the route rule to be
+  // Match conditions to be satisfied for the route rule to be
   // activated. If match is omitted, the route rule applies only to HTTP
   // traffic.
   MatchCondition match = 3;

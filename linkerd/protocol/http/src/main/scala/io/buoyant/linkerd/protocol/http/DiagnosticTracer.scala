@@ -84,7 +84,7 @@ class DiagnosticTracer(
 
     (req.method, maxForwards, isAddRouterCtx) match {
       case (Method.Trace, Throw(_: NumberFormatException), _) =>
-        // Max-Forwards header is unparseable
+        // Max-Forwards header is unparsable
         val resp = Response(Status.BadRequest)
         resp.contentString = s"Invalid value for $MaxForwards header"
         Future.value(resp)

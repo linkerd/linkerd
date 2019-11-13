@@ -21,7 +21,7 @@ and requeues.
 
 Key | Default Value | Description
 --- | ------------- | -----------
-budget | See [retry budget](#retry-budget-parameters) | Object that determins _how many_ failed requests are eligible to be retried.
+budget | See [retry budget](#retry-budget-parameters) | Object that determines _how many_ failed requests are eligible to be retried.
 backoff | See [retry backoff](#retry-backoff-parameters) | Object that determines which backoff algorithm should be used.
 
 ## Retries

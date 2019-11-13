@@ -88,7 +88,7 @@ class Netty4ServerDispatcher(
     // headers frame will have just been admitted to the stream.
     val serveF = st.onRecvMessage.flatMap(serve).flatMap(st.send(_).flatten)
 
-    // When the stream is reset, ensure that the cancelation is
+    // When the stream is reset, ensure that the cancellation is
     // propagated downstream and discard the recv message (if we have one).
     st.onReset.onFailure {
       case StreamError.Remote(rst: Reset) =>

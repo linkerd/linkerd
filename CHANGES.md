@@ -930,7 +930,7 @@ We’ve made some internal changes to keep up with the latest and greatest:
 * Beautiful new Linkerd docs!!! :heart_eyes: https://linkerd.io/config/0.7.5/linkerd
 * HTTP response classifiers must not consider a request to be
   retryable when it has a chunked request body.
-* Fix query paramater encoding when rewriting proxied requests
+* Fix query parameter encoding when rewriting proxied requests
 * Improve error handling and retry behavior of consul plugins.
 * Add `useHealthCheck` parameter to Consul Namer #589
 * The k8s namer will now resume watches if the connection is closed.

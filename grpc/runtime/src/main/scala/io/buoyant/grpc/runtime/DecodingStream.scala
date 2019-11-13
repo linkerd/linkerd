@@ -311,7 +311,7 @@ object DecodingStream {
     private[this] trait SegmentLatch {
 
       /**
-       * Obtain a release functon for a segment.
+       * Obtain a release function for a segment.
        *
        * If `last` is true, there must be no further calls to
        * `segmentReleaseFunc`.

@@ -13,7 +13,7 @@ import com.twitter.util.{Future, Promise}
  *
  * These types are only intended to satisfy session layer concerned
  * and are not intended to provide a rish programming interface.
- * However, it is hoped that other types may be built upon / adapated
+ * However, it is hoped that other types may be built upon / adapted
  * to satisfy a broader set of use cases.
  */
 sealed trait Message {

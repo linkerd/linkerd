@@ -86,10 +86,11 @@ class HealthApiTest extends FunSuite with Awaits {
       assert(response.head.Status == Some(status))
     }
 
-  // No filterTest for health status `passing` as HealthApi is optmized to use
+  // No filterTest for health status `passing` as HealthApi is optimized to use
   // consul API parameter `passing=true` to perform server side filtering when
   // only passing nodes are required.
   filterTest(HealthStatus.Warning, "warning")
   filterTest(HealthStatus.Critical, "critical")
   filterTest(HealthStatus.Maintenance, "maintenance")
 }
+gir
