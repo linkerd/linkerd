@@ -12,7 +12,7 @@ import scala.util.Random
 case class Sampler(sampleRate: Var[Float]) {
 
   /**
-   * Returns true iff the given trace id should be sampled.
+   * Returns true if the given trace id should be sampled.
    */
   def apply(id: Long): Boolean = {
     val r = sampleRate.sample().min(1f).max(0f) // fit on [0.0, 1.0]

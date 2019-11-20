@@ -37,7 +37,7 @@ object ConnectionHeaders {
   private val TeTrailers = Seq("trailers")
 
   /**
-   * Returns true iff Headers has connection-specific headers (and
+   * Returns true if Headers has connection-specific headers (and
    * should be considered malformed).
    */
   def detect(headers: Headers): Boolean = {
