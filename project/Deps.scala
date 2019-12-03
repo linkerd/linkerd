@@ -13,6 +13,11 @@ object Deps {
 
   def twitterUtil(mod: String) =
     "com.twitter" %% s"util-$mod" % "19.5.1"
+
+  def twitterCommonUtil = "com.twitter.common" % "util" % "0.0.121"
+
+  def twitteCommonBase = "com.twitter.common" % "base" % "0.0.116"
+
   // networking
   def finagle(mod: String) =
     "com.twitter" %% s"finagle-$mod" % "19.5.1"
@@ -22,9 +27,12 @@ object Deps {
 
   val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.19.Final"
 
-  def zkCandidate =
-    ("com.twitter.common.zookeeper" % "candidate" % "0.0.84")
-      .exclude("com.twitter.common", "util")
+  def apacheZookeeper = ("org.apache.zookeeper" % "zookeeper" % "3.5.0-alpha")
+    .exclude("com.sun.jdmk", "jmxtools")
+    .exclude("com.sun.jmx", "jmxri")
+    .exclude("javax.jms", "jms")
+
+  def apacheCommonsLang = "commons-lang" % "commons-lang" % "2.6"
 
   // Jackson (parsing)
   val jacksonVersion = "2.9.6"

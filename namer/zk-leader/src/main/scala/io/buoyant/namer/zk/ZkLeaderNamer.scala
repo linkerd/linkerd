@@ -51,7 +51,7 @@ case class ZkLeaderNamer(
         )
 
         Closable.make { _ =>
-          stop.execute()
+          stop.run()
           Future.Unit
         }
       }

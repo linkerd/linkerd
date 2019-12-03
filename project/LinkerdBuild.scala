@@ -115,7 +115,10 @@ object LinkerdBuild extends Base {
 
     val zkLeader = projectDir("namer/zk-leader")
       .dependsOn(core)
-      .withLib(Deps.zkCandidate)
+      .withLib(Deps.apacheZookeeper)
+      .withLib(Deps.apacheCommonsLang)
+      .withTwitterLib(Deps.twitteCommonBase)
+      .withTwitterLib(Deps.twitterCommonUtil)
       .withTests()
 
     val rancher = projectDir("namer/rancher")
