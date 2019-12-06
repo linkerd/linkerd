@@ -93,13 +93,4 @@ case class HostConnectionPool(
 case class ClientSessionConfig(
   @JsonDeserialize(contentAs = classOf[java.lang.Integer]) lifeTimeMs: Option[Int],
   @JsonDeserialize(contentAs = classOf[java.lang.Integer]) idleTimeMs: Option[Int]
-) {
-  @JsonIgnore
-  private[this] val default = ExpiringService.Param.param.default
-
-  @JsonIgnore
-  def param = ExpiringService.Param(
-    lifeTime = lifeTimeMs.map(_.millis).getOrElse(default.lifeTime),
-    idleTime = idleTimeMs.map(_.millis).getOrElse(default.idleTime)
-  )
-}
+) extends SessionConfig
