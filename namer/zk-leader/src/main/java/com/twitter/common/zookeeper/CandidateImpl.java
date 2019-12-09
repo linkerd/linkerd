@@ -31,16 +31,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
-
 import org.apache.zookeeper.KeeperException;
-
-import com.twitter.common.base.Command;
-import com.twitter.common.base.ExceptionalCommand;
-import com.twitter.common.zookeeper.Group.GroupChangeListener;
-import com.twitter.common.zookeeper.Group.JoinException;
-import com.twitter.common.zookeeper.Group.Membership;
-import com.twitter.common.zookeeper.Group.WatchException;
-import com.twitter.common.zookeeper.ZooKeeperClient.ZooKeeperConnectionException;
+import com.twitter.finagle.common.zookeeper.Group;
+import com.twitter.finagle.common.zookeeper.Group.JoinException;
+import com.twitter.finagle.common.zookeeper.Group.GroupChangeListener;
+import com.twitter.finagle.common.zookeeper.Group.Membership;
+import com.twitter.finagle.common.zookeeper.Group.WatchException;
+import com.twitter.finagle.common.zookeeper.ZooKeeperClient.ZooKeeperConnectionException;
 
 /**
  * Implements leader election for small groups of candidates.  This implementation is subject to the
