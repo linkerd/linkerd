@@ -69,7 +69,7 @@ case class MeshInterpreterConfig(
   tls: Option[TlsClientConfig],
   retry: Option[Retry],
   failureThreshold: Option[FailureThresholdConfig],
-  initialWindowSizeKB: Option[Int]
+  initialStreamWindowSizeKB: Option[Int]
 ) extends InterpreterConfig {
   import MeshInterpreterConfig._
 
@@ -89,7 +89,7 @@ case class MeshInterpreterConfig(
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
     val failureThresholdParams = failureThreshold.map(_.params).getOrElse(Stack.Params.empty)
     val windowSize = Stack.Params.empty +
-      Settings.InitialStreamWindowSize(Some(initialWindowSizeKB.getOrElse(defaultWindowSizeKB).kilobyte))
+      Settings.InitialStreamWindowSize(Some(initialStreamWindowSizeKB.getOrElse(defaultWindowSizeKB).kilobyte))
 
     val client = H2.client
       .withParams(H2.client.params ++ tlsParams ++ failureThresholdParams ++ params ++ windowSize)

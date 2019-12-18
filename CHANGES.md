@@ -1,3 +1,16 @@
+## 1.7.1 2019-12-18
+Linkerd 1.7.1 adds a parameter named `initialStreamWindowSizeKB` to 
+MeshInterpreterInitializer.scala. This parameter is used to configure the 
+[initial flow-control window size](https://http2.github.io/http2-spec/#InitialWindowSize)
+that the H2 client in the `io.l5d.mesh` interpreter sends to the H2 server. 
+              
+Parameter Name | Default Value | Description
+-----------------|---------------|-------------
+`initialStreamWindowSizeKB` | 1024 (1 MB) | Sets the [initial flow-control window size](https://http2.github.io/http2-spec/#InitialWindowSize) for the H2 client used by the intepreter
+
+Full release notes:
+* Add the `initialStreamWindowSizeKB` parameter to the `io.l5d.mesh` interpreter. [#2364](https://github.com/linkerd/linkerd/pull/2364)
+
 ## 1.7.0 2019-08-27
 Linkerd 1.7.0 includes a number of memory leak fixes for Linkerd and its
 underlying `grpc-runtime` module. This release includes improvements for
