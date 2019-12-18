@@ -112,7 +112,7 @@ root | `/default` | A single-element Finagle path representing the Namerd namesp
 retry | see [Namerd retry](#namerd-retry) | An object configuring retry backoffs for requests to Namerd.
 tls | no tls | Requests to Namerd will be made using TLS if this parameter is provided.  It must be a [client TLS](#client-tls) object.
 failureThreshold | no failureThreshold | Sets the [failure threshold](#failure-threshold) used by Linkerd's threshold failure detector to gauge a Namerd instance's health
-initialWindowSizeKB | 1024 (1 MB) | Sets the [initial flow-control window size](https://http2.github.io/http2-spec/#InitialWindowSize) for the H2 client used by the intepreter
+initialStreamWindowSizeKB | 1024 (1 MB) | Sets the [initial flow-control window size](https://http2.github.io/http2-spec/#InitialWindowSize) for the H2 client used by the intepreter
 
 ## File-System
 
