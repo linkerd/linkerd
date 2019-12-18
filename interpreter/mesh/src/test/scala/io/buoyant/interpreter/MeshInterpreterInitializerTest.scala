@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
 class MeshInterpreterInitializerTest extends FunSuite {
   test("sanity") {
     // ensure it doesn't totally blowup
-    val _ = MeshInterpreterConfig(Some(Path.read("/whats/in/a")), Some(Path.read("/default")), None, None, None)
+    val _ = MeshInterpreterConfig(Some(Path.read("/whats/in/a")), Some(Path.read("/default")), None, None, None, None)
       .newInterpreter(Stack.Params.empty)
   }
 
