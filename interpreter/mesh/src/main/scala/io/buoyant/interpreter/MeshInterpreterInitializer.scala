@@ -35,7 +35,7 @@ object MeshInterpreterConfig {
   val DefaultRoot = Path.Utf8("default")
 
   val defaultRetry = Retry(1, 10.minutes.inSeconds)
-  val defaultWindowSizeKB = 1024
+  val defaultWindowSizeKB = 10240
 }
 
 object FailureThresholdConfig {
