@@ -8,8 +8,19 @@ Parameter Name | Default Value | Description
 -----------------|---------------|-------------
 `initialStreamWindowSizeKB` | 1024 (1 MB) | Sets the [initial flow-control window size](https://http2.github.io/http2-spec/#InitialWindowSize) for the H2 client used by the intepreter
 
+This release is brought to you with fixes from these contributors. Thank you 
+all SO much for being a part of the community!
+[Robert Panzer](https://github.com/robertpanzer)
+[Robert Macaulay](https://github.com/taer)
+
 Full release notes:
-* Add the `initialStreamWindowSizeKB` parameter to the `io.l5d.mesh` interpreter. [#2364](https://github.com/linkerd/linkerd/pull/2364)
+* HTTP/1.1
+  * Adds configuration server.serverSession to allow expiring server connections [#2353](https://github.com/linkerd/linkerd/pull/2353)
+  * Ensures that the `streamingEnabled` router parameter is handled properly [#2332](https://github.com/linkerd/linkerd/pull/2332)
+* HTTP/2
+  * Adds functionality to respect `maxConcurrentStreams` for server dispatchers [#2327](https://github.com/linkerd/linkerd/pull/2327)  
+* Linkerd Mesh Interpreter
+  * Add the `initialStreamWindowSizeKB` parameter to the `io.l5d.mesh` interpreter. [#2364](https://github.com/linkerd/linkerd/pull/2364)
 
 ## 1.7.0 2019-08-27
 Linkerd 1.7.0 includes a number of memory leak fixes for Linkerd and its
