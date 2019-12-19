@@ -243,12 +243,11 @@ object Client {
     streamState: StreamState[_, S]
   ): InstrumentedVar[T] = InstrumentedVar[T](init) { state =>
     implicit val timer0 = timer
-
     // As we receive streamed messages, we are careful not to release
     // them until the state has been updated to a new value. This is
     // intended to (1) integrate tightly with flow control and more
     // importantly (2) later integrate with netty's reference counted
-    // bueffers.
+    // buffers.
     @volatile var closed = false
     @volatile var currentStream: Stream[S] = null
     def loop(

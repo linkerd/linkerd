@@ -2,7 +2,9 @@ package io.buoyant.interpreter
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.conversions.DurationOps._
+import com.twitter.conversions.StorageUnitOps._
 import com.twitter.finagle._
+import com.twitter.finagle.buoyant.h2.param.Settings
 import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
 import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.liveness.FailureDetector.ThresholdConfig
@@ -12,6 +14,7 @@ import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
 import io.buoyant.interpreter.mesh.Client
 import io.buoyant.namer.{InterpreterConfig, InterpreterInitializer}
+
 import scala.util.control.NoStackTrace
 
 /**
@@ -32,6 +35,7 @@ object MeshInterpreterConfig {
   val DefaultRoot = Path.Utf8("default")
 
   val defaultRetry = Retry(1, 10.minutes.inSeconds)
+  val defaultWindowSizeKB = 10240
 }
 
 object FailureThresholdConfig {
@@ -64,7 +68,8 @@ case class MeshInterpreterConfig(
   root: Option[Path],
   tls: Option[TlsClientConfig],
   retry: Option[Retry],
-  failureThreshold: Option[FailureThresholdConfig]
+  failureThreshold: Option[FailureThresholdConfig],
+  initialStreamWindowSizeKB: Option[Int]
 ) extends InterpreterConfig {
   import MeshInterpreterConfig._
 
@@ -83,9 +88,11 @@ case class MeshInterpreterConfig(
     val backoffs = Backoff.exponentialJittered(baseRetry.seconds, maxRetry.seconds)
     val tlsParams = tls.map(_.params).getOrElse(Stack.Params.empty)
     val failureThresholdParams = failureThreshold.map(_.params).getOrElse(Stack.Params.empty)
+    val windowSize = Stack.Params.empty +
+      Settings.InitialStreamWindowSize(Some(initialStreamWindowSizeKB.getOrElse(defaultWindowSizeKB).kilobyte))
 
     val client = H2.client
-      .withParams(H2.client.params ++ tlsParams ++ failureThresholdParams ++ params)
+      .withParams(H2.client.params ++ tlsParams ++ failureThresholdParams ++ params ++ windowSize)
       .newService(name, label)
 
     root.getOrElse(DefaultRoot) match {
