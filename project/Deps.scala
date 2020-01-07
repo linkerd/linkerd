@@ -13,6 +13,7 @@ object Deps {
 
   def twitterUtil(mod: String) =
     "com.twitter" %% s"util-$mod" % "19.5.1"
+
   // networking
   def finagle(mod: String) =
     "com.twitter" %% s"finagle-$mod" % "19.5.1"
@@ -21,10 +22,6 @@ object Deps {
     "io.netty" % s"netty-$mod" % "4.1.31.Final"
 
   val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.19.Final"
-
-  def zkCandidate =
-    ("com.twitter.common.zookeeper" % "candidate" % "0.0.84")
-      .exclude("com.twitter.common", "util")
 
   // Jackson (parsing)
   val jacksonVersion = "2.9.6"

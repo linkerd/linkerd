@@ -1,14 +1,17 @@
 package io.buoyant.namer.zk
 
-import com.twitter.common.zookeeper.Group.GroupChangeListener
-import com.twitter.common.zookeeper._
 import com.twitter.finagle.util.InetSocketAddressUtil
 import com.twitter.finagle.{Group => _, _}
 import com.twitter.util._
 import io.buoyant.config.types.HostAndPort
 import java.net.InetSocketAddress
+
+import com.twitter.common.zookeeper.{Candidate, CandidateImpl}
+import com.twitter.finagle.common.zookeeper.Group.GroupChangeListener
+import com.twitter.finagle.common.zookeeper.{Group, ZooKeeperClient, ZooKeeperUtils}
 import org.apache.zookeeper.KeeperException.NoNodeException
 import org.apache.zookeeper.data.ACL
+
 import scala.collection.JavaConverters._
 
 /**
@@ -51,7 +54,7 @@ case class ZkLeaderNamer(
         )
 
         Closable.make { _ =>
-          stop.execute()
+          stop.run()
           Future.Unit
         }
       }

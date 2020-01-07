@@ -115,7 +115,7 @@ object LinkerdBuild extends Base {
 
     val zkLeader = projectDir("namer/zk-leader")
       .dependsOn(core)
-      .withLib(Deps.zkCandidate)
+      .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
       .withTests()
 
     val rancher = projectDir("namer/rancher")
