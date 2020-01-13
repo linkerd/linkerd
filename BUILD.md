@@ -295,7 +295,7 @@ $ ./sbt namerd/dcos:docker
 $ docker run -p 2181:2181 -p 4180:4180 -v /path/to/repo:/myapp -w /myapp buoyantio/namerd:0.9.1-SNAPSHOT-dcos namerd/examples/zk.yaml
 ```
 
-[funsuite]: http://www.scalatest.org/getting_started_with_fun_suite
+[funsuite]: https://www.scalatest.org/getting_started_with_fun_suite
 [l5d-ci]: https://circleci.com/gh/linkerd/linkerd
 [sbt]: https://www.scala-sbt.org/
-[scalatest]: http://www.scalatest.org/
+[scalatest]: https://www.scalatest.org/
