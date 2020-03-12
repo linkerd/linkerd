@@ -9,6 +9,7 @@ jobs:
       - image: openjdk:8
         environment:
           CI_TERRIBLENESS: 30.seconds
+          OPENSSL_CONF: admin/src/main/resources/io/buoyant/admin/openssl.cnf
     # Run two containers, $CIRCLE_NODE_TOTAL = 2, $CIRCLE_NODE_INDEX = [0|1]
     parallelism: 2
     resource_class: large
