@@ -2,6 +2,7 @@ The Linkerd maintainers are:
 
 * Oliver Gould <ver@buoyant.io> @olix0r (super-maintainer)
 * Alex Leong <alex@buoyant.io> @adleong (super-maintainer)
+* Zarahi Dichev <zahari@buoyant.io> @zaharidichev (super-maintainer)
 * Risha Mars <mars@buoyant.io> @rmars: Admin UI
 * William Morgan <william@buoyant.io> @wmorgan: docs and governance
 * Adam Christian <adam@buoyant.io> @admc: docs and governance
