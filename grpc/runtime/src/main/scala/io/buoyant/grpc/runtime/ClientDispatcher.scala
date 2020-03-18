@@ -49,6 +49,9 @@ object ClientDispatcher {
     result match {
       case Throw(Failure(Some(e))) => Future.exception(e)
       case Throw(e) => Future.exception(e)
+      case Return(rsp) if rsp.stream.isEmpty =>
+        val status = GrpcStatus.fromHeaders(rsp.headers)
+        Future.exception(status)
       case Return(rsp) =>
         val f = Codec.bufferGrpcFrame(rsp.stream).map(codec.decodeByteBuffer)
 
