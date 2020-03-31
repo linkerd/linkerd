@@ -1,5 +1,15 @@
+## 1.7.2 2020-03-30
+Linkerd 1.7.2 is a point release which addresses gRPC responses which have no
+bodies, but do have trailers. With this change in place, Linkerd will 
+return a failed Future containing a Non-Ok GrpcStatus instance when handling
+empty gRPC responses with EOS trailers.
 
-@@ -1,3 +1,27 @@
+* gRPC
+  * Fix grpc handling of trailers-only h2 responses [#2379](https://github.com/linkerd/linkerd/pull/2379)
+
+Our gratitude goes out to [jlawrienyt](https://github.com/jlawrienyt) for 
+finding and fixing this issue.
+
 ## 1.7.1 2019-12-18
 Linkerd 1.7.1 adds a parameter named `initialStreamWindowSizeKB` to 
 MeshInterpreterInitializer.scala. This parameter is used to configure the 
