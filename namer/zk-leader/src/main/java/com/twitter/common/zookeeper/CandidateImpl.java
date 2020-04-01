@@ -72,32 +72,32 @@ public class CandidateImpl implements Candidate {
     private final Supplier<byte[]> dataSupplier;
 
     /**
-     * Equivalent to {@link #CandidateImpl(Group, com.google.common.base.Function, Supplier)} using a
+     * Equivalent to #CandidateImpl(Group, com.google.common.base.Function, Supplier) using a
      * judge that always picks the lowest numbered candidate ephemeral node - by proxy the oldest or
      * 1st candidate and a default supplier that provides the ip address of this host according to
-     * {@link java.net.InetAddress#getLocalHost()} as the leader identifying data.
+     * java.net.InetAddress#getLocalHost() as the leader identifying data.
      */
     public CandidateImpl(Group group) {
         this(group, MOST_RECENT_JUDGE, IP_ADDRESS_DATA_SUPPLIER);
     }
 
     /**
-     * Creates a candidate that can be used to offer leadership for the given {@code group} using
+     * Creates a candidate that can be used to offer leadership for the given group using
      * a judge that always picks the lowest numbered candidate ephemeral node - by proxy the oldest
      * or 1st. The dataSupplier should produce bytes that identify this process as leader. These bytes
-     * will become available to all participants via the {@link Candidate#getLeaderData()} method.
+     * will become available to all participants via the Candidate#getLeaderData() method.
      */
     public CandidateImpl(Group group, Supplier<byte[]> dataSupplier) {
         this(group, MOST_RECENT_JUDGE, dataSupplier);
     }
 
     /**
-     * Creates a candidate that can be used to offer leadership for the given {@code group}.  The
-     * {@code judge} is used to pick the current leader from all group members whenever the group
+     * Creates a candidate that can be used to offer leadership for the given group.  The
+     * judge is used to pick the current leader from all group members whenever the group
      * membership changes. To form a well-behaved election group with one leader, all candidates
      * should use the same judge. The dataSupplier should produce bytes that identify this process
      * as leader. These bytes will become available to all participants via the
-     * {@link Candidate#getLeaderData()} method.
+     * Candidate#getLeaderData() method.
      */
     public CandidateImpl(
             Group group,
@@ -119,7 +119,7 @@ public class CandidateImpl implements Candidate {
     }
 
     @Override
-    public Supplier<Boolean> offerLeadership(final Leader leader)
+    public Supplier<Boolean> offerLeadership(final Candidate.Leader leader)
             throws JoinException, WatchException, InterruptedException {
 
         final Membership membership = group.join(dataSupplier, () -> leader.onDefeated());

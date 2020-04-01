@@ -26,7 +26,7 @@ package com.twitter.common.zookeeper;
 public interface ExceptionalCommand<E extends Exception> {
 
     /**
-     * Performs a unit of work, possibly throwing {@code E} in the process.
+     * Performs a unit of work, possibly throwing E in the process.
      *
      * @throws E if there was a problem performing the work
      */

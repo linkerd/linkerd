@@ -115,6 +115,7 @@ object LinkerdBuild extends Base {
 
     val zkLeader = projectDir("namer/zk-leader")
       .dependsOn(core)
+      .settings(Seq(scalacOptions in (Compile,doc) += "-no-java-comments"))
       .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
       .withTests()
 

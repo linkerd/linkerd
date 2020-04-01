@@ -34,7 +34,7 @@ public interface Candidate {
     /**
      * Returns the current group leader by querying ZooKeeper synchronously.
      *
-     * @return the current group leader's identifying data or {@link Optional#absent()} if there is
+     * @return the current group leader's identifying data or Optional#absent() if there is
      *     no leader
      * @throws ZooKeeperConnectionException if there was a problem connecting to ZooKeeper
      * @throws KeeperException if there was a problem reading the leader information
@@ -64,11 +64,11 @@ public interface Candidate {
 
     /**
      * Offers this candidate in leadership elections for as long as the current jvm process is alive.
-     * Upon election, the {@code onElected} callback will be executed and a command that can be used
+     * Upon election, the onElected callback will be executed and a command that can be used
      * to abdicate leadership will be passed in.  If the elected leader jvm process dies or the
      * elected leader successfully abdicates then a new leader will be elected.  Leaders that
      * successfully abdicate are removed from the group and will not be eligible for leadership
-     * election unless {@link #offerLeadership(Leader)} is called again.
+     * election unless #offerLeadership(Leader) is called again.
      *
      * @param leader the leader to notify of election and defeat events
      * @throws JoinException if there was a problem joining the group
