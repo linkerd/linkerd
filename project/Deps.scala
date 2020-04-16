@@ -19,9 +19,9 @@ object Deps {
     "com.twitter" %% s"finagle-$mod" % "19.5.1"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.31.Final"
+    "io.netty" % s"netty-$mod" % "4.1.46.Final"
 
-  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.19.Final"
+  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.30.Final"
 
   // Jackson (parsing)
   val jacksonVersion = "2.9.6"
