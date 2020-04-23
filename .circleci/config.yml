@@ -147,7 +147,7 @@ workflows:
   nightly:
     triggers:
     - schedule:
-        cron: "0 0 * * *"
+        cron: "30 12 * * *"
         filters:
           branches:
             only:
@@ -159,7 +159,7 @@ workflows:
   twitter_develop:
     triggers:
     - schedule:
-        cron: "0 0 * * *"
+        cron: "10 12 * * *"
         filters:
           branches:
             only:
