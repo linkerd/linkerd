@@ -1,5 +1,5 @@
 
-version: 2
+version: 2.1
 jobs:
   build:
     docker:
@@ -137,3 +137,33 @@ jobs:
       # Store test results from previous step.
       - store_test_results:
           path: /tmp/test-results
+
+workflows:
+  version: 2
+  build:
+    jobs:
+    - build
+
+  nightly:
+    triggers:
+    - schedule:
+        cron: "30 12 * * *"
+        filters:
+          branches:
+            only:
+            - master
+    jobs:
+    - build:
+        context: nightly
+
+  twitter_develop:
+    triggers:
+    - schedule:
+        cron: "10 12 * * *"
+        filters:
+          branches:
+            only:
+            - master
+    jobs:
+    - build:
+        context: twitter_develop
