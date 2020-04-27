@@ -9,9 +9,9 @@ import io.buoyant.grpc.runtime.GrpcStatus
 import io.buoyant.linkerd.protocol.h2.grpc.GrpcClassifiers.Compliant
 import org.scalacheck.Arbitrary
 import org.scalatest.FunSuite
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
+import org.scalatestplus.scalacheck._
 
-class CompliantGrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
+class CompliantGrpcClassifierTest extends FunSuite with ScalaCheckDrivenPropertyChecks {
   implicit val arbitraryStatus: Arbitrary[GrpcStatus] = Arbitrary(for {
     code <- Arbitrary.arbitrary[Int]
     msg <- Arbitrary.arbitrary[String]

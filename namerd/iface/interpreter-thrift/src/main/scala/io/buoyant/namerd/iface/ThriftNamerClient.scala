@@ -154,13 +154,13 @@ class ThriftNamerClient(
       case thrift.BoundNode.Fail(_) => NameTree.Fail
 
       case thrift.BoundNode.Leaf(thrift.BoundName(tid, tresidual)) =>
-        val residual = mkPath(tresidual)
-        val id = mkPath(tid)
+        val residual = mkPath(tresidual.toIndexedSeq)
+        val id = mkPath(tid.toIndexedSeq)
         val addr = addrCacheMu.synchronized {
           addrCache.get(id) match {
             case Some(addr) => addr
             case None =>
-              val addr = watchAddr(tid)
+              val addr = watchAddr(tid.toIndexedSeq)
               addrCache += (id -> addr)
               addr
           }
@@ -174,7 +174,7 @@ class ThriftNamerClient(
             case Some(node) => mk(node)
           }
         }
-        NameTree.Alt(trees: _*)
+        NameTree.Alt(trees.toIndexedSeq: _*)
 
       case thrift.BoundNode.Weighted(weightedIds) =>
         val weighted = weightedIds.map {
@@ -184,7 +184,7 @@ class ThriftNamerClient(
               case Some(node) => NameTree.Weighted(weight, mk(node))
             }
         }
-        NameTree.Union(weighted: _*)
+        NameTree.Union(weighted.toIndexedSeq: _*)
     }
 
     mk(ttree.root)
@@ -279,40 +279,40 @@ class ThriftNamerClient(
         case thrift.DelegateContents.Error(thrown) =>
           DelegateTree
             .Exception(
-              mkPath(node.path),
+              mkPath(node.path.toIndexedSeq),
               Dentry.read(node.dentry),
               new Exception(thrown)
             )
         case thrift.DelegateContents.Empty(_) =>
-          DelegateTree.Empty(mkPath(node.path), Dentry.read(node.dentry))
+          DelegateTree.Empty(mkPath(node.path.toIndexedSeq), Dentry.read(node.dentry))
         case thrift.DelegateContents.Fail(_) =>
-          DelegateTree.Fail(mkPath(node.path), Dentry.read(node.dentry))
+          DelegateTree.Fail(mkPath(node.path.toIndexedSeq), Dentry.read(node.dentry))
         case thrift.DelegateContents.Neg(_) =>
-          DelegateTree.Neg(mkPath(node.path), Dentry.read(node.dentry))
+          DelegateTree.Neg(mkPath(node.path.toIndexedSeq), Dentry.read(node.dentry))
         case thrift.DelegateContents.Delegate(child) =>
-          DelegateTree.Delegate(mkPath(node.path), Dentry.read(node.dentry), mk(dt.nodes(child)))
+          DelegateTree.Delegate(mkPath(node.path.toIndexedSeq), Dentry.read(node.dentry), mk(dt.nodes(child)))
         case thrift.DelegateContents.BoundLeaf(thrift.BoundName(tid, tresidual)) =>
-          val residual = mkPath(tresidual)
-          val id = mkPath(tid)
+          val residual = mkPath(tresidual.toIndexedSeq)
+          val id = mkPath(tid.toIndexedSeq)
           val addr = addrCacheMu.synchronized {
             addrCache.get(id) match {
               case Some(addr) => addr
               case None =>
-                val addr = watchAddr(tid)
+                val addr = watchAddr(tid.toIndexedSeq)
                 addrCache += (id -> addr)
                 addr
             }
           }
           val bound = Name.Bound(addr.act.underlying, id, residual)
-          DelegateTree.Leaf(mkPath(node.path), Dentry.read(node.dentry), bound)
+          DelegateTree.Leaf(mkPath(node.path.toIndexedSeq), Dentry.read(node.dentry), bound)
         case thrift.DelegateContents.Alt(children) =>
           val alts = children.map(dt.nodes).map(mk)
-          DelegateTree.Alt(mkPath(node.path), Dentry.read(dt.root.dentry), alts: _*)
+          DelegateTree.Alt(mkPath(node.path.toIndexedSeq), Dentry.read(dt.root.dentry), alts: _*)
         case thrift.DelegateContents.Weighted(children) =>
           val weights = children.map { child =>
             DelegateTree.Weighted(child.weight, mk(dt.nodes(child.id)))
           }
-          DelegateTree.Union(mkPath(node.path), Dentry.read(dt.root.dentry), weights: _*)
+          DelegateTree.Union(mkPath(node.path.toIndexedSeq), Dentry.read(dt.root.dentry), weights: _*)
         case thrift.DelegateContents.PathLeaf(leaf) =>
           throw new IllegalArgumentException("delegation cannot accept path names")
       }

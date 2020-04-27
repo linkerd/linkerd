@@ -21,8 +21,8 @@ class BoundSerializer extends ConfigSerializer[thrift.Bound] {
         gen.writeStringField("type", "fail")
       case leaf: thrift.BoundNode.Leaf =>
         gen.writeStringField("type", "leaf")
-        gen.writeStringField("id", path(leaf.leaf.id))
-        gen.writeStringField("residual", path(leaf.leaf.residual))
+        gen.writeStringField("id", path(leaf.leaf.id.toIndexedSeq))
+        gen.writeStringField("residual", path(leaf.leaf.residual.toIndexedSeq))
       case neg: thrift.BoundNode.Neg =>
         gen.writeStringField("type", "neg")
       case weighted: thrift.BoundNode.Weighted =>

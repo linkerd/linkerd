@@ -12,9 +12,9 @@ import io.buoyant.linkerd.{ResponseClassifierInitializer, RouterConfig}
 import io.buoyant.linkerd.protocol.{H2DefaultSvc, H2Initializer}
 import org.scalacheck.Arbitrary
 import org.scalatest.FunSuite
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
+import org.scalatestplus.scalacheck._
 
-class GrpcClassifierTest extends FunSuite with GeneratorDrivenPropertyChecks {
+class GrpcClassifierTest extends FunSuite with ScalaCheckDrivenPropertyChecks {
   implicit val arbitraryStatus: Arbitrary[GrpcStatus] = Arbitrary(for {
     code <- Arbitrary.arbitrary[Int]
     msg <- Arbitrary.arbitrary[String]

@@ -59,7 +59,7 @@ class PrometheusTelemeter(metrics: MetricsTree, private[prometheus] val handlerP
 
   private[this] val first: ((String, String)) => String = _._1
   private[this] def labelExists(labels: Seq[(String, String)], name: String) =
-    labels.toIterator.map(first).contains(name)
+    labels.iterator.map(first).contains(name)
 
   private[this] def addException(labels: Seq[(String, String)], name: String) = {
     val index = labels.map(first).indexOf("exception")

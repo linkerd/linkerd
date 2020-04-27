@@ -28,6 +28,7 @@ object LinkerdBuild extends Base {
     .dependsOn(configCore)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
+    .withLib(Deps.scalaCollectionCompat)
     .withTests()
 
   val etcd = projectDir("etcd")
@@ -397,6 +398,7 @@ object LinkerdBuild extends Base {
         .dependsOn(core, interpreterThriftIdl)
         .withLib(Deps.guava)
         .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
+//        .withTwitterLibs(Deps.finagle("thriftmux"))
         .withTests()
 
       val mesh = projectDir("namerd/iface/mesh")

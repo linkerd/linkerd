@@ -6,7 +6,8 @@ import com.google.protobuf.compiler.PluginProtos.{CodeGeneratorRequest, CodeGene
 import com.twitter.util.{Return, Throw, Try}
 import io.buoyant.grpc.gen.ProtoFile.TypeRef
 import java.io.InputStream
-import scala.collection.JavaConverters._
+
+import scala.jdk.CollectionConverters._
 
 /**
  * Generates Twitter-style scala bindings for proto3/gRPC.
@@ -32,7 +33,7 @@ object Generator {
       val protos = req.getProtoFileList.asScala.map(ProtoFile.mk(_))
       if (noGrpc && protos.exists(_.services.nonEmpty)) throw GrpcRequired
 
-      val typeMap = mkTypeMap(protos)
+      val typeMap = mkTypeMap(protos.toSeq)
       protos.map { proto =>
         val name = {
           val dir = proto.scalaPkg.replace(".", "/")

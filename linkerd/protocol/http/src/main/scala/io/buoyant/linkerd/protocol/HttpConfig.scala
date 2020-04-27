@@ -22,7 +22,7 @@ import io.buoyant.config.ConflictingStreamingOptions
 import io.buoyant.linkerd.protocol.HttpRequestAuthorizerConfig.param
 import io.buoyant.linkerd.protocol.http._
 import io.buoyant.router.{ClassifiedRetries, Http, RoutingFactory}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import io.buoyant.router.http._
 import io.buoyant.router.HttpInstances._
 

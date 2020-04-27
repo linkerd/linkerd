@@ -194,7 +194,7 @@ object DelegateApiHandler {
       val module = new SimpleModule
 
       module.addSerializer(classOf[Path], new JsonSerializer[Path] {
-        override def serialize(path: Path, json: JsonGenerator, p: SerializerProvider) {
+        override def serialize(path: Path, json: JsonGenerator, p: SerializerProvider): Unit = {
           json.writeString(path.show)
         }
       })
@@ -204,7 +204,7 @@ object DelegateApiHandler {
       })
 
       module.addSerializer(classOf[Dentry.Prefix], new JsonSerializer[Dentry.Prefix] {
-        override def serialize(pfx: Dentry.Prefix, json: JsonGenerator, p: SerializerProvider) {
+        override def serialize(pfx: Dentry.Prefix, json: JsonGenerator, p: SerializerProvider): Unit = {
           json.writeString(pfx.show)
         }
       })
@@ -218,7 +218,7 @@ object DelegateApiHandler {
           nameTree: NameTree[Path],
           json: JsonGenerator,
           p: SerializerProvider
-        ) {
+        ): Unit = {
           json.writeString(nameTree.show)
         }
       })

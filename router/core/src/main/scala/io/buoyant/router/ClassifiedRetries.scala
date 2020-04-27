@@ -21,7 +21,7 @@ object ClassifiedRetries {
 
   // Note that we don't retry RetryableWriteExceptions here.  We are assuming
   // that those requeues happen in the requeue filter and if a requeuable
-  // exception has made it here, the requeue budget must be exhausted or the 
+  // exception has made it here, the requeue budget must be exhausted or the
   // requeue limit must have been reached.
   val Default: ResponseClassifier = ResponseClassifier.named("DefaultResponseClassifier") {
     case ReqRep(_, Return(_)) => ResponseClass.Success

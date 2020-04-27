@@ -13,7 +13,7 @@ import org.apache.zookeeper
 import org.apache.zookeeper.AsyncCallback._
 import org.apache.zookeeper.Watcher.WatcherType
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * ZooKeeperClient implementation based on Apache ZooKeeper Library

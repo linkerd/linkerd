@@ -15,7 +15,7 @@ import io.buoyant.consul.v1.InstrumentedApiCall.mkPollState
 import io.buoyant.namer.InstrumentedVar
 import io.buoyant.namerd.DtabStore._
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ConsulDtabStore(
   api: KvApi,

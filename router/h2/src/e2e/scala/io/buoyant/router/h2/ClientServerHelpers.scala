@@ -13,7 +13,7 @@ import io.netty.buffer.{ByteBuf, Unpooled}
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import org.scalatest.BeforeAndAfter
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait ClientServerHelpers extends BeforeAndAfter { _: FunSuite =>
   setLogLevel(Level.OFF)

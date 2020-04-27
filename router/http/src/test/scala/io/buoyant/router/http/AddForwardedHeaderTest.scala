@@ -7,6 +7,8 @@ import io.buoyant.router.ForwardedHeaderLabeler
 import io.buoyant.test.FunSuite
 import java.net.{InetAddress, InetSocketAddress}
 
+import com.twitter.finagle.ssl.session.{NullSslSessionInfo, SslSessionInfo}
+
 class AddForwardedHeaderTest extends FunSuite {
 
   val OkSvc = Service.mk[Request, Response] { req =>
@@ -60,6 +62,8 @@ class AddForwardedHeaderTest extends FunSuite {
       override val localAddress = new InetSocketAddress(InetAddress.getLocalHost, 8080)
       override def close(d: Time) = Future.Unit
       override def onClose = Future.never
+
+      override def sslSessionInfo: SslSessionInfo = NullSslSessionInfo
     }
     val service = await(factory(conn))
     val rsp = await(service(Request()))
@@ -97,6 +101,7 @@ class AddForwardedHeaderTest extends FunSuite {
       override val localAddress = new InetSocketAddress(InetAddress.getLocalHost, 8080)
       override def close(d: Time) = Future.Unit
       override def onClose = Future.never
+      override def sslSessionInfo: SslSessionInfo = NullSslSessionInfo
     }
     val service = await(factory(conn))
     val rsp = await(service(Request()))

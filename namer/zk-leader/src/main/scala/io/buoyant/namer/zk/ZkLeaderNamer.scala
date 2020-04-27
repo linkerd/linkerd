@@ -12,7 +12,7 @@ import com.twitter.finagle.common.zookeeper.{Group, ZooKeeperClient, ZooKeeperUt
 import org.apache.zookeeper.KeeperException.NoNodeException
 import org.apache.zookeeper.data.ACL
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * This namer accepts paths of the form /<prefix>/<zkPath>.  The zkPath is the location

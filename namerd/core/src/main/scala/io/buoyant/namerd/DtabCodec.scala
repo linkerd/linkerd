@@ -19,7 +19,7 @@ object DtabCodec {
     })
 
     module.addSerializer(classOf[Dentry.Prefix], new JsonSerializer[Dentry.Prefix] {
-      override def serialize(pfx: Dentry.Prefix, json: JsonGenerator, p: SerializerProvider) {
+      override def serialize(pfx: Dentry.Prefix, json: JsonGenerator, p: SerializerProvider): Unit = {
         json.writeString(pfx.show)
       }
     })

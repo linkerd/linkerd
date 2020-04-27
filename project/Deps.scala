@@ -8,29 +8,30 @@ object Deps {
 
   // process lifecycle
   val twitterServer =
-    ("com.twitter" %% "twitter-server" % "19.5.1")
+    ("com.twitter" %% "twitter-server" % "20.4.1")
       .exclude("com.twitter", "finagle-zipkin_2.12")
 
   def twitterUtil(mod: String) =
-    "com.twitter" %% s"util-$mod" % "19.5.1"
+    "com.twitter" %% s"util-$mod" % "20.4.1"
 
   // networking
   def finagle(mod: String) =
-    "com.twitter" %% s"finagle-$mod" % "19.5.1"
+    "com.twitter" %% s"finagle-$mod" % "20.4.1"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.46.Final"
+    "io.netty" % s"netty-$mod" % "4.1.47.Final"
 
   val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.30.Final"
 
   // Jackson (parsing)
-  val jacksonVersion = "2.9.6"
+  val jacksonVersion = "2.9.10"
+  val jacksonDatabindVersion = "2.9.10.1"
   val jacksonCore =
     "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion
   val jacksonAnnotations =
     "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion
   val jacksonDatabind =
-    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
+    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonDatabindVersion
   val jacksonScala =
     "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
   val jackson =
@@ -46,10 +47,12 @@ object Deps {
   )
 
   // testing. duh.
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
 
   // scalacheck for Property-based testing
-  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
+  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
+
+  val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2"
 
   // junit
   val junit = "junit" % "junit" % "4.10"

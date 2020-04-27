@@ -51,7 +51,7 @@ class InfluxDbTelemeter(metrics: MetricsTree) extends Telemeter with Admin.WithH
     }.mkString(",")
 
   private[this] def labelExists(labels: Seq[(String, String)], name: String) =
-    labels.toIterator.map(first).contains(name)
+    labels.iterator.map(first).contains(name)
 
   private[this] def writeMetrics(
     tree: MetricsTree,

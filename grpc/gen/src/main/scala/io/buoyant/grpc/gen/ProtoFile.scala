@@ -1,8 +1,7 @@
 package io.buoyant.grpc.gen
 
 import com.google.protobuf.DescriptorProtos._
-import io.buoyant.grpc.gen.ProtoFile.{Field, TypeRef}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 case class ProtoFile(
   fileName: String,
@@ -34,7 +33,7 @@ object ProtoFile {
     val enums = fd.getEnumTypeList.asScala.map(EnumType.mk(_))
     val messages = fd.getMessageTypeList.asScala.map(MessageType.mk(_))
     val services = fd.getServiceList.asScala.map(Service.mk(_))
-    ProtoFile(fd.getName, protoPkg, scalaPkg, outerObj, enums, messages, services)
+    ProtoFile(fd.getName, protoPkg, scalaPkg, outerObj, enums.toSeq, messages.toSeq, services.toSeq)
   }
 
   case class EnumType(
@@ -45,7 +44,7 @@ object ProtoFile {
   object EnumType {
     def mk(e: EnumDescriptorProto): EnumType = {
       val values = e.getValueList.asScala.map(EnumValue.mk(_))
-      EnumType(e.getName, values)
+      EnumType(e.getName, values.toSeq)
     }
   }
 
@@ -80,13 +79,13 @@ object ProtoFile {
       val oneofs = oneofFields.map {
         case (o, fs) =>
           val name = o.getName
-          val fields = fs.map(Field.mk(_, mapMessages))
-          name -> Oneof(name, fields)
+          val fields = fs.map(Field.mk(_, mapMessages.toSeq))
+          name -> Oneof(name, fields.toSeq)
       }
 
-      val fields = mt.getFieldList.asScala.filterNot(_.hasOneofIndex).map(Field.mk(_, mapMessages))
+      val fields = mt.getFieldList.asScala.filterNot(_.hasOneofIndex).map(Field.mk(_, mapMessages.toSeq))
       val enums = mt.getEnumTypeList.asScala.map(EnumType.mk(_))
-      MessageType(mt.getName, fields, oneofs, enums, messages, isMap)
+      MessageType(mt.getName, fields.toSeq, oneofs, enums.toSeq, messages.toSeq, isMap)
     }
   }
 
@@ -141,7 +140,7 @@ object ProtoFile {
         Rpc(m.getName, c, s)
       }
 
-      Service(s.getName, rpcs)
+      Service(s.getName, rpcs.toSeq)
     }
   }
 

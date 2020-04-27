@@ -1,6 +1,7 @@
 package com.twitter.finagle.buoyant
 
 import com.twitter.finagle.Path
+
 import scala.annotation.tailrec
 
 /**
@@ -84,7 +85,7 @@ object PathMatcher {
             MatchSegment(exprSegment, Some(withCaptures), keyNames)
           case _ => MatchSegment(exprSegment, None, Seq.empty)
         }
-      }
+      }.toIndexedSeq
     }
 
     @tailrec

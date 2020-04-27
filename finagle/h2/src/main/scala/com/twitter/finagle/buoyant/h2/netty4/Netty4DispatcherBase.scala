@@ -3,7 +3,7 @@ package netty4
 
 import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.liveness.FailureDetector.NullConfig
-import com.twitter.finagle.netty4.transport.HasExecutor
+import com.twitter.finagle.netty4.transport.{ChannelTransport, ChannelTransportContext}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.transport.Transport
 import com.twitter.finagle.{ChannelClosedException, Failure, FailureFlags}
@@ -12,8 +12,9 @@ import com.twitter.util._
 import io.netty.handler.codec.http2._
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
+
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
@@ -49,7 +50,7 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
 
   protected[this] val OutstandingPingEx = Failure("Outstanding ping on HTTP/2 connection")
   protected[this] val eventLoop = transport.context match {
-    case trans: HasExecutor => Some(trans.executor)
+    case transCtx: ChannelTransportContext => Some(transCtx.ch.eventLoop())
     case _ => None
   }
 
@@ -61,15 +62,13 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         // the connection as closed if we don't have a way to execute a ping request on another
         // thread.
         done.setDone()
-      case Some(executor) =>
-        executor.execute(
-          new Runnable {
-            override def run(): Unit = {
-              if (pingPromise.compareAndSet(null, done)) {
-                val _ = writer.sendPing()
-              } else {
-                done.setException(OutstandingPingEx)
-              }
+      case Some(eventLoop) =>
+        eventLoop.execute(
+          () => {
+            if (pingPromise.compareAndSet(null, done)) {
+              val _ = writer.sendPing()
+            } else {
+              done.setException(OutstandingPingEx)
             }
           }
         )

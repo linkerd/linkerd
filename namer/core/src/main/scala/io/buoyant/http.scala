@@ -140,7 +140,7 @@ class subdomainOfPfx extends RewritingNamer {
 class domainToPath extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(1) match {
     case Path.Utf8(host@Match.host()) =>
-      Some(Path.Utf8(host.split("\\.").reverse: _*) ++ path.drop(1))
+      Some(Path.Utf8(host.split("\\.").reverse.toIndexedSeq: _*) ++ path.drop(1))
     case _ => None
   }
 }
@@ -157,7 +157,7 @@ class domainToPath extends RewritingNamer {
 class domainToPathPfx extends RewritingNamer {
   protected[this] def rewrite(path: Path) = path.take(2) match {
     case Path.Utf8(pfx, host@Match.host()) =>
-      Some(Path.Utf8(pfx +: host.split("\\.").reverse: _*) ++ path.drop(2))
+      Some(Path.Utf8(pfx +: host.split("\\.").reverse.toIndexedSeq: _*) ++ path.drop(2))
     case _ => None
   }
 }

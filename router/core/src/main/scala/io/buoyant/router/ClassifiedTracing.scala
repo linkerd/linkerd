@@ -21,6 +21,7 @@ object ClassifiedTracing {
       if (!Trace.isActivelyTracing) f
       else f.respond { rsp =>
         classifier.applyOrElse(ReqRep(req, rsp), ResponseClassifier.Default) match {
+          case ResponseClass.Ignorable =>
           case ResponseClass.Successful(fraction) =>
             Trace.recordBinary("l5d.success", fraction)
           case ResponseClass.Failed(retryable) =>

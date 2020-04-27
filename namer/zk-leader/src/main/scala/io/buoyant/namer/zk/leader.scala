@@ -21,7 +21,7 @@ class leader extends Namer {
       .flatMap(InetSocketAddressUtil.parseHostPorts).map {
         case (host, port) => HostAndPort(Some(host), Some(Port(port)))
       }
-    new ZkLeaderNamer(Path.empty, zkAddrs)
+    new ZkLeaderNamer(Path.empty, zkAddrs.toIndexedSeq)
   }
 
   override def lookup(path: Path): Activity[NameTree[Name]] = {

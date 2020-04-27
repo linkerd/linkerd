@@ -8,7 +8,7 @@ import com.twitter.finagle.service.{ReqRep, ResponseClass, ResponseClassifier}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.{ServiceFactory, Stack, Stackable, param}
 import com.twitter.logging.Level
-import com.twitter.util.Timer
+import com.twitter.util.{Duration, Timer}
 import io.buoyant.router.context.ResponseClassifierCtx
 
 /**
@@ -40,20 +40,22 @@ object FailureAccrualFactory {
             val logger = params[param.Logger].log
             val endpoint = params[Transporter.EndpointAddr].addr
             val label = params[param.Label].label
+            val failureAccrualPolicy = policy()
 
             new FailureAccrualFactory[Req, Rep](
               underlying = next,
-              policy = policy(),
+              policy = failureAccrualPolicy,
               timer = timer,
               statsReceiver = statsReceiver.scope("failure_accrual")
             ) {
-              override def didMarkDead(): Unit = {
+              override def didMarkDead(duration: Duration): Unit = {
                 logger.log(
                   Level.INFO,
                   s"""FailureAccrualFactory marking connection to "$label" as dead. """ +
+                    s"""Policy: ${failureAccrualPolicy.show()}. """ +
                     s"""Remote Address: $endpoint"""
                 )
-                super.didMarkDead()
+                super.didMarkDead(duration)
               }
             }
 
@@ -83,6 +85,7 @@ class FailureAccrualFactory[Req, Rep](
     val param.ResponseClassifier(classifier) =
       ResponseClassifierCtx.current.getOrElse(param.ResponseClassifier.param.default)
     classifier.applyOrElse(reqRep, ResponseClassifier.Default) match {
+      case ResponseClass.Ignorable => true
       case ResponseClass.Successful(_) => true
       case ResponseClass.Failed(_) => false
     }

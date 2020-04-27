@@ -8,7 +8,7 @@ import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.x.discovery.details.ServiceCacheListener
 import org.apache.curator.x.discovery.{ServiceDiscovery, ServiceDiscoveryBuilder, ServiceInstance}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * The CuratorNamer takes paths of the form

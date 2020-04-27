@@ -117,6 +117,8 @@ class ClassifiedRetryFilter(
 
         // Attempt early classification before the stream is complete.
         responseClassifier(H2ReqRep(req, Return(rsp))) match {
+          case Some(ResponseClass.Ignorable | ResponseClass.Failed(false)) =>
+            discardAndReturn()
           case Some(ResponseClass.Successful(_) | ResponseClass.Failed(false)) =>
             discardAndReturn()
           case Some(ResponseClass.Failed(true)) =>

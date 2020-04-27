@@ -4,8 +4,7 @@ package netty4
 import com.twitter.finagle.buoyant.h2
 import com.twitter.util.{Future, Promise}
 import io.netty.handler.codec.http2._
-import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
+import scala.jdk.CollectionConverters._
 
 private[h2] object Netty4Message {
   private[this] val log = com.twitter.logging.Logger.get("h2")
@@ -14,7 +13,7 @@ private[h2] object Netty4Message {
     def underlying: Http2Headers
 
     def toSeq = {
-      val buf = ListBuffer.newBuilder[(String, String)]
+      val buf = Seq.newBuilder[(String, String)]
       buf.sizeHint(underlying.size)
       val iter = underlying.iterator
       while (iter.hasNext) {
@@ -31,7 +30,7 @@ private[h2] object Netty4Message {
       }
 
     override def getAll(key: String): Seq[String] =
-      underlying.getAll(key).asScala.map(_.toString)
+      underlying.getAll(key).asScala.map(_.toString).toIndexedSeq
 
     override def contains(key: String): Boolean =
       underlying.contains(key)

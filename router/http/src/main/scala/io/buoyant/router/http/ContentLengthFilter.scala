@@ -3,7 +3,7 @@ package io.buoyant.router.http
 import com.twitter.finagle.Stack.Module0
 import com.twitter.finagle.{Service, ServiceFactory, SimpleFilter, Stack}
 import com.twitter.finagle.http.{Fields, Request, Response, Version}
-import com.twitter.io.Reader
+import com.twitter.io.{BufReader}
 import com.twitter.util.Future
 
 /**
@@ -42,7 +42,7 @@ object ContentLengthFilter {
         if (response.version == Version.Http10
           && !hasTransferEncoding(response)
           && response.contentLength.isEmpty) {
-          Reader.readAll(response.reader).map { buf =>
+          BufReader.readAll(response.reader).map { buf =>
             response.setChunked(false)
             response.contentLength = buf.length
             response.content = buf
