@@ -398,7 +398,6 @@ object LinkerdBuild extends Base {
         .dependsOn(core, interpreterThriftIdl)
         .withLib(Deps.guava)
         .withTwitterLibs(Deps.finagle("thrift"), Deps.finagle("thriftmux"))
-//        .withTwitterLibs(Deps.finagle("thriftmux"))
         .withTests()
 
       val mesh = projectDir("namerd/iface/mesh")
