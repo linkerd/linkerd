@@ -13,22 +13,12 @@ import com.twitter.finagle.stats.{
 }
 
 import scala.jdk.CollectionConverters._
-
-private[telemetry] object StatsDStatsReceiver {
-  // from https://github.com/researchgate/diamond-linkerd-collector/
-  private[statsd] def mkName(name: Seq[String]): String = {
-    name.mkString("/")
-      .replaceAll("[^/A-Za-z0-9]", "_")
-      .replace("//", "/")
-      .replace("/", ".") // https://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
-  }
-}
+import io.buoyant.telemetry.utils._
 
 private[telemetry] class StatsDStatsReceiver(
   statsDClient: StatsDClient,
   sampleRate: Double
 ) extends StatsReceiverWithCumulativeGauges {
-  import StatsDStatsReceiver._
 
   val repr: AnyRef = this
 
@@ -67,16 +57,10 @@ private[telemetry] class StatsDStatsReceiver(
   }
 
   def counter(schema: CounterSchema): Counter = {
-    val statsDName = mkName(schema.metricBuilder.name)
-    val newCounter = new Metric.Counter(statsDClient, statsDName, sampleRate)
-    val counter = counters.putIfAbsent(statsDName, newCounter)
-    if (counter != null) counter else newCounter
+    counter(Verbosity.Default, mkName(schema.metricBuilder.name))
   }
 
   def stat(schema: HistogramSchema): Stat = {
-    val statsDName = mkName(schema.metricBuilder.name)
-    val newStat = new Metric.Stat(statsDClient, statsDName, sampleRate)
-    val stat = stats.putIfAbsent(statsDName, newStat)
-    if (stat != null) stat else newStat
+    stat(Verbosity.Default, mkName(schema.metricBuilder.name))
   }
 }

@@ -47,11 +47,11 @@ object Dst {
     def idStr = name.idStr
     def path = name.path
 
-    override def hashCode(): Int = super.hashCode()
+    override def hashCode(): Int = self.hashCode()
 
-    override def equals(obj: Any): Boolean = super.equals(obj)
+    override def equals(obj: Any): Boolean = self.equals(obj)
 
-    override def toString: String = super.toString
+    override def toString: String = self.toString
 
     def mk(): (Bound, Stack.Param[Bound]) = (this, Bound)
   }
@@ -84,11 +84,11 @@ object Dst {
   ) {
     def self = nameTree
     def show = nameTree.show
-    override def hashCode(): Int = super.hashCode()
+    override def hashCode(): Int = self.hashCode()
 
-    override def equals(obj: Any): Boolean = super.equals(obj)
+    override def equals(obj: Any): Boolean = self.equals(obj)
 
-    override def toString: String = super.toString
+    override def toString: String = self.toString
   }
 
   object BoundTree {

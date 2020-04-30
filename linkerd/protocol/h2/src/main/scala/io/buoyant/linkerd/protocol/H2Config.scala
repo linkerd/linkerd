@@ -257,7 +257,6 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
   var maxConcurrentStreamsPerConnection: Option[Int] = None
   var addForwardedHeader: Option[AddForwardedHeaderConfig] = None
   var maxCallDepth: Option[Int] = None
-  var decoupleCloseAndGoAway: Option[Boolean] = Some(false)
 
   @JsonIgnore
   override val alpnProtocols: Option[Seq[String]] =
@@ -271,9 +270,7 @@ class H2ServerConfig extends ServerConfig with H2EndpointConfig {
 
   @JsonIgnore
   override def serverParams = withEndpointParams(super.serverParams
-    + AddForwardedHeaderConfig.Param(addForwardedHeader))
-    .maybeWith(maxCallDepth.map(MaxCallDepthFilter.Param(_)))
-  //    .maybeWith(Stack.Param(decoupleCloseAndGoAway))
+    + AddForwardedHeaderConfig.Param(addForwardedHeader)).maybeWith(maxCallDepth.map(MaxCallDepthFilter.Param(_)))
 }
 
 abstract class H2IdentifierConfig extends PolymorphicConfig {
