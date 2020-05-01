@@ -28,8 +28,8 @@ class MetricsTreeStatsReceiver(
     new MetricsTreeStatsReceiver(tree.resolve(Seq(namespace)))
 
   def counter(schema: CounterSchema): Counter =
-    counter(verbosity, schema.metricBuilder.name.head)
+    counter(verbosity, schema.metricBuilder.name: _*)
 
   def stat(schema: HistogramSchema): Stat =
-    stat(verbosity, schema.metricBuilder.name.head)
+    stat(verbosity, schema.metricBuilder.name: _*)
 }

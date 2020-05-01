@@ -67,10 +67,10 @@ private[telemetry] class StatsDStatsReceiver(
   }
 
   def counter(schema: CounterSchema): Counter = {
-    counter(Verbosity.Default, mkName(schema.metricBuilder.name))
+    counter(Verbosity.Default, schema.metricBuilder.name: _*)
   }
 
   def stat(schema: HistogramSchema): Stat = {
-    stat(Verbosity.Default, mkName(schema.metricBuilder.name))
+    stat(Verbosity.Default, schema.metricBuilder.name: _*)
   }
 }

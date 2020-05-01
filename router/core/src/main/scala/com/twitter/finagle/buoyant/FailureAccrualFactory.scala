@@ -51,7 +51,7 @@ object FailureAccrualFactory {
                 logger.log(
                   Level.INFO,
                   s"""FailureAccrualFactory marking connection to "$label" as dead. """ +
-                    s"""Policy: ${policy}. """ +
+                    s"""Policy: $policy. """ +
                     s"""Remote Address: $endpoint"""
                 )
                 super.didMarkDead(duration)
