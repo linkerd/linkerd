@@ -1,7 +1,6 @@
 package io.buoyant.telemetry
 
 import com.twitter.finagle.stats._
-import io.buoyant.telemetry.utils._
 
 class MetricsTreeStatsReceiver(
   val tree: MetricsTree,
@@ -29,8 +28,8 @@ class MetricsTreeStatsReceiver(
     new MetricsTreeStatsReceiver(tree.resolve(Seq(namespace)))
 
   def counter(schema: CounterSchema): Counter =
-    counter(verbosity, mkName(schema.metricBuilder.name))
+    counter(verbosity, schema.metricBuilder.name.head)
 
   def stat(schema: HistogramSchema): Stat =
-    stat(verbosity, mkName(schema.metricBuilder.name))
+    stat(verbosity, schema.metricBuilder.name.head)
 }

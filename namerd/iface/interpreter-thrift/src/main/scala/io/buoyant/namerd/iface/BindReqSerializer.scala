@@ -14,11 +14,11 @@ class BindReqSerializer extends ConfigSerializer[thrift.BindReq] {
     provider: SerializerProvider
   ): Unit = {
     gen.writeStartObject()
-    gen.writeStringField("name", path(value.name.name.toIndexedSeq))
+    gen.writeStringField("name", path(value.name.name))
     gen.writeStringField("dtab", value.dtab)
     gen.writeStringField("stamp", stamp(value.name.stamp))
     gen.writeStringField("namespace", value.name.ns)
-    gen.writeStringField("clientId", path(value.clientId.toIndexedSeq))
+    gen.writeStringField("clientId", path(value.clientId))
     gen.writeEndObject()
   }
 }

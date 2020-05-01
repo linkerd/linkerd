@@ -338,15 +338,15 @@ object ThriftNamerInterface {
         case thrift.DelegateContents.Delegate(child) =>
           DelegateTree.Delegate(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), parseDelegateNode(dt.nodes(child)))
         case thrift.DelegateContents.PathLeaf(path) =>
-          DelegateTree.Leaf(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), Name.Path(mkPath(path.toIndexedSeq)))
+          DelegateTree.Leaf(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), Name.Path(mkPath(path)))
         case thrift.DelegateContents.Alt(children) =>
           val alts = children.map(dt.nodes).map(parseDelegateNode)
-          DelegateTree.Alt(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), alts.toIndexedSeq: _*)
+          DelegateTree.Alt(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), alts: _*)
         case thrift.DelegateContents.Weighted(children) =>
           val weights = children.map { child =>
             DelegateTree.Weighted(child.weight, parseDelegateNode(dt.nodes(child.id)))
           }
-          DelegateTree.Union(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), weights.toIndexedSeq: _*)
+          DelegateTree.Union(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), weights: _*)
         case thrift.DelegateContents.BoundLeaf(leaf) =>
           throw new IllegalArgumentException("delegation cannot accept bound names")
         case thrift.DelegateContents.UnknownUnionField(_) =>

@@ -20,7 +20,7 @@ object WatchingNamer {
   private val Commentless = """^([^#]*)(?:#.*)?""".r
   private def txtToAddr(txt: String): Addr = {
     val lines = txt.split('\n').map { case Commentless(ln) => ln.trim }.filter(_.nonEmpty)
-    Try.collect(lines.map(txtToAddress).toIndexedSeq) match {
+    Try.collect(lines.map(txtToAddress)) match {
       case Return(addrs) => Addr.Bound(addrs.toSet, Addr.Metadata.empty)
       case Throw(e) => Addr.Failed(e)
     }

@@ -1,6 +1,5 @@
 package io.buoyant.telemetry.statsd
 
-import io.buoyant.telemetry.utils._
 import com.timgroup.statsd.NoOpStatsDClient
 import org.scalatest._
 
@@ -25,7 +24,7 @@ class StatsDStatsReceiverTest extends FunSuite {
       Seq("clnt", "zipkin-tracer", "service_creation", "service_acquisition_latency_ms"),
       Seq("rt", "http", "client", "#/io.l5d.fs/default/path/http/1.1/GET/default", "request_latency_ms")
     )
-    val newNames = names.map { mkName(_) }
+    val newNames = names.map { StatsDStatsReceiver.mkName(_) }
     val expected = Seq(
       "foo._.bar.baz_stuff_word_who.what_when_where_why._._._huh______",
       "clnt.zipkin_tracer.service_creation.service_acquisition_latency_ms",

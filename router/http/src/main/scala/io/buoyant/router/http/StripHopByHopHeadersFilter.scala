@@ -18,7 +18,7 @@ object StripHopByHopHeadersFilter {
       headers.remove(Upgrade)
 
       val headersListedInConnection: Seq[String] = headers.remove(Connection) match {
-        case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty).toIndexedSeq
+        case Some(s) => s.split(",").map(_.trim).filter(_.nonEmpty)
         case None => Nil
       }
       headersListedInConnection.foreach(headers.remove(_))

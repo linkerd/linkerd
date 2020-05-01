@@ -30,7 +30,7 @@ private[h2] object Netty4Message {
       }
 
     override def getAll(key: String): Seq[String] =
-      underlying.getAll(key).asScala.map(_.toString).toIndexedSeq
+      underlying.getAll(key).asScala.map(_.toString)
 
     override def contains(key: String): Boolean =
       underlying.contains(key)

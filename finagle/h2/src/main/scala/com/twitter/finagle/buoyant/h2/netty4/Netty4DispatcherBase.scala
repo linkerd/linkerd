@@ -64,13 +64,12 @@ trait Netty4DispatcherBase[SendMsg <: Message, RecvMsg <: Message] {
         done.setDone()
       case Some(eventLoop) =>
         eventLoop.execute(
-          () => {
+          () =>
             if (pingPromise.compareAndSet(null, done)) {
               val _ = writer.sendPing()
             } else {
               done.setException(OutstandingPingEx)
             }
-          }
         )
     }
     done

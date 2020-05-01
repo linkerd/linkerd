@@ -85,7 +85,7 @@ object PathMatcher {
             MatchSegment(exprSegment, Some(withCaptures), keyNames)
           case _ => MatchSegment(exprSegment, None, Seq.empty)
         }
-      }.toIndexedSeq
+      }
     }
 
     @tailrec

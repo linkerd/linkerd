@@ -40,11 +40,10 @@ object FailureAccrualFactory {
             val logger = params[param.Logger].log
             val endpoint = params[Transporter.EndpointAddr].addr
             val label = params[param.Label].label
-            val failureAccrualPolicy = policy()
 
             new FailureAccrualFactory[Req, Rep](
               underlying = next,
-              policy = failureAccrualPolicy,
+              policy = policy(),
               timer = timer,
               statsReceiver = statsReceiver.scope("failure_accrual")
             ) {
@@ -52,7 +51,7 @@ object FailureAccrualFactory {
                 logger.log(
                   Level.INFO,
                   s"""FailureAccrualFactory marking connection to "$label" as dead. """ +
-                    s"""Policy: ${failureAccrualPolicy.show()}. """ +
+                    s"""Policy: ${policy}. """ +
                     s"""Remote Address: $endpoint"""
                 )
                 super.didMarkDead(duration)
