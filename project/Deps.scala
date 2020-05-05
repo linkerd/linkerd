@@ -63,7 +63,7 @@ object Deps {
   // jwt for Marathon API
   val jwt = "com.pauldijou" %% "jwt-core" % "0.12.1"
 
-  val protobuf = "com.google.protobuf" % "protobuf-java" % "3.3.1"
+  val protobuf = "com.google.protobuf" % "protobuf-java" % "3.11.4"
 
   // statsd client
   val statsd = "com.datadoghq" % "java-dogstatsd-client" % "2.3"
