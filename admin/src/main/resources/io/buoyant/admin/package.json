@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "eslint": "^3.12.2",
+    "eslint": "^6.8.0",
     "eslint-plugin-jasmine": "^2.2.0",
     "eslint-plugin-requirejs": "^3.1.0",
     "handlebars": "^4.0.6",
