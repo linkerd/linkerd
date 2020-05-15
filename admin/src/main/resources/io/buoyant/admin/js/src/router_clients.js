@@ -19,7 +19,7 @@ define([
     var clientContainerTemplate = templates.router_client_container;
     var rateMetricPartial = templates["rate_metric.partial"];
     var EXPAND_CLIENT_THRESHOLD = 6;
-    var TRANSFORMER_RE = /(\/%\/[^\$#]*)?(\/[\$#]\/.*)/;
+    var TRANSFORMER_RE = /(\/%\/[^$#]*)?(\/[$#]\/.*)/;
     var activeClients = {};
 
     /*
