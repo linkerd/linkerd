@@ -29,7 +29,7 @@ import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.{Date, TimeZone}
 import java.util.concurrent.atomic.AtomicBoolean
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.reflectiveCalls
 import scala.util.Random
 

@@ -181,5 +181,7 @@ class FooConfig extends FailureAccrualConfig {
       def markDeadOnFailure(): Option[Duration] = ???
       def revived(): Unit = ???
       override def toString = "FooFailureAccrual"
+      override def name: String = "FooConfig"
+      override def show(): String = ""
     }
 }

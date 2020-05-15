@@ -2,10 +2,10 @@
 
 set -e
 
-sbtver=0.13.9
+sbtver=1.2.8
 sbtjar=.sbt-launch.jar
-sbtsha128=1de48c2c412fffc4336e4d7dee224927a96d5abc
-sbtrepo=https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch
+sbtsha128=073c169c6e1a47b8ae78a7a718b907424dedab30
+sbtrepo=https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch
 
 validjar() {
   checksum=`openssl dgst -sha1 $sbtjar | awk '{ print $2 }'`

@@ -28,9 +28,9 @@ import scala.util.control.NoStackTrace
 class BufferedStream(underlying: Stream, bufferCapacity: Long = 16383) { bufferedStream =>
 
   // Mutable state.  All mutations of state must be explicitly synchronized
-  private[this] val buffer = mutable.MutableList[RefCountedFrame]()
+  private[this] val buffer = mutable.ListBuffer[RefCountedFrame]()
   private[this] var _bufferSize = 0L
-  private[this] val forks = mutable.MutableList[AsyncQueue[Frame]]()
+  private[this] val forks = mutable.ListBuffer[AsyncQueue[Frame]]()
   private[this] var state: State = State.Buffering
   private[this] val _onEnd = new Promise[Unit]
 

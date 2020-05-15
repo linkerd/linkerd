@@ -1,6 +1,7 @@
 package com.twitter.finagle.buoyant
 
 import com.twitter.finagle.Path
+
 import scala.annotation.tailrec
 
 /**

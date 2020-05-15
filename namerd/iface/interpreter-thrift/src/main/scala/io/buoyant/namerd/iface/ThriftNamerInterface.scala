@@ -325,28 +325,28 @@ object ThriftNamerInterface {
         case thrift.DelegateContents.Error(thrown) =>
           DelegateTree
             .Exception(
-              mkPath(node.path),
+              mkPath(node.path.toSeq),
               Dentry.read(dt.root.dentry),
               new Exception(thrown)
             )
         case thrift.DelegateContents.Empty(_) =>
-          DelegateTree.Empty(mkPath(node.path), Dentry.read(dt.root.dentry))
+          DelegateTree.Empty(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry))
         case thrift.DelegateContents.Fail(_) =>
-          DelegateTree.Fail(mkPath(node.path), Dentry.read(dt.root.dentry))
+          DelegateTree.Fail(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry))
         case thrift.DelegateContents.Neg(_) =>
-          DelegateTree.Neg(mkPath(node.path), Dentry.read(dt.root.dentry))
+          DelegateTree.Neg(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry))
         case thrift.DelegateContents.Delegate(child) =>
-          DelegateTree.Delegate(mkPath(node.path), Dentry.read(dt.root.dentry), parseDelegateNode(dt.nodes(child)))
+          DelegateTree.Delegate(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), parseDelegateNode(dt.nodes(child)))
         case thrift.DelegateContents.PathLeaf(path) =>
-          DelegateTree.Leaf(mkPath(node.path), Dentry.read(dt.root.dentry), Name.Path(mkPath(path)))
+          DelegateTree.Leaf(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), Name.Path(mkPath(path)))
         case thrift.DelegateContents.Alt(children) =>
           val alts = children.map(dt.nodes).map(parseDelegateNode)
-          DelegateTree.Alt(mkPath(node.path), Dentry.read(dt.root.dentry), alts: _*)
+          DelegateTree.Alt(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), alts: _*)
         case thrift.DelegateContents.Weighted(children) =>
           val weights = children.map { child =>
             DelegateTree.Weighted(child.weight, parseDelegateNode(dt.nodes(child.id)))
           }
-          DelegateTree.Union(mkPath(node.path), Dentry.read(dt.root.dentry), weights: _*)
+          DelegateTree.Union(mkPath(node.path.toSeq), Dentry.read(dt.root.dentry), weights: _*)
         case thrift.DelegateContents.BoundLeaf(leaf) =>
           throw new IllegalArgumentException("delegation cannot accept bound names")
         case thrift.DelegateContents.UnknownUnionField(_) =>
@@ -405,7 +405,7 @@ class ThriftNamerInterface(
   def bind(req: thrift.BindReq): Future[thrift.Bound] = {
     val thrift.BindReq(dtabstr, ref@thrift.NameRef(reqStamp, reqName, ns), _) = req
     val dtab = Dtab.read(dtabstr)
-    mkPath(reqName) match {
+    mkPath(reqName.toSeq) match {
       case Path.empty =>
         Trace.recordBinary("namerd.srv/bind.err", "empty path")
         val failure = thrift.BindFailure("empty path", 0, ref, ns)
@@ -479,7 +479,7 @@ class ThriftNamerInterface(
    */
   def addr(req: thrift.AddrReq): Future[thrift.Addr] = {
     val thrift.AddrReq(ref@thrift.NameRef(reqStamp, reqName, _), _) = req
-    mkPath(reqName) match {
+    mkPath(reqName.toSeq) match {
       case Path.empty =>
         Trace.recordBinary("namerd.srv/addr.err", "empty path")
         val failure = thrift.AddrFailure("empty path", 0, ref)
@@ -565,7 +565,7 @@ class ThriftNamerInterface(
   // new value.  For backwards compatibility with older long-polling clients, delegate will never
   // respond to a request with a non-empty stamp.  This means that it will leave the long-poll
   // pending until it is cancelled by the client.
-  override def delegate(req: thrift.DelegateReq): Future[Delegation] = {
+  def delegate(req: thrift.DelegateReq): Future[Delegation] = {
     val thrift.DelegateReq(dtabstr, thrift.Delegation(reqStamp, ttree, ns), _) = req
     val dtab = Dtab.read(dtabstr)
     val tree = parseDelegateTree(ttree).toNameTree
@@ -615,7 +615,7 @@ class ThriftNamerInterface(
     mkObserver = observeDtab
   )
 
-  override def dtab(req: DtabReq): Future[DtabRef] = {
+  def dtab(req: DtabReq): Future[DtabRef] = {
     val thrift.DtabReq(reqStamp, ns, _) = req
     Future.const(dtabCache.get(ns)).flatMap { observer =>
       observer(reqStamp)

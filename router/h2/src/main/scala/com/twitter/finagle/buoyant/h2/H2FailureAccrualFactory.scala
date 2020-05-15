@@ -205,6 +205,8 @@ class H2FailureAccrualFactory(
 
     private[this] def classifyResponse(classifier: H2Classifier, h2ReqRep: H2ReqRep): Try[Response] =
       classifier.responseClassifier.lift(h2ReqRep) match {
+        case Some(ResponseClass.Ignorable) =>
+          h2ReqRep.response
         case Some(ResponseClass.Successful(_)) =>
           didSucceed()
           h2ReqRep.response
@@ -235,6 +237,7 @@ class H2FailureAccrualFactory(
 
     private[this] def classifyStream(classifier: H2Classifier, h2ReqRepFrame: H2ReqRepFrame): Unit =
       classifier.streamClassifier(h2ReqRepFrame) match {
+        case ResponseClass.Ignorable =>
         case ResponseClass.Successful(_) => didSucceed()
         case ResponseClass.Failed(_) => didFail()
       }

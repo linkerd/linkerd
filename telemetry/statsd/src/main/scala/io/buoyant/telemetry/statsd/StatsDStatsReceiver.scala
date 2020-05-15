@@ -1,9 +1,18 @@
 package io.buoyant.telemetry.statsd
 
 import java.util.concurrent.ConcurrentHashMap
+
 import com.timgroup.statsd.StatsDClient
-import com.twitter.finagle.stats.{Counter, Stat, StatsReceiverWithCumulativeGauges, Verbosity}
-import scala.collection.JavaConverters._
+import com.twitter.finagle.stats.{
+  Counter,
+  CounterSchema,
+  HistogramSchema,
+  Stat,
+  StatsReceiverWithCumulativeGauges,
+  Verbosity
+}
+
+import scala.jdk.CollectionConverters._
 
 private[telemetry] object StatsDStatsReceiver {
   // from https://github.com/researchgate/diamond-linkerd-collector/
@@ -43,17 +52,25 @@ private[telemetry] class StatsDStatsReceiver(
     val _ = gauges.remove(mkName(name))
   }
 
-  def counter(verbosity: Verbosity, name: String*): Counter = {
+  override def counter(verbosity: Verbosity, name: String*): Counter = {
     val statsDName = mkName(name)
     val newCounter = new Metric.Counter(statsDClient, statsDName, sampleRate)
     val counter = counters.putIfAbsent(statsDName, newCounter)
     if (counter != null) counter else newCounter
   }
 
-  def stat(verbosity: Verbosity, name: String*): Stat = {
+  override def stat(verbosity: Verbosity, name: String*): Stat = {
     val statsDName = mkName(name)
     val newStat = new Metric.Stat(statsDClient, statsDName, sampleRate)
     val stat = stats.putIfAbsent(statsDName, newStat)
     if (stat != null) stat else newStat
+  }
+
+  def counter(schema: CounterSchema): Counter = {
+    counter(Verbosity.Default, schema.metricBuilder.name: _*)
+  }
+
+  def stat(schema: HistogramSchema): Stat = {
+    stat(Verbosity.Default, schema.metricBuilder.name: _*)
   }
 }

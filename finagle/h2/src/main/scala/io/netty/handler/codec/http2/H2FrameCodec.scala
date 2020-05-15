@@ -193,22 +193,25 @@ object H2FrameCodec {
   def client(
     settings: Http2Settings = new Http2Settings,
     windowUpdateRatio: Float = DefaultWindowUpdateRatio,
-    autoRefillConnectionWindow: Boolean = false
+    autoRefillConnectionWindow: Boolean = false,
+    decoupleCloseAndGoAway: Boolean = false
   ): H2FrameCodec =
-    mk(false, settings, windowUpdateRatio, autoRefillConnectionWindow)
+    mk(false, settings, windowUpdateRatio, autoRefillConnectionWindow, decoupleCloseAndGoAway)
 
   def server(
     settings: Http2Settings = new Http2Settings,
     windowUpdateRatio: Float = DefaultWindowUpdateRatio,
-    autoRefillConnectionWindow: Boolean = false
+    autoRefillConnectionWindow: Boolean = false,
+    decoupleCloseAndGoAway: Boolean = false
   ): H2FrameCodec =
-    mk(true, settings, windowUpdateRatio, autoRefillConnectionWindow)
+    mk(true, settings, windowUpdateRatio, autoRefillConnectionWindow, decoupleCloseAndGoAway)
 
   private[this] def mk(
     isServer: Boolean,
     settings: Http2Settings,
     updateRatio: Float,
-    refillConn: Boolean
+    refillConn: Boolean,
+    decoupleCloseAndGoAway: Boolean
   ): H2FrameCodec = {
     require(0.0 < updateRatio && updateRatio < 1.0)
 
@@ -232,7 +235,7 @@ object H2FrameCodec {
       new DefaultHttp2ConnectionDecoder(conn, encoder, fr)
     }
 
-    val handler = new ConnectionHandler(decoder, encoder, settings, streamKey)
+    val handler = new ConnectionHandler(decoder, encoder, settings, streamKey, decoupleCloseAndGoAway)
     new H2FrameCodec(handler, streamKey)
   }
 
@@ -242,8 +245,9 @@ object H2FrameCodec {
     decoder: Http2ConnectionDecoder,
     encoder: Http2ConnectionEncoder,
     initialSettings: Http2Settings,
-    streamKey: PropertyKey
-  ) extends Http2FrameCodec(encoder, decoder, initialSettings) {
+    streamKey: PropertyKey,
+    decoupleCloseAndGoAway: Boolean
+  ) extends Http2FrameCodec(encoder, decoder, initialSettings, decoupleCloseAndGoAway) {
 
     decoder.frameListener(new FrameListener(connection, streamKey))
 

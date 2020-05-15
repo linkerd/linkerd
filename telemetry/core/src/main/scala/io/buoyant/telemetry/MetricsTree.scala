@@ -6,7 +6,7 @@ import com.twitter.finagle.stats.buoyant.Metric
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait MetricsTree {
   def children: Map[String, MetricsTree]

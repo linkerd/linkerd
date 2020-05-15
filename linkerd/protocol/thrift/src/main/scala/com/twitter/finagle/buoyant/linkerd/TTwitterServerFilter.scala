@@ -9,7 +9,7 @@ import com.twitter.io.Buf
 import com.twitter.util.Future
 import io.buoyant.router.thrift.Dest
 import org.apache.thrift.protocol.{TMessage, TMessageType, TProtocolFactory}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * Forked from https://github.com/twitter/finagle/blob/develop/finagle-thrift/src/main/scala/com/twitter/finagle/thrift/TTwitterServerFilter.scala

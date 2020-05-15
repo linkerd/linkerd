@@ -8,7 +8,7 @@ import com.twitter.util._
 import io.buoyant.consul.v1
 import io.buoyant.namer.InstrumentedVar
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.Function.untupled
 
 private[consul] object LookupCache {

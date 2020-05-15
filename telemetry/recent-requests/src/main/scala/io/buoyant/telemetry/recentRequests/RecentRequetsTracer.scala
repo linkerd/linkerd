@@ -3,7 +3,7 @@ package io.buoyant.telemetry.recentRequests
 import com.google.common.cache.{CacheBuilder, CacheLoader}
 import com.twitter.finagle.tracing._
 import com.twitter.util.Time
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import com.twitter.finagle.buoyant.Sampler
 import java.util.concurrent.ConcurrentLinkedQueue
 

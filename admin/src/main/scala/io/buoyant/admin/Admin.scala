@@ -83,7 +83,7 @@ object Admin {
   val threadsJs = "<script src='files/js/threads.js'></script>"
 
   def appHandlers(app: TApp): Seq[Handler] = Seq(
-    Handler("/admin/server_info", new TextBlockView().andThen(new ServerInfoHandler(app))),
+    Handler("/admin/server_info", new TextBlockView().andThen(new ServerInfoHandler())),
     Handler("/admin/shutdown", new ShutdownHandler(app))
   )
 

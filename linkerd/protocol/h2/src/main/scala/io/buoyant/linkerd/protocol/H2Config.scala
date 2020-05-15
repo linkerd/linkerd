@@ -25,7 +25,7 @@ import io.buoyant.router.h2.{ClassifiedRetryFilter, DupRequest, H2AddForwardedHe
 import io.buoyant.router.http.{ForwardClientCertFilter, MaxCallDepthFilter}
 import io.buoyant.router.{ClassifiedRetries, H2, RoutingFactory}
 import io.netty.handler.ssl.ApplicationProtocolNames
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 class H2Initializer extends ProtocolInitializer.Simple {

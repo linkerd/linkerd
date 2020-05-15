@@ -6,12 +6,12 @@ import io.buoyant.test.FunSuite
 import org.scalatest.OptionValues
 import com.twitter.conversions.DurationOps._
 import io.buoyant.namer.{ConstantBackoffConfig, JitteredBackoffConfig}
-import org.scalatest.prop.PropertyChecks
+import org.scalatestplus.scalacheck._
 import org.scalacheck.Gen
 
 class ConfigTest extends FunSuite
   with OptionValues
-  with PropertyChecks {
+  with ScalaCheckPropertyChecks {
 
   def parse(yaml: String): FailureAccrualConfig = {
     val mapper = Parser.objectMapper(yaml, Seq(Seq(

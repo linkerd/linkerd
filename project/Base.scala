@@ -64,11 +64,18 @@ class Base extends Build {
     organization := "io.buoyant",
     version := Git.version,
     homepage := Some(url("https://linkerd.io")),
-    scalaVersion in GlobalScope := "2.12.1",
-    crossScalaVersions in GlobalScope := Seq("2.11.11", "2.12.1"),
+    scalaVersion in GlobalScope := "2.12.8",
+    crossScalaVersions in GlobalScope := Seq("2.11.12", "2.12.8", "2.13.1"),
     ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
     scalacOptions ++=
-      Seq("-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
+      Seq("-target:jvm-1.8", "-Xfatal-warnings", "-deprecation", "-Ywarn-value-discard", "-feature"),
+    javacOptions ++= Seq(
+      "-Xlint:unchecked",
+      "-source",
+      "1.8",
+      "-target",
+      "1.8"
+    ),
     // XXX
     //conflictManager := ConflictManager.strict,
     resolvers ++= Seq(
@@ -278,7 +285,7 @@ class Base extends Build {
         fork := true,
         baseDirectory := new File(".")
       )))
-      .settings(libraryDependencies += "org.scoverage" %% "scalac-scoverage-runtime" % "1.3.0" % EndToEndTest)
+      .settings(libraryDependencies += "org.scoverage" %% "scalac-scoverage-runtime" % "1.4.1" % EndToEndTest)
       .dependsOn(testUtil % EndToEndTest)
 
     def withExamples(runtime: Project, configs: Seq[(Configuration, Configuration)]): Project = {

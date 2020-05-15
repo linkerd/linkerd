@@ -7,11 +7,11 @@ import io.buoyant.linkerd.{FailureAccrualConfig, FailureAccrualInitializer}
 import io.buoyant.test.FunSuite
 import org.scalacheck.Gen
 import org.scalatest.Matchers
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
+import org.scalatestplus.scalacheck._
 
 class ConsecutiveFailuresTest extends FunSuite
   with Matchers
-  with GeneratorDrivenPropertyChecks {
+  with ScalaCheckDrivenPropertyChecks {
   def parse(yaml: String): FailureAccrualConfig = {
     val mapper = Parser.objectMapper(yaml, Seq(Seq(
       new ConsecutiveFailuresInitializer,

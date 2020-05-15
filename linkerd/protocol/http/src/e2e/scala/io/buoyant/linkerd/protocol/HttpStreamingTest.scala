@@ -5,10 +5,11 @@ import com.twitter.finagle.buoyant._
 import com.twitter.finagle.http.param.{MaxRequestSize, Streaming}
 import com.twitter.finagle.http.{Method, Request, Response, Version}
 import com.twitter.finagle.{Http, Service, Stack}
-import com.twitter.io.{Buf, Reader}
+import com.twitter.io.{Buf, BufReader, BufReaders, Reader}
 import com.twitter.util.{Future, Promise, StorageUnit}
 import io.buoyant.test.{Awaits, BudgetedRetries}
 import java.net.InetSocketAddress
+
 import org.scalatest.{FunSuite, MustMatchers, OptionValues}
 
 /**
@@ -95,7 +96,7 @@ class HttpStreamingTest extends FunSuite
     withServerAndClient(Some((messageBody.length - 1).bytes), messageBody, withContentLength = true)
     { receivedRequest =>
       assert(receivedRequest.isChunked)
-      val receivedBody = await(Reader.readAll(receivedRequest.reader))
+      val receivedBody = await(BufReader.readAll(receivedRequest.reader))
       assert(receivedBody == Buf.Utf8(messageBody))
       assert(receivedRequest.contentString.isEmpty)
     }
@@ -119,7 +120,7 @@ class HttpStreamingTest extends FunSuite
   ) {
     val messageBody = "must-stream"
     withServerAndClient(Some(1.gigabyte), messageBody) { receivedRequest =>
-      val receivedBody = await(Reader.readAll(receivedRequest.reader))
+      val receivedBody = await(BufReader.readAll(receivedRequest.reader))
       assert(receivedBody == Buf.Utf8(messageBody))
       assert(receivedRequest.isChunked)
       assert(receivedRequest.contentString.isEmpty)
@@ -136,7 +137,7 @@ class HttpStreamingTest extends FunSuite
       withChunkedEncoding = true,
       withContentLength = true
     ) { receivedRequest =>
-      val receivedBody = await(Reader.readAll(receivedRequest.reader))
+      val receivedBody = await(BufReader.readAll(receivedRequest.reader))
       assert(receivedBody == Buf.Utf8(messageBody))
       assert(receivedRequest.isChunked)
       assert(receivedRequest.contentString.isEmpty)

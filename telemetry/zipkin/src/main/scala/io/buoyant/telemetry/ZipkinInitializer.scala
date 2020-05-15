@@ -48,6 +48,7 @@ case class ZipkinConfig(
 
       val rawTracer = ScribeRawZipkinTracer(
         client,
+        "zipkin",
         NullStatsReceiver,
         DefaultTimer
       )

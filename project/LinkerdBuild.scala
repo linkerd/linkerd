@@ -28,6 +28,7 @@ object LinkerdBuild extends Base {
     .dependsOn(configCore)
     .withTwitterLib(Deps.finagle("http"))
     .withLibs(Deps.jackson)
+    .withLib(Deps.scalaCollectionCompat)
     .withTests()
 
   val etcd = projectDir("etcd")

@@ -10,6 +10,8 @@ import com.twitter.io.Charsets
 import com.twitter.util.Future
 import java.net.SocketAddress
 import java.nio.charset.StandardCharsets.UTF_8
+
+import com.twitter.finagle.stats.NullStatsReceiver
 import io.netty.channel._
 import io.netty.handler.codec.{DelimiterBasedFrameDecoder, Delimiters}
 import io.netty.handler.codec.string.{StringDecoder, StringEncoder}
@@ -85,7 +87,7 @@ object Echo extends Client[String, String] with Server[String, String] {
     protected def newDispatcher(transport: Transport[super.In, super.Out] {
       type Context <: self.Context
     }) =
-      new SerialClientDispatcher(transport)
+      new SerialClientDispatcher(transport, NullStatsReceiver)
   }
 
   val client = Client()

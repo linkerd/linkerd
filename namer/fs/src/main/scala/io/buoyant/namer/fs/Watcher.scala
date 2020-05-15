@@ -7,7 +7,7 @@ import com.twitter.util._
 import io.buoyant.namer.InstrumentedActivity
 import java.nio.file.{Path => NioPath, _}
 import java.nio.file.StandardWatchEventKinds._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object Watcher {
 

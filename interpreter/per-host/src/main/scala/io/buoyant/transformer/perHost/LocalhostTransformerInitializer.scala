@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle.{Path, Stack}
 import io.buoyant.namer.{NameTreeTransformer, TransformerConfig, TransformerInitializer}
 import java.net.NetworkInterface
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class LocalhostTransformerInitializer extends TransformerInitializer {
   val configClass = classOf[LocalhostTransformerConfig]

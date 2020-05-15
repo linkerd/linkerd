@@ -21,4 +21,8 @@ object NonePolicy extends FailureAccrualPolicy {
   override def recordSuccess(): Unit = {}
   override def markDeadOnFailure(): Option[Duration] = None
   override def revived(): Unit = {}
+
+  override def name: String = "NonePolicy"
+
+  override def show(): String = ""
 }

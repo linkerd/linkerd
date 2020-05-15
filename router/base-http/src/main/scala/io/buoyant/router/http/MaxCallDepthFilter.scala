@@ -8,8 +8,7 @@ import io.buoyant.router.http.ForwardClientCertFilter.Enabled
 import io.buoyant.router.http.MaxCallDepthFilter.MaxCallDepthExceeded
 import scala.util.control.NoStackTrace
 
-class MaxCallDepthFilter[Req, H: HeadersLike, Rep](maxCalls: Int, headerKey: String)
-  (implicit requestLike: RequestLike[Req, H]) extends SimpleFilter[Req, Rep] {
+class MaxCallDepthFilter[Req, H: HeadersLike, Rep](maxCalls: Int, headerKey: String)(implicit requestLike: RequestLike[Req, H]) extends SimpleFilter[Req, Rep] {
 
   def numCalls(viaValue: String) = viaValue.split(",").length
 
@@ -27,7 +26,7 @@ object MaxCallDepthFilter {
 
   final case class MaxCallDepthExceeded(calls: Int)
     extends Exception(s"Maximum number of calls ($calls) has been exceeded. Please check for proxy loops.")
-      with NoStackTrace
+    with NoStackTrace
 
   final case class Param(value: Int) extends AnyVal {
     def mk(): (Param, Stack.Param[Param]) = (this, Param.param)
@@ -37,8 +36,7 @@ object MaxCallDepthFilter {
     implicit val param = Stack.Param(Param(1000))
   }
 
-  def module[Req, H: HeadersLike, Rep](headerKey: String)
-    (implicit requestLike: RequestLike[Req, H]): Stackable[ServiceFactory[Req, Rep]] =
+  def module[Req, H: HeadersLike, Rep](headerKey: String)(implicit requestLike: RequestLike[Req, H]): Stackable[ServiceFactory[Req, Rep]] =
     new Stack.Module1[Param, ServiceFactory[Req, Rep]] {
       val role = Stack.Role("MaxCallDepthFilter")
       val description = "Limits the number of hops by looking at the Via header of a request"

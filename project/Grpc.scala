@@ -73,22 +73,22 @@ object Grpc extends Base {
   /** sbt-protobuf, without protobuf-java */
   val grpcGenSettings =
     protobufSettings ++ inConfig(protobufConfig)(Seq(
-      javaSource <<= (javaSource in Compile),
-      scalaSource <<= (sourceManaged in Compile) { _ / "compiled_protobuf" },
-      generatedTargets <<= scalaSource { d => Seq(d -> "*.pb.scala") },
+      javaSource := (javaSource in Compile).value,
+      scalaSource := (sourceManaged in Compile) { _ / "compiled_protobuf" }.value,
+      generatedTargets := scalaSource { d => Seq(d -> "*.pb.scala") }.value,
       protoc := "./protoc",
-      grpcGenExec <<= grpcGenExec0,
-      runProtoc <<= runProtoc0,
-      protocOptions <<= scalaSource { ss =>
+      grpcGenExec := grpcGenExec0.value,
+      runProtoc := runProtoc0.value,
+      protocOptions := scalaSource { ss =>
         Seq(s"--io.buoyant.grpc_out=plugins=grpc:${ss.getCanonicalPath}")
-      }
+      }.value
     )) ++ Seq(
       // Sbt has trouble if scalariform rewrites the generated code
       excludeFilter in ScalariformKeys.format := "*.pb.scala",
       coverageExcludedFiles := """.*\.pb\.scala""",
 
       // We don't need protobuf-java.
-      libraryDependencies <<= libraryDependencies(_.filterNot(_.name == "protobuf-java"))
+      libraryDependencies := libraryDependencies(_.filterNot(_.name == "protobuf-java")).value
     )
 
   case class GrpcProject(project: Project) {

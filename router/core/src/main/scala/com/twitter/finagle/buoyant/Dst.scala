@@ -39,13 +39,19 @@ object Dst {
    * Wraps a Name.Bound but takes the residual path into account when
    * computing equality.
    */
-  class Bound private (val name: Name.Bound) extends Dst with Proxy {
+  class Bound private (val name: Name.Bound) extends Dst {
     val self = (name.id, name.path)
 
     def addr = name.addr
     def id = name.id
     def idStr = name.idStr
     def path = name.path
+
+    override def hashCode(): Int = self.hashCode()
+
+    override def equals(obj: Any): Boolean = self.equals(obj)
+
+    override def toString: String = self.toString
 
     def mk(): (Bound, Stack.Param[Bound]) = (this, Bound)
   }
@@ -75,9 +81,14 @@ object Dst {
   class BoundTree(
     val nameTree: NameTree[Bound],
     val path: FPath
-  ) extends Proxy {
+  ) {
     def self = nameTree
     def show = nameTree.show
+    override def hashCode(): Int = self.hashCode()
+
+    override def equals(obj: Any): Boolean = self.equals(obj)
+
+    override def toString: String = self.toString
   }
 
   object BoundTree {

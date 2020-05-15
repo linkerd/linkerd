@@ -10,9 +10,10 @@ import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle._
-import com.twitter.io.{Buf, Reader}
+import com.twitter.io.{Buf, BufReader}
 import com.twitter.util._
 import io.buoyant.consul.log
+
 import scala.util.control.NonFatal
 
 // a thunked version of the api call such that we can peek at the request before making the call
@@ -21,7 +22,7 @@ case class ApiCall[Rep] private[v1] (req: Request, call: Request => Future[Rep])
 }
 
 trait BaseApi extends Closable {
-  def client: Client
+  def client: Service[http.Request, http.Response]
 
   def uriPrefix: String
 
@@ -87,7 +88,7 @@ trait BaseApi extends Closable {
 
   private def parse[T: Manifest](rsp: Response): Future[T] = {
     val content = if (rsp.isChunked)
-      Reader.readAll(rsp.reader)
+      BufReader.readAll(rsp.reader)
     else
       Future.value(rsp.content)
 
