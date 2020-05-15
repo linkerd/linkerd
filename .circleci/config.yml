@@ -57,11 +57,11 @@ jobs:
           name: Install Node.js
           command: |
             set -x
-            if [ ! -f node-v6.10.2-linux-x64.tar.xz ]; then
-              curl -sLO https://nodejs.org/dist/v6.10.2/node-v6.10.2-linux-x64.tar.xz
+            if [ ! -f node-v8.10.0-linux-x64.tar.xz ]; then
+              curl -sLO https://nodejs.org/dist/v8.10.0/node-v8.10.0-linux-x64.tar.xz
             fi
-            tar -xf node-v6.10.2-linux-x64.tar.xz
-            cp -a node-v6.10.2-linux-x64/* /usr/
+            tar -xf node-v8.10.0-linux-x64.tar.xz
+            cp -a node-v8.10.0-linux-x64/* /usr/
 
       # Run ./sbt update, optionally run ./ci/twitter-develop.sh if
       # $TWITTER_DEVELOP is set. Dependencies may already be in cache.
@@ -103,7 +103,7 @@ jobs:
           key: linkerd-{{ checksum "/tmp/project-seed.txt" }}
           paths:
             - "docker-17.03.0-ce.tgz"
-            - "node-v6.10.2-linux-x64.tar.xz"
+            - "node-v8.10.0-linux-x64.tar.xz"
             - "~/.gitshas"
             - "~/.ivy2"
             - "~/.sbt"
