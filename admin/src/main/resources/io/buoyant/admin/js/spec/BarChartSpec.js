@@ -63,18 +63,22 @@ define([
     it("updates the bar's color when new data is added", function() {
       lbBarChart.update(generateData(21, 30));
       var $barContainer = getBarContainer($lbContainer);
+
       expect($barContainer.attr('class')).toContain("green");
 
       lbBarChart.update(generateData(19, 30));
       $barContainer = getBarContainer($lbContainer);
+
       expect($barContainer.attr('class')).toContain("orange");
 
       lbBarChart.update(generateData(6, 30));
       $barContainer = getBarContainer($lbContainer);
+
       expect($barContainer.attr('class')).toContain("red");
 
       lbBarChart.update(generateData(40, 30));
       $barContainer = getBarContainer($lbContainer);
+
       expect($barContainer.attr('class')).toContain("green");
     });
 

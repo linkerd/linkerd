@@ -138,9 +138,11 @@ define(['jQuery', 'src/utils'], function($, Utils) {
 
       it("adds metrics to track", function() {
         chart.setMetrics([{ name: "successRate" }]);
+
         expect(chart.metrics).toEqual(["successRate"]);
 
         chart.addMetrics([{ name: "failureRate" }]);
+
         expect(chart.metrics).toEqual(["successRate", "failureRate"]);
       });
 
@@ -153,6 +155,7 @@ define(['jQuery', 'src/utils'], function($, Utils) {
         expect(chart.metrics).toEqual(["successRate"]);
 
         chart.updateMetrics([{name: "successRate", delta: 999}]);
+
         expect(chart.tsMap.successRate.data[0][1]).toBe(999);
       });
 
@@ -160,6 +163,7 @@ define(['jQuery', 'src/utils'], function($, Utils) {
         expect(chart.tsOpts("foo").strokeStyle).toBe("black");
         var timeseriesParams = function(_name) { return { strokeStyle: "white" }; }
         chart.updateTsOpts(timeseriesParams);
+
         expect(chart.tsOpts("foo").strokeStyle).toBe("white");
       });
     });

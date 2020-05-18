@@ -192,6 +192,7 @@ define([
       _.each(clientContainers, function(clientContainer) {
         expect($(clientContainer).hasClass("hidden")).toBe(false);
       });
+
       expect(clientContainers.length).toBe(3);
 
       realCollector.__update__(expiredMetricsJson);
@@ -239,6 +240,7 @@ define([
 
       clientContainers = $clientsEl.find(".client-container");
       contentContainers = $clientsEl.find(".client-content-container");
+
       expect(clientContainers.length).toBe(9);
       expect(contentContainers.length).toBe(9);
 
@@ -286,6 +288,7 @@ define([
 
       clientContainers = $clientsEl.find(".client-container");
       contentContainers = $clientsEl.find(".client-content-container");
+
       expect(clientContainers.length).toBe(9);
       expect(contentContainers.length).toBe(9);
 
