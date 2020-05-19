@@ -1,3 +1,11 @@
+## 1.7.3 2020-05-19
+Linkerd 1.7.3 is a maintenance release that upgrades finagle to 20.4.1 and
+netty to 4.1.47-Final. The node and eslint dependencies required by the Admin
+UI are also upgraded to 14.2.0 and 6.8.0, respectively. 
+
+* Upgrade to finagle 20.4.1 and Netty 4.1.47-Final [#2386](https://github.com/linkerd/linkerd/pull/2386)
+* Upgrade to Node 14.2.0 and eslint 6.8.0 [#2389](https://github.com/linkerd/linkerd/pull/2389)
+
 ## 1.7.2 2020-03-30
 Linkerd 1.7.2 is a point release which addresses gRPC responses which have no
 bodies, but do have trailers. With this change in place, Linkerd will 
