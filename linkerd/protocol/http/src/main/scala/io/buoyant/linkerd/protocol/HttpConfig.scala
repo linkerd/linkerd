@@ -267,6 +267,7 @@ case class HttpConfig(
     .maybeWith(httpAccessLogAppend.map(AccessLogger.param.Append.apply))
     .maybeWith(httpAccessLogRotateCount.map(AccessLogger.param.RotateCount.apply))
     .maybeWith(maxHeadersKB.map(kb => hparam.MaxHeaderSize(kb.kilobytes)))
+    .maybeWith(maxInitialLineKB.map(kb => hparam.MaxInitialLineSize(kb.kilobytes)))
     .maybeWith(streamAfterContentLengthKB.map(kb => hparam.FixedLengthStreamedAfter(kb.kilobytes)))
     .maybeWith(Some(streaming))
     .maybeWith(Some(hparam.MaxRequestSize(MaxReqRespSize)))
