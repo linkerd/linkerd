@@ -1,6 +1,7 @@
 package io.buoyant.namer.serversets
 
 import com.twitter.finagle._
+import com.twitter.finagle.serverset2.BouyantZkResolver
 import com.twitter.util.{Activity, Var}
 import io.buoyant.namer.NamerTestUtil
 import java.net.{InetAddress, InetSocketAddress}
@@ -71,11 +72,25 @@ class ServersetNamerTest extends FunSuite with NamerTestUtil {
     }
   }
 
-  def namer(path: String) = new ServersetNamer("host", prefix) {
-
-    /** Resolve a resolver string to a Var[Addr]. */
-    override protected[this] def resolve(spec: String): Var[Addr] =
-      if (spec == s"zk2!host!$path") pathAddr
-      else otherAddr
+  test("shard lookup") {
+    pathAddr() = Addr.Bound(loopback)
+    otherAddr() = Addr.Neg
+    namer("/foo/bar").lookup(Path.read("/foo/bar:http#0")).sample() match {
+      case NameTree.Leaf(name: Name.Bound) =>
+        assert(name.id == prefix ++ Path.read("/foo/bar:http#0"))
+        assert(name.path == Path.empty)
+      case _ => fail("failed to bind")
+    }
   }
+
+  def namer(path: String) =
+      new ServersetNamer(Path.Utf8("host"), prefix, new BouyantZkResolver {
+    protected[this] def addrOf(
+        zkHosts: String,
+        zkPath: String,
+        endpoint: Option[String],
+        shardId: Option[Int]): Var[Addr] =
+      if ((zkHosts == "host") && (zkPath == path)) pathAddr
+      else otherAddr
+  })
 }

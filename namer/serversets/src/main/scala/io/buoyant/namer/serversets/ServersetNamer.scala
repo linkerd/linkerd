@@ -2,7 +2,8 @@
 package io.buoyant.namer.serversets
 
 import com.twitter.finagle._
-import com.twitter.util.{Activity, Var}
+import com.twitter.util.{Activity, Var, Try, Return, Throw}
+import com.twitter.finagle.serverset2.{BouyantZkResolver, BouyantZkResolverImpl}
 
 /**
  * The serverset namer takes Paths of the form
@@ -25,38 +26,14 @@ import com.twitter.util.{Activity, Var}
  *
  * Cribbed from https://github.com/twitter/finagle/blob/develop/finagle-serversets/src/main/scala/com/twitter/serverset.scala
  */
-class ServersetNamer(zkHost: String, idPrefix: Path) extends Namer {
-
-  /** Resolve a resolver string to a Var[Addr]. */
-  protected[this] def resolve(spec: String): Var[Addr] = Resolver.eval(spec) match {
-    case Name.Bound(addr) => addr
-    case _ => Var.value(Addr.Neg)
-  }
-
-  protected[this] def resolveServerset(hosts: String, path: String) =
-    resolve(s"zk2!$hosts!$path")
-
-  protected[this] def resolveServerset(hosts: String, path: String, endpoint: String) =
-    resolve(s"zk2!$hosts!$path!$endpoint")
+class ServersetNamer(zkHost: Path, idPrefix: Path, zk2: BouyantZkResolver) extends Namer {
+  def this(zkHost: String, idPrefix: Path) = this(Path.Utf8(zkHost), idPrefix, new BouyantZkResolverImpl)
 
   /** Bind a name. */
-  protected[this] def bind(path: Path, residual: Path = Path.empty): Activity[NameTree[Name]] = {
-    // Clients may depend on Name.Bound ids being Paths which resolve
-    // back to the same Name.Bound
-    val id = idPrefix ++ path
-    path match {
-      case Path.Utf8(segments@_*) =>
-        val addr = if (segments.nonEmpty && (segments.last contains ":")) {
-          val Array(name, endpoint) = segments.last.split(":", 2)
-          val zkPath = (segments.init :+ name).mkString("/", "/", "")
-          resolveServerset(zkHost, zkPath, endpoint)
-        } else {
-          val zkPath = segments.mkString("/", "/", "")
-          resolveServerset(zkHost, zkPath)
-        }
-
+  protected[this] def bind(path: Path, residual: Path = Path.empty): Activity[NameTree[Name]] =
+    Try(zk2.resolve(zkHost ++ path)) match {
+      case Return(addr) =>
         val act = Activity(addr.map(Activity.Ok(_)))
-
         act.flatMap {
           case Addr.Neg if !path.isEmpty =>
             val n = path.size
@@ -64,14 +41,18 @@ class ServersetNamer(zkHost: String, idPrefix: Path) extends Namer {
           case Addr.Neg =>
             Activity.value(NameTree.Neg)
           case Addr.Bound(_, _) =>
+            // Clients may depend on Name.Bound ids being Paths which resolve
+            // back to the same Name.Bound
+            val id = idPrefix ++ path
             Activity.value(NameTree.Leaf(Name.Bound(addr, id, residual)))
           case Addr.Pending =>
             Activity.pending
           case Addr.Failed(exc) =>
             Activity.exception(exc)
         }
+      case Throw(exc) =>
+        Activity.exception(exc)
     }
-  }
 
   // We have to involve a serverset roundtrip here to return a tree. We run the
   // risk of invalidating an otherwise valid tree when there is a bad serverset
