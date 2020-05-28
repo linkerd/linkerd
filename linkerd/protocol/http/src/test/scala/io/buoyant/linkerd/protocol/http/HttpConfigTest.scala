@@ -2,9 +2,10 @@ package io.buoyant.linkerd.protocol.http
 
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
 import com.twitter.finagle.buoyant.Dst
-import com.twitter.finagle.http.param.Streaming
+import com.twitter.finagle.http.param.{MaxInitialLineSize, Streaming}
 import com.twitter.finagle.http.{Method, Request}
 import com.twitter.finagle.{Dtab, Path, Stack}
+import com.twitter.conversions.StorageUnitOps._
 import com.twitter.util.Future
 import io.buoyant.config.Parser
 import io.buoyant.linkerd.protocol.{HttpConfig, HttpIdentifierConfig, HttpInitializer}
@@ -13,7 +14,6 @@ import io.buoyant.router.Http
 import io.buoyant.router.RoutingFactory.{IdentifiedRequest, Identifier}
 import io.buoyant.router.http.TimestampHeaderFilter
 import io.buoyant.test.{Awaits, FunSuite}
-
 
 class HttpConfigTest extends FunSuite with Awaits {
 
@@ -100,6 +100,21 @@ class HttpConfigTest extends FunSuite with Awaits {
 
     val streaming = config.routerParams(Stack.Params.empty)[Streaming]
     assert(streaming.enabled)
+  }
+
+  test("Issue #2393 - MaxInitialLineSize set from config") {
+    val yaml = s"""
+                  |protocol: http
+                  |identifier:
+                  |  kind: io.l5d.methodAndHost
+                  |maxInitialLineKB: 64
+                  |servers:
+                  |- port: 5000
+      """.stripMargin
+    val config = parse(yaml)
+
+    val maxInitialLineKB = config.routerParams(Stack.Params.empty)[MaxInitialLineSize]
+    assert(maxInitialLineKB.size == 64.kilobytes)
   }
 
   test("ConfigErrorTest - Stream disabled, streamAfter Set") {
