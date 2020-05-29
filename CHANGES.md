@@ -1,4 +1,4 @@
-## 1.7.3 2020-05-28
+## 1.7.4 2020-05-28
 Linkerd 1.7.4 includes two fixes contributed by the open source community,
 which is so greatly appreciated. The first fix enables Linkerd to properly
 use `dtab` paths which include `#` symbols used by ZooKeeper serverset shard
