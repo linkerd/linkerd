@@ -59,18 +59,18 @@ class BufferingChannelTransport(
   }
 
   private[this] val flush: Runnable = { () =>
-    var flushed = false
-    while (writeQueue.drainTo(writeChunk, MaxFlushSize) > 0) {
+    var flushed = 0
+    while (flushed < MaxFlushSize && writeQueue.drainTo(writeChunk, MaxFlushSize) > 0) {
       while (writeChunk.size > 0) {
         val item = writeChunk.poll()
         val f = toFuture(ch.write(item.msg))
         item.done.become(f)
+        flushed += 1
       }
-      flushed = true
       ch.flush()
     }
     // Always flush at least once.
-    if (!flushed) {
+    if (flushed == 0) {
       ch.flush()
     }
 
