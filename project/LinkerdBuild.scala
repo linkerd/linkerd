@@ -284,7 +284,7 @@ object LinkerdBuild extends Base {
        | Unable to use [$GC_LOG] for GC logging."
        |else
        |  if [ "$LOCAL_JAVA_VERSION" -ge 9 ]; then
-       |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10000:time"
+       |    GC_LOG_OPTION="-Xlog:gc*,gc+age=trace,gc+heap=debug,gc+promotion=trace,safepoint:file=${GC_LOG}/gc.log::filecount=10,filesize=10M:time"
        |  else
        |    GC_LOG_OPTION="
        |      -XX:+PrintGCDetails
