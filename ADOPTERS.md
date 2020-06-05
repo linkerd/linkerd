@@ -17,6 +17,7 @@ These organizations are publicly using Linkerd in production:
 - [Olark](https://www.olark.com)
 - [PayPal](https://www.paypal.com/)
 - [Planet Labs](https://www.planet.com/)
+- [RELEX Solutions](https://www.relexsolutions.com/)
 - [Salesforce](https://www.salesforce.com/)
 - [Strava](https://www.strava.com/)
 - [Taboola](https://www.taboola.com/)
