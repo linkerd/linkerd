@@ -1,3 +1,14 @@
+## 1.7.4 2020-05-28
+Linkerd 1.7.4 includes two fixes contributed by the open source community,
+which is so greatly appreciated. The first fix enables Linkerd to properly
+use `dtab` paths which include `#` symbols used by ZooKeeper serverset shard
+syntax.
+
+The second fix sets `MaxInitialLineSize` value for the HttpConfig from
+`maxInitialSizeKB` parameter in the `router` configuration for Linkerd.
+Among other things, this ensures that Linkerd can properly handle URLs that
+are very long. 
+
 ## 1.7.3 2020-05-19
 Linkerd 1.7.3 is a maintenance release that upgrades finagle to 20.4.1 and
 netty to 4.1.47-Final. The node and eslint dependencies required by the Admin
