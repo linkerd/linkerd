@@ -83,7 +83,7 @@ specific language governing permissions and limitations under the License.
 [docker]: https://hub.docker.com/r/buoyantio/linkerd/
 [finagle]: https://twitter.github.io/finagle/
 [k8s]: https://k8s.io/
-[l5d-ci-badge]: https://circleci.com/gh/linkerd/linkerd/tree/master.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
+[l5d-ci-badge]: https://circleci.com/gh/linkerd/linkerd/tree/main.svg?style=shield&circle-token=06d80fc52dbaeaac316d09b7ad4ada6f7d2bf31f
 [l5d-ci]: https://circleci.com/gh/linkerd/linkerd
 [l5d-eg]: https://github.com/linkerd/linkerd-examples
 [l5d-logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
