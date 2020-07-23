@@ -78,6 +78,7 @@ define([
       Handlebars.registerPartial('rateMetricPartial', rateMetricPartial);
 
       var clients = _.sortBy(initialData[routerName].clients);
+      clientExpandState = {};
       var colorList = Colors;
       var clientToColor = assignColorsToClients(colorList, clients);
       var combinedClientGraph = CombinedClientGraph(metricsCollector, initialData, routerName, $combinedClientGraphEl, clientToColor);
@@ -89,7 +90,7 @@ define([
 
       routerClients = _.compact(routerClients);
 
-      if (routerClients.length == 0) {
+      if (routerClients.length === 0) {
         $clientEl.addClass("hidden");
       } else {
         clientExpandState[routerName] = routerClients.length > EXPAND_CLIENT_THRESHOLD ? expandStates.collapsed : expandStates.expanded;
@@ -133,7 +134,7 @@ define([
         }
 
         var shouldExpand = shouldExpandClient(routerName, initialData[routerName].clients.length);
-        if(!clientExpandState[routerName] === expandStates.custom) {
+        if(clientExpandState[routerName] !== expandStates.custom) {
           // switch over to expanding/collapsing new clients
           clientExpandState[routerName] = shouldExpand ? expandStates.expanded : expandStates.collapsed;
         }
