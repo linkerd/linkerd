@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 cd ../protobuf || exit
-DESTINATION_PROTO=$(curl https://raw.githubusercontent.com/linkerd/linkerd2-proxy-api/master/proto/destination.proto)
-NET_PROTO=$(curl https://raw.githubusercontent.com/linkerd/linkerd2-proxy-api/master/proto/net.proto)
-
-echo "Copying destination.proto from linkerd2 repo"
-printf "//This file is added using pull-destination-proto.sh. DO NOT EDIT!\\n%s" "$DESTINATION_PROTO" > destination.proto
+LATEST_API_RELEASE=v0.1.1
+BASE_PROTO_URL=https://raw.githubusercontent.com/linkerd/linkerd2-proxy-api/$LATEST_API_RELEASE/proto
+PROTOFILES="destination.proto net.proto"
 
 
-echo "Copying net.proto from linkerd2 repo"
-printf "//This file is added using pull-destination-proto.sh. DO NOT EDIT!\\n%s" "$NET_PROTO" > net.proto
+for proto_file in $PROTOFILES; do
+  echo "Copying $proto_file from linkerd2 repo"
+  printf "//This file is added using pull-destination-proto.sh. DO NOT EDIT!\\n%s" "$(curl $BASE_PROTO_URL/"$proto_file")" > "$proto_file"
+done
 
