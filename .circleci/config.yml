@@ -144,26 +144,26 @@ workflows:
     jobs:
     - build
 
-  nightly:
-    triggers:
-    - schedule:
-        cron: "30 12 * * *"
-        filters:
-          branches:
-            only:
-            - master
-    jobs:
-    - build:
-        context: nightly
+  #nightly:
+  #  triggers:
+  #  - schedule:
+  #      cron: "30 12 * * *"
+  #      filters:
+  #        branches:
+  #          only:
+  #          - master
+  #  jobs:
+  #  - build:
+  #      context: nightly
 
-  twitter_develop:
-    triggers:
-    - schedule:
-        cron: "10 12 * * *"
-        filters:
-          branches:
-            only:
-            - master
-    jobs:
-    - build:
-        context: twitter_develop
+  #twitter_develop:
+  #  triggers:
+  #  - schedule:
+  #      cron: "10 12 * * *"
+  #      filters:
+  #        branches:
+  #          only:
+  #          - master
+  #  jobs:
+  #  - build:
+  #      context: twitter_develop
