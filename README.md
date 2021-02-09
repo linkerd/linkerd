@@ -6,17 +6,14 @@
 [![Docker Pulls][docker-badge]][docker]
 [![CII Best Practices][cii-badge]][cii]
 
-:balloon: Welcome to Linkerd! :wave:
+** This repo is for the old, 1.x version of Linkerd. Linkerd development is now
+happening in the [linkerd2][l5d2] repo.**
 
-Linkerd is a transparent *service mesh*, designed to make modern applications
-safe and sane by transparently adding service discovery, load balancing, failure
-handling, instrumentation, and routing to all inter-service communication.
-
-Linkerd (pronounced "linker-DEE") acts as a transparent HTTP/gRPC/thrift/etc
-proxy, and can usually be dropped into existing applications with a minimum of
-configuration, regardless of what language they're written in. It works with
-many common protocols and service discovery backends, including scheduled
-environments like Mesos and Kubernetes.
+Linkerd 1.x (pronounced "linker-DEE") acts as a transparent
+HTTP/gRPC/thrift/etc proxy, and can usually be dropped into existing
+applications with a minimum of configuration, regardless of what language
+they're written in. It works with many common protocols and service discovery
+backends, including scheduled environments like Mesos and Kubernetes.
 
 Linkerd is built on top of [Netty][netty] and [Finagle][finagle], a
 production-tested RPC framework used by high-traffic companies like Twitter,
@@ -30,8 +27,8 @@ We distribute binaries which you can download from the [Linkerd releases
 page][releases]. We also publish Docker images for each release, which you can
 find on [Docker Hub][docker].
 
-For instructions on how to configure and run Linkerd, see the [user
-documentation on linkerd.io](https://linkerd.io).
+For instructions on how to configure and run Linkerd, see the [1.x user
+documentation on linkerd.io](https://linkerd.io/1/).
 
 ## Working in this repo ##
 
@@ -48,6 +45,8 @@ contributing changes.
 
 ## Related Repos ##
 
+* [linkerd2][l5d2]: The main repo for Linkerd 2.x and where current development
+  is happening.
 * [linkerd-examples][l5d-eg]: A variety of configuration examples and explanations
 * [linkerd-tcp][l5d-tcp]: A lightweight TCP/TLS load balancer that uses Namerd
 * [linkerd-viz][l5d-viz]: Zero-configuration service dashboard for Linkerd
@@ -90,6 +89,7 @@ specific language governing permissions and limitations under the License.
 [l5d-tcp]: https://github.com/linkerd/linkerd-tcp
 [l5d-viz]: https://github.com/linkerd/linkerd-viz
 [l5d-zipkin]: https://github.com/linkerd/linkerd-zipkin
+[l5d2]: https://github.com/linkerd/linkerd2
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [namerctl]: https://github.com/linkerd/namerctl
 [netty]: https://netty.io/
