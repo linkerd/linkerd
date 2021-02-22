@@ -6,8 +6,9 @@
 [![Docker Pulls][docker-badge]][docker]
 [![CII Best Practices][cii-badge]][cii]
 
-**This repo is for the old, 1.x version of Linkerd. Linkerd development is now
-happening in the [linkerd2][l5d2] repo.**
+**This repo is for the 1.x version of Linkerd. Feature development is now
+happening in the [linkerd2][l5d2] repo. This repo is currently only used for
+periodic maintenance releases of Linkerd 1.x.**
 
 Linkerd 1.x (pronounced "linker-DEE") acts as a transparent
 HTTP/gRPC/thrift/etc proxy, and can usually be dropped into existing
