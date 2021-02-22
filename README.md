@@ -13,7 +13,7 @@ Linkerd 1.x (pronounced "linker-DEE") acts as a transparent
 HTTP/gRPC/thrift/etc proxy, and can usually be dropped into existing
 applications with a minimum of configuration, regardless of what language
 they're written in. It works with many common protocols and service discovery
-backends, including scheduled environments like Mesos and Kubernetes.
+backends, including scheduled environments like Nomad, Mesos and Kubernetes.
 
 Linkerd is built on top of [Netty][netty] and [Finagle][finagle], a
 production-tested RPC framework used by high-traffic companies like Twitter,
