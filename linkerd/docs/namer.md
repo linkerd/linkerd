@@ -164,7 +164,7 @@ kind: `io.l5d.consul`
 namers:
 - kind: io.l5d.consul
   host: 127.0.0.1
-  port: 2181
+  port: 8500
   includeTag: true
   useHealthCheck: false
   healthStatuses:
