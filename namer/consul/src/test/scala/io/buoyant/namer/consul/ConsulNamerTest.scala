@@ -5,7 +5,7 @@ import com.twitter.finagle.http.{Response, Status}
 import com.twitter.finagle.stats.InMemoryStatsReceiver
 import com.twitter.io.Buf
 import com.twitter.logging.Level
-import com.twitter.util.{Config => _, _}
+import com.twitter.util._
 import io.buoyant.consul.v1._
 import io.buoyant.namer.{ConfiguredDtabNamer, Metadata}
 import io.buoyant.test.{Awaits, FunSuite}

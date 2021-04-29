@@ -21,7 +21,7 @@ object Client {
   def apply(
     root: Path,
     service: Service[h2.Request, h2.Response],
-    backoffs: scala.Stream[Duration],
+    backoffs: Backoff,
     timer: Timer
   ): NameInterpreter with Delegator with Admin.WithHandlers = {
     val interpreter = new mesh.Interpreter.Client(service)
@@ -35,7 +35,7 @@ object Client {
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
     delegator: mesh.Delegator,
-    backoffs: scala.Stream[Duration],
+    backoffs: Backoff,
     timer: Timer
   ): NameInterpreter with Delegator =
     new Impl(root, interpreter, resolver, delegator, backoffs, timer)
@@ -49,7 +49,7 @@ object Client {
     interpreter: mesh.Interpreter,
     resolver: mesh.Resolver,
     delegator: mesh.Delegator,
-    backoffs: scala.Stream[Duration],
+    backoffs: Backoff,
     timer: Timer
   ) extends NameInterpreter with Delegator with Admin.WithHandlers {
 
@@ -237,7 +237,7 @@ object Client {
     init: T,
     open: () => Stream[S],
     toT: Try[S] => Option[T],
-    backoffs0: scala.Stream[Duration],
+    backoffs0: Backoff,
     timer: Timer,
     streamState: StreamState[_, S]
   ): InstrumentedVar[T] = InstrumentedVar[T](init) { state =>
@@ -251,7 +251,7 @@ object Client {
     @volatile var currentStream: Stream[S] = null
     def loop(
       rsps: Stream[S],
-      backoffs: scala.Stream[Duration],
+      backoffs: Backoff,
       releasePrior: () => Future[Unit]
     ): Future[Unit] = {
       currentStream = rsps
@@ -264,12 +264,10 @@ object Client {
 
         case Throw(NonFatal(e)) =>
           val releasePriorNoError = () => releasePrior().rescue(_rescueUnit)
-          backoffs match {
-            case wait #:: moreBackoffs =>
-              Future.sleep(wait).before(loop(open(), moreBackoffs, releasePriorNoError))
-
-            case _ => // empty: fail
-              releasePriorNoError().before(Future.exception(e))
+          if (backoffs.isExhausted) {
+            releasePriorNoError().before(Future.exception(e))
+          } else {
+            Future.sleep(backoffs.duration).before(loop(open(), backoffs.next, releasePriorNoError))
           }
 
         case Throw(e) => // fatal
@@ -307,7 +305,7 @@ object Client {
   private[this] def streamActivity[S, T](
     open: () => Stream[S],
     toT: S => Option[T],
-    bos: scala.Stream[Duration],
+    bos: Backoff,
     timer: Timer,
     state: StreamState[_, S]
   ): InstrumentedActivity[T] = {

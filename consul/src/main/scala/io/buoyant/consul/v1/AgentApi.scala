@@ -1,10 +1,9 @@
 package io.buoyant.consul.v1
 
 import com.twitter.conversions.DurationOps._
-import com.twitter.finagle.http
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.{Backoff, http}
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
-import com.twitter.util.{Closable, Duration, Future}
+import com.twitter.util.{Closable, Future}
 
 object AgentApi {
   def apply(c: Client): AgentApi = new AgentApi(c, s"/$versionString")
@@ -13,7 +12,7 @@ object AgentApi {
 class AgentApi(
   val client: Client,
   val uriPrefix: String,
-  val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+  val backoffs: Backoff = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
   val stats: StatsReceiver = DefaultStatsReceiver
 ) extends BaseApi with Closable {
 

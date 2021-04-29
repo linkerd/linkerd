@@ -1,6 +1,6 @@
 package io.buoyant.linkerd
 
-import com.twitter.finagle.service.Retries
+import com.twitter.finagle.Backoff
 import com.twitter.util.Duration
 import io.buoyant.config.Parser
 import io.buoyant.namer.{ConstantBackoffConfig, JitteredBackoffConfig}
@@ -26,7 +26,7 @@ class RetriesConfigTest extends FunSuite {
           |""".stripMargin
     val config = ConstantBackoffConfig(30)
     assert(parse(yaml) == RetriesConfig(Some(config), None))
-    assert(config.mk.isInstanceOf[Stream[Duration]])
+    assert(config.mk.isInstanceOf[Backoff])
   }
 
   test("jittered backoff") {
@@ -38,7 +38,7 @@ class RetriesConfigTest extends FunSuite {
           |""".stripMargin
     val config = JitteredBackoffConfig(Some(30), Some(6000))
     assert(parse(yaml) == RetriesConfig(Some(config), None))
-    assert(config.mk.isInstanceOf[Stream[Duration]])
+    assert(config.mk.isInstanceOf[Backoff])
   }
 
   test("jittered backoff: no min") {
@@ -50,7 +50,7 @@ class RetriesConfigTest extends FunSuite {
     val config = JitteredBackoffConfig(None, Some(6000))
     assert(parse(yaml) == RetriesConfig(Some(config), None))
     val e = intercept[IllegalArgumentException] {
-      assert(config.mk.isInstanceOf[Stream[Duration]])
+      assert(config.mk.isInstanceOf[Backoff])
     }
     assert(e.getMessage == "'minMs' must be specified")
   }

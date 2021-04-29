@@ -2,7 +2,7 @@ package io.buoyant.router.h2
 
 import com.twitter.concurrent.AsyncQueue
 import com.twitter.conversions.DurationOps._
-import com.twitter.finagle.Service
+import com.twitter.finagle.{Backoff, Service}
 import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepFrame}
 import com.twitter.finagle.buoyant.h2.{Frame, Headers, Request, Reset, Response, Status, Stream}
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
@@ -11,7 +11,6 @@ import com.twitter.util._
 import io.buoyant.test.FunSuite
 import io.netty.buffer.{ByteBuf, Unpooled}
 import java.nio.charset.StandardCharsets
-import scala.{Stream => SStream}
 
 class ClassifiedRetryFilterTest extends FunSuite {
 
@@ -36,7 +35,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
   def filter(stats: StatsReceiver = NullStatsReceiver) = new ClassifiedRetryFilter(
     stats,
     classifier,
-    SStream.continually(0.millis),
+    Backoff.const(0.millis),
     RetryBudget.Infinite
   )
 
@@ -184,7 +183,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val svc = new ClassifiedRetryFilter(
       stats,
       classifier,
-      SStream.continually(0.millis),
+      Backoff.const(0.millis),
       RetryBudget.Infinite,
       requestBufferSize = 3
     ).andThen(new TestService())
@@ -215,7 +214,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val svc = new ClassifiedRetryFilter(
       stats,
       classifier,
-      SStream.continually(0.millis),
+      Backoff.const(0.millis),
       RetryBudget.Infinite,
       responseBufferSize = 4
     ).andThen(new TestService())
@@ -270,7 +269,7 @@ class ClassifiedRetryFilterTest extends FunSuite {
     val svc = new ClassifiedRetryFilter(
       stats,
       classifier,
-      SStream.continually(0.millis),
+      Backoff.const(0.millis),
       RetryBudget.Infinite,
       classificationTimeout = 1.second
     ).andThen(Service.mk { req: Request =>

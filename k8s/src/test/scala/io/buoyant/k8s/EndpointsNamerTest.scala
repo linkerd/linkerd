@@ -726,7 +726,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Backoff.const(1.millis))(timer)
 
     def name = "/srv/http/sessions"
 
@@ -784,7 +784,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
 
     val api = v1.Api(service)
-    val namer = new SingleNsNamer(Path.read("/test"), None, "srv", api.withNamespace, Stream.continually(1.millis))
+    val namer = new SingleNsNamer(Path.read("/test"), None, "srv", api.withNamespace, Backoff.const(1.millis))
     namer.lookup(Path.read("/http/sessions/d3adb33f")).states.respond { s =>
       state = s
     }
@@ -1063,7 +1063,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Backoff.const(1.millis))(timer)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
@@ -1126,7 +1126,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Backoff.const(1.millis))(timer)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
@@ -1163,7 +1163,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
 
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Backoff.const(1.millis))(timer)
 
     @volatile var state: Set[Address] = Set.empty
 
@@ -1211,7 +1211,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Backoff.const(1.millis))(timer)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 
@@ -1272,7 +1272,7 @@ class EndpointsNamerTest extends FunSuite with Awaits {
     }
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new MultiNsNamer(Path.read("/test"), None, api.withNamespace, Backoff.const(1.millis))(timer)
 
     @volatile var state: Activity.State[NameTree[Name]] = Activity.Pending
 

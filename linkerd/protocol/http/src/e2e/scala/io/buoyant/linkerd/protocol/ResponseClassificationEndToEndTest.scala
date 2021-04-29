@@ -55,9 +55,12 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "foo"
     await(client(req))
 
-    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 0)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "failures")) == 0)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 0)
   }
 
   test("non-retryable failure") {
@@ -89,9 +92,12 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "foo"
     await(client(req))
 
-    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
-    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 0)
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 0)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "failures")) == 1)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 0)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
   }
 
   test("retryable failure") {
@@ -129,9 +135,9 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     await(client(req))
 
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 0)
     assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "failures")) == 0)
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
   }
@@ -172,9 +178,9 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     await(client(req))
 
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")).isEmpty)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 0)
     assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "failures")).isEmpty)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "failures")) == 0)
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 1)
   }
@@ -222,9 +228,9 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     await(client(req))
 
     assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == 0)
     assert(stats.counters(Seq("rt", "http", "service", "svc/a", "success")) == 1)
-    assert(stats.counters.get(Seq("rt", "http", "service", "svc/a", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/a", "failures")) == 0)
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "success")) == 1)
     assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/a", "failures")) == 1)
 
@@ -269,9 +275,9 @@ class ResponseClassificationEndToEndTest extends FunSuite {
     req.host = "foo"
     await(client(req))
 
-    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "success")) == Some(1))
-    assert(stats.counters.get(Seq("rt", "http", "service", "svc/foo", "failures")) == None)
-    assert(stats.counters.get(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == Some(1))
-    assert(stats.counters.get(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == None)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "service", "svc/foo", "failures")) == 0)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "success")) == 1)
+    assert(stats.counters(Seq("rt", "http", "client", s"$$/inet/127.1/${downstream.port}", "service", "svc/foo", "failures")) == 0)
   }
 }

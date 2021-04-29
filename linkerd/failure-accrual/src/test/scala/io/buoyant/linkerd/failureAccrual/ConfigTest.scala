@@ -72,8 +72,8 @@ class ConfigTest extends FunSuite
   private[this] val positiveInts = Gen.choose(1, Integer.MAX_VALUE)
 
   test("constant backoff configs produce streams of constant durations") {
-    forAll { (n: Int) =>
-      ConstantBackoffConfig(n).mk.take(100).foreach(d => assert(d == n.millis))
+    forAll(positiveInts) { (n: Int) =>
+      ConstantBackoffConfig(n).mk.take(100).toStream.foreach(d => assert(d == n.millis))
     }
   }
 
@@ -82,6 +82,7 @@ class ConfigTest extends FunSuite
       whenever(min < max) {
         JitteredBackoffConfig(Some(min), Some(max)).mk
           .take(100)
+          .toStream
           .foreach(d => assert(d >= min.millis && d <= max.millis))
       }
     }
@@ -91,7 +92,7 @@ class ConfigTest extends FunSuite
     forAll((positiveInts, "min"), (positiveInts, "max")) { (min: Int, max: Int) =>
       whenever(min < max) {
         val n_unique = JitteredBackoffConfig(Some(min), Some(max)).mk
-          .take(300).toSet.size
+          .take(300).toStream.toSet.size
         assert(n_unique >= 2)
       }
     }

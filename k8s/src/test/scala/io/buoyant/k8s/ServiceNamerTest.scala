@@ -150,7 +150,7 @@ class ServiceNamerTest extends FunSuite with Awaits {
     }
     val api = v1.Api(service)
     val timer = new MockTimer
-    val namer = new ServiceNamer(Path.read("/test"), None, api.withNamespace, Stream.continually(1.millis))(timer)
+    val namer = new ServiceNamer(Path.read("/test"), None, api.withNamespace, Backoff.const(1.millis))(timer)
 
     def lookup: Path
 

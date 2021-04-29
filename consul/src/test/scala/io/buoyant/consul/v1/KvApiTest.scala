@@ -1,7 +1,7 @@
 package io.buoyant.consul.v1
 
 import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.Backoff
 import com.twitter.finagle.{Failure, FailureFlags, Service}
 import com.twitter.io.Buf
 import com.twitter.util.{Duration, Future}

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.twitter.finagle._
 import com.twitter.finagle.buoyant.TlsClientConfig
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.tracing.NullTracer
 import com.twitter.conversions.DurationOps._
 import io.buoyant.config.types.Port

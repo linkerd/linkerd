@@ -2,20 +2,18 @@ package io.buoyant.consul.v1
 
 import java.util.Base64
 
-import com.twitter.conversions.DurationOps._
-import com.twitter.finagle.http
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.{Backoff, http}
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.util._
 
 object KvApi {
-  def apply(c: Client, backoff: Stream[Duration]): KvApi = new KvApi(c, s"/$versionString", backoff)
+  def apply(c: Client, backoff: Backoff): KvApi = new KvApi(c, s"/$versionString", backoff)
 }
 
 class KvApi(
   val client: Client,
   val uriPrefix: String,
-  val backoffs: Stream[Duration],
+  val backoffs: Backoff,
   val stats: StatsReceiver = DefaultStatsReceiver
 ) extends BaseApi with Closable {
   val kvPrefix = s"$uriPrefix/kv"

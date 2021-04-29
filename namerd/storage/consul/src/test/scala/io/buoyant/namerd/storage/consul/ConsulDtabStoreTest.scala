@@ -1,8 +1,7 @@
 package io.buoyant.namerd.storage.consul
 
 import com.twitter.finagle.http.{Request, Response, Status}
-import com.twitter.finagle.service.Backoff
-import com.twitter.finagle.{Dtab, Path, Service}
+import com.twitter.finagle.{Backoff, Dtab, Path, Service}
 import com.twitter.io.Buf
 import com.twitter.util._
 import io.buoyant.consul.v1.KvApi

@@ -54,6 +54,7 @@ class PerDstPathStatsFilterTest extends FunSuite {
       (catPfx :+ "failures" :+ "io.buoyant.router.DangCat" :+ "io.buoyant.router.NotDog") -> 1,
       (dogPfx :+ "requests") -> 2,
       (dogPfx :+ "success") -> 2,
+      (dogPfx :+ "failures") -> 0,
       (catPfx :+ "success") -> 0
     ))
     assert(stats.gauges.keys == Set(

@@ -313,13 +313,20 @@ object StackRouter {
      * Augment the default client StatsFilter with a
      * per-logical-destination stats filter.
      */
-    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] =
-      orig.insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
-        .insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
+    def mkStack[Req, Rsp](orig: Stack[ServiceFactory[Req, Rsp]]): Stack[ServiceFactory[Req, Rsp]] = {
+      // Finagle replaces protoTracing with HttpTracing for HTTP(2) clients
+      val withTracing = if (orig.contains(Stack.Role("HttpTracing"))) {
+        orig.insertBefore(Stack.Role("HttpTracing"), ClassifiedTracing.module[Req, Rsp])
+      } else {
+        orig.insertBefore(StackClient.Role.protoTracing, ClassifiedTracing.module[Req, Rsp])
+      }
+
+      withTracing.insertBefore(StatsFilter.role, PerDstPathStatsFilter.module[Req, Rsp])
         .replace(StatsFilter.role, LocalClassifierStatsFilter.module[Req, Rsp])
         .insertBefore(Retries.Role, RetryBudgetModule.module[Req, Rsp])
         .replace(FFailureAccrualFactory.role, FailureAccrualFactory.module[Req, Rsp])
         .insertAfter(FFailureAccrualFactory.role, new RichConnectionFailedModule[Req, Rsp])
+    }
   }
 
   def newPathStack[Req, Rsp]: Stack[ServiceFactory[Req, Rsp]] = {

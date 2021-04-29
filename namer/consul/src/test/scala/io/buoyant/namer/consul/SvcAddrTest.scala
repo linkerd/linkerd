@@ -4,7 +4,7 @@ import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.stats.NullStatsReceiver
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Addr, Address, Failure, IndividualRequestTimeoutException}
+import com.twitter.finagle.{Addr, Address, Backoff, Failure, IndividualRequestTimeoutException}
 import com.twitter.util._
 import io.buoyant.consul.v1._
 import io.buoyant.namer.consul.SvcAddr.Stats
@@ -12,14 +12,15 @@ import io.buoyant.namer.{InstrumentedVar, Metadata}
 import io.buoyant.test.Awaits
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
+
 import org.scalatest.{FunSuite, Matchers}
 
 class SvcAddrTest extends FunSuite with Matchers with Awaits {
 
   implicit val timer: Timer = DefaultTimer
 
-  val hangForLongBackoff = Stream.continually(Duration.Top)
-  val emptyRequest = Request()
+  val hangForLongBackoff: Backoff = Backoff.const(Duration.Top)
+  val emptyRequest: Request = Request()
 
   def service(host: String = "8.8.8.8", port: Int = 53): (ServiceNode, InetSocketAddress) =
     (
@@ -84,7 +85,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     // when
     val svcAddrVar: InstrumentedVar[Addr] = SvcAddr(
       api,
-      Stream.continually(1.millis),
+      Backoff.const(1.millis),
       "dc1",
       SvcKey("svc", None),
       None,
@@ -124,7 +125,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     // when
     val svcAddrVar: InstrumentedVar[Addr] = SvcAddr(
       api,
-      Stream.continually(1.millis),
+      Backoff.const(1.millis),
       "dc1",
       SvcKey("svc", None),
       None,
@@ -163,7 +164,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     // when
     val svcAddrVar: InstrumentedVar[Addr] = SvcAddr(
       api,
-      Stream.continually(1.millis),
+      Backoff.const(1.millis),
       "dc1",
       SvcKey("svc", None),
       None,
@@ -203,10 +204,16 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
     // promise is satisfied.
     lazy val hang: Stream[Duration] = Duration.Top #:: {retried.setDone(); Duration.Top} #:: Stream.empty[Duration]
 
-    val backoffs: Stream[Duration] = Stream.fill(numOfRetries)(10.millis) #::: hang
+    var backoffs: Stream[Duration] = Stream.fill(numOfRetries)(10.millis) #::: hang
+
+    val backoffGenerator = () => {
+      val next = backoffs.head
+      backoffs = backoffs.tail
+      next
+    }
 
     // when
-    val addr: InstrumentedVar[Addr] = SvcAddr(api, backoffs, "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
+    val addr: InstrumentedVar[Addr] = SvcAddr(api, Backoff.fromFunction(backoffGenerator), "dc1", SvcKey("svc", None), None, None, None, Map.empty, Stats(NullStatsReceiver), new PollState)
     addr.underlying.changes.respond(_ => ())
 
     // then
@@ -304,7 +311,7 @@ class SvcAddrTest extends FunSuite with Matchers with Awaits {
 
       val addr: InstrumentedVar[Addr] = SvcAddr(
         api,
-        Stream.fill(10)(ttl),
+        Backoff.const(ttl).take(10),
         "dc1",
         SvcKey("svc", None),
         None,

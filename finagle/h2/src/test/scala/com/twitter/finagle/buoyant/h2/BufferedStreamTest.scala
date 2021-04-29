@@ -48,11 +48,11 @@ class BufferedStreamTest extends FunSuite {
     assert(buffer.fork().isThrow)
     // all streams should now be complete
     for (child <- children) {
-      assert(child.onEnd.isDone)
+      assert(child.onEnd.isDefined)
     }
     assert(data.onRelease.isDefined)
     assert(trailer.onRelease.isDefined)
-    assert(source.onEnd.isDone)
+    assert(source.onEnd.isDefined)
   }
 
   test("sending frames after dicarding buffer") {
@@ -96,7 +96,7 @@ class BufferedStreamTest extends FunSuite {
     }
 
     assert(trailer.onRelease.isDefined)
-    assert(source.onEnd.isDone)
+    assert(source.onEnd.isDefined)
   }
 
   test("forking with frames in the buffer") {
@@ -150,12 +150,12 @@ class BufferedStreamTest extends FunSuite {
     val frame1 = await(child.read()).asInstanceOf[Frame.Data]
     val frame2 = await(child.read()).asInstanceOf[Frame.Data]
 
-    assert(!buffer.onBufferDiscarded.isDone)
+    assert(!buffer.onBufferDiscarded.isDefined)
 
     // not enough room for this in the buffer; discard the buffer
     val frame3 = await(child.read()).asInstanceOf[Frame.Data]
 
-    assert(buffer.onBufferDiscarded.isDone)
+    assert(buffer.onBufferDiscarded.isDefined)
     assert(buffer.fork().isThrow)
 
     // even after buffer is discarded, frames should be fanned out to existing children

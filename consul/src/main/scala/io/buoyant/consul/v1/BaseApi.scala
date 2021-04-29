@@ -26,7 +26,7 @@ trait BaseApi extends Closable {
 
   def uriPrefix: String
 
-  def backoffs: Stream[Duration]
+  def backoffs: Backoff
 
   def stats: StatsReceiver
 

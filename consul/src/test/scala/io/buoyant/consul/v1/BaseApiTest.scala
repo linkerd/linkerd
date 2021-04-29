@@ -5,10 +5,10 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.twitter.finagle.{Service, http}
 import com.twitter.finagle.http.{Request, Response, Status, Version}
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.Backoff
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.io.{Buf, Reader}
-import com.twitter.util.{Duration, Future}
+import com.twitter.util.Future
 import io.buoyant.test.Awaits
 import org.scalatest.FunSuite
 import com.twitter.conversions.DurationOps._
@@ -56,7 +56,7 @@ object BaseApiTest {
 
   final case class StubApi(client: Client) extends BaseApi {
     override val uriPrefix: String = s"/$versionString"
-    override val backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds)
+    override val backoffs: Backoff = Backoff.exponentialJittered(1.milliseconds, 5.seconds)
 
     override def stats: StatsReceiver = DefaultStatsReceiver
 

@@ -80,13 +80,9 @@ class FailureAccrualFactory[Req, Rep](
 ) extends FFailureAccrualFactory[Req, Rep](
   underlying, policy, FailureAccrualFactory.NullResponseClassifier, timer, statsReceiver
 ) {
-  override protected def isSuccess(reqRep: ReqRep): Boolean = {
+  override protected def classify(reqRep: ReqRep): ResponseClass = {
     val param.ResponseClassifier(classifier) =
       ResponseClassifierCtx.current.getOrElse(param.ResponseClassifier.param.default)
-    classifier.applyOrElse(reqRep, ResponseClassifier.Default) match {
-      case ResponseClass.Ignorable => true
-      case ResponseClass.Successful(_) => true
-      case ResponseClass.Failed(_) => false
-    }
+    classifier.applyOrElse(reqRep, ResponseClassifier.Default)
   }
 }

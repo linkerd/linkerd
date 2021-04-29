@@ -5,7 +5,7 @@ import com.twitter.finagle.buoyant._
 import com.twitter.finagle.http.param.{MaxRequestSize, Streaming}
 import com.twitter.finagle.http.{Method, Request, Response, Version}
 import com.twitter.finagle.{Http, Service, Stack}
-import com.twitter.io.{Buf, BufReader, BufReaders, Reader}
+import com.twitter.io.{Buf, BufReader, Reader}
 import com.twitter.util.{Future, Promise, StorageUnit}
 import io.buoyant.test.{Awaits, BudgetedRetries}
 import java.net.InetSocketAddress

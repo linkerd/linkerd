@@ -5,7 +5,7 @@ import java.net.{InetAddress, InetSocketAddress}
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.ExistentialStability._
 import com.twitter.finagle.http.{MediaType, Request, Response}
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle._
 import com.twitter.logging.Logger
@@ -13,7 +13,6 @@ import com.twitter.util._
 import io.buoyant.admin.Admin
 import io.buoyant.config.Parser
 import io.buoyant.namer.{InstrumentedActivity, Metadata}
-import scala.Function.untupled
 import scala.collection.{breakOut, mutable}
 import scala.language.implicitConversions
 
@@ -21,7 +20,7 @@ class MultiNsNamer(
   idPrefix: Path,
   labelName: Option[String],
   mkApi: String => v1.NsApi,
-  backoff: Stream[Duration] = EndpointsNamer.DefaultBackoff
+  backoff: Backoff = EndpointsNamer.DefaultBackoff
 )(implicit timer: Timer = DefaultTimer)
   extends EndpointsNamer(idPrefix, mkApi, labelName, backoff)(timer) {
 
@@ -72,7 +71,7 @@ class SingleNsNamer(
   labelName: Option[String],
   nsName: String,
   mkApi: String => v1.NsApi,
-  backoff: Stream[Duration] = EndpointsNamer.DefaultBackoff
+  backoff: Backoff = EndpointsNamer.DefaultBackoff
 )(implicit timer: Timer = DefaultTimer)
   extends EndpointsNamer(idPrefix, mkApi, labelName, backoff)(timer) {
 
@@ -123,7 +122,7 @@ abstract class EndpointsNamer(
   idPrefix: Path,
   mkApi: String => v1.NsApi,
   labelName: Option[String] = None,
-  backoff: Stream[Duration] = EndpointsNamer.DefaultBackoff
+  backoff: Backoff = EndpointsNamer.DefaultBackoff
 )(implicit timer: Timer = DefaultTimer)
   extends Namer with Admin.WithHandlers {
   import EndpointsNamer._
@@ -261,7 +260,7 @@ abstract class EndpointsNamer(
 }
 
 object EndpointsNamer {
-  val DefaultBackoff: Stream[Duration] =
+  val DefaultBackoff: Backoff =
     Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 
   private[EndpointsNamer] case class ServiceKey(
