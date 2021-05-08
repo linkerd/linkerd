@@ -3,7 +3,7 @@
     "eslint": "^6.8.0",
     "eslint-plugin-jasmine": "^4.1.1",
     "eslint-plugin-requirejs": "^4.0.0",
-    "handlebars": "^4.7.6",
+    "handlebars": "^4.7.7",
     "jasmine": "^3.5.0",
     "karma": "^5.0.4",
     "karma-cli": "^2.0.0",
