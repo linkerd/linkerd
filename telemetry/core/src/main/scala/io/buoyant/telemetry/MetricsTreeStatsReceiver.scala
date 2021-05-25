@@ -9,8 +9,8 @@ class MetricsTreeStatsReceiver(
 
   val repr: AnyRef = this
 
-  protected[this] def registerGauge(verbosity: Verbosity, name: Seq[String], f: => Float): Unit =
-    tree.resolve(name).registerGauge(verbosity, f)
+  protected[this] def registerGauge(schema: GaugeSchema, f: => Float): Unit =
+    tree.resolve(schema.metricBuilder.name).registerGauge(schema.metricBuilder.verbosity, f)
 
   protected[this] def deregisterGauge(name: Seq[String]): Unit =
     tree.resolve(name).deregisterGauge()

@@ -19,7 +19,7 @@ import java.net.{InetAddress, InetSocketAddress}
 class ThriftNamerClient(
   client: thrift.Namer.MethodPerEndpoint,
   namespace: String,
-  backoffs: Stream[Duration],
+  backoffs: Backoff,
   statsReceiver: StatsReceiver = NullStatsReceiver,
   clientId: Path = Path.empty,
   _timer: Timer = DefaultTimer
@@ -91,7 +91,7 @@ class ThriftNamerClient(
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
-      def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
+      def loop(stamp0: TStamp, backoffs0: Backoff): Unit = if (!stopped) {
         Trace.recordBinary("namerd.client/bind.ns", namespace)
         Trace.recordBinary("namerd.client/bind.path", path.show)
 
@@ -116,9 +116,8 @@ class ThriftNamerClient(
               bindFailureCounter.incr()
               Trace.recordBinary("namerd.client/bind.fail", reason)
               if (!stopped) {
-                val sleep #:: backoffs1 = backoffs0
-                pending = Future.sleep(sleep)
-                  .onSuccess(_ => loop(stamp0, backoffs1))
+                pending = Future.sleep(backoffs0.duration)
+                  .onSuccess(_ => loop(stamp0, backoffs0.next))
               }
 
             case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
@@ -128,9 +127,8 @@ class ThriftNamerClient(
               bindFailureCounter.incr()
               log.error(e, "bind %s", path.show)
               Trace.recordBinary("namerd.client/bind.exc", e.toString)
-              val sleep #:: backoffs1 = backoffs0
-              pending = Future.sleep(sleep)
-                .onSuccess(_ => loop(TStamp.empty, backoffs1))
+              pending = Future.sleep(backoffs0.duration)
+                .onSuccess(_ => loop(TStamp.empty, backoffs0.next))
           }
         }
       }
@@ -209,7 +207,7 @@ class ThriftNamerClient(
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
-      def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
+      def loop(stamp0: TStamp, backoffs0: Backoff): Unit = if (!stopped) {
         Trace.recordBinary("namerd.client/addr.path", idPath)
         val req = thrift
           .AddrReq(thrift.NameRef(stamp0, id, namespace), tclientId)
@@ -243,9 +241,8 @@ class ThriftNamerClient(
               addrFailureCounter.incr()
               Trace.recordBinary("namerd.client/addr.fail", msg)
               if (!stopped) {
-                val sleep #:: backoffs1 = backoffs0
-                pending = Future.sleep(sleep)
-                  .onSuccess(_ => loop(stamp0, backoffs1))
+                pending = Future.sleep(backoffs0.duration)
+                  .onSuccess(_ => loop(stamp0, backoffs0.next))
               }
 
             case Throw(e: Failure) if e.isFlagged(FailureFlags.Interrupted) =>
@@ -255,9 +252,8 @@ class ThriftNamerClient(
               addrFailureCounter.incr()
               log.error(e, "addr on %s", idPath)
               Trace.recordBinary("namerd.client/addr.exc", e.getMessage)
-              val sleep #:: backoffs1 = backoffs0
-              pending = Future.sleep(sleep)
-                .onSuccess(_ => loop(TStamp.empty, backoffs1))
+              pending = Future.sleep(backoffs0.duration)
+                .onSuccess(_ => loop(TStamp.empty, backoffs0.next))
           }
         }
       }
@@ -354,7 +350,7 @@ class ThriftNamerClient(
       @volatile var stopped = false
       @volatile var pending: Future[_] = Future.Unit
 
-      def loop(stamp0: TStamp, backoffs0: Stream[Duration]): Unit = if (!stopped) {
+      def loop(stamp0: TStamp, backoffs0: Backoff): Unit = if (!stopped) {
 
         val req = thrift.DtabReq(stamp0, namespace, tclientId)
         pending = Trace.letClear(client.dtab(req)).respond {
@@ -379,8 +375,7 @@ class ThriftNamerClient(
           case Throw(e) =>
             dtabFailureCounter.incr()
             log.error(e, "dtab %s lookup failed", namespace)
-            val sleep #:: backoffs1 = backoffs0
-            pending = Future.sleep(sleep).onSuccess(_ => loop(TStamp.empty, backoffs1))
+            pending = Future.sleep(backoffs0.duration).onSuccess(_ => loop(TStamp.empty, backoffs0.next))
         }
       }
 

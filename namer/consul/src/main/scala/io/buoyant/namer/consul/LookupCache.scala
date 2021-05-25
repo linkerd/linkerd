@@ -2,7 +2,6 @@ package io.buoyant.namer.consul
 
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle._
-import com.twitter.finagle.service.Backoff
 import com.twitter.finagle.stats.{NullStatsReceiver, StatsReceiver}
 import com.twitter.util._
 import io.buoyant.consul.v1
@@ -13,7 +12,7 @@ import scala.Function.untupled
 
 private[consul] object LookupCache {
 
-  val DefaultBackoffs: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 5.seconds)
+  val DefaultBackoffs: Backoff = Backoff.exponentialJittered(10.milliseconds, 5.seconds)
 
 }
 

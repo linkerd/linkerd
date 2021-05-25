@@ -6,14 +6,13 @@ import com.twitter.finagle.context.Contexts
 import com.twitter.finagle.liveness.FailureAccrualPolicy
 import com.twitter.finagle.service.ResponseClass
 import com.twitter.finagle.stats.InMemoryStatsReceiver
-import com.twitter.finagle.{FactoryToService, Service, ServiceFactory, Status => FStatus}
+import com.twitter.finagle.{Backoff, FactoryToService, Service, ServiceFactory, Status => FStatus}
 import com.twitter.util.{Duration, Future, MockTimer, Return}
 import io.buoyant.router.DiscardingFactoryToService
 import io.buoyant.router.DiscardingFactoryToService.RequestDiscarder
 import io.buoyant.router.context.h2.H2ClassifierCtx
 import io.buoyant.test.FunSuite
 import java.util
-import scala.{Stream => SStream}
 
 class H2FailureAccrualFactoryTest extends FunSuite {
 
@@ -39,7 +38,7 @@ class H2FailureAccrualFactoryTest extends FunSuite {
 
     val fa = new H2FailureAccrualFactory(
       underlying,
-      FailureAccrualPolicy.consecutiveFailures(5, SStream.continually(Duration.Top)),
+      FailureAccrualPolicy.consecutiveFailures(5, Backoff.const(Duration.Top)),
       timer,
       stats
     )
@@ -82,7 +81,7 @@ class H2FailureAccrualFactoryTest extends FunSuite {
 
     val fa = new H2FailureAccrualFactory(
       underlying,
-      FailureAccrualPolicy.consecutiveFailures(5, SStream.continually(Duration.Top)),
+      FailureAccrualPolicy.consecutiveFailures(5, Backoff.const(Duration.Top)),
       timer,
       stats
     )

@@ -1,15 +1,16 @@
 package io.buoyant.k8s
 
 import java.util.concurrent.atomic.AtomicReference
+
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.twitter.concurrent.AsyncStream
 import com.twitter.finagle.buoyant.RetryFilter
 import com.twitter.finagle.param.HighResTimer
-import com.twitter.finagle.service.{Backoff, RetryBudget, RetryPolicy}
+import com.twitter.finagle.service.{RetryBudget, RetryPolicy}
 import com.twitter.finagle.stats.StatsReceiver
 import com.twitter.finagle.tracing.Trace
 import com.twitter.finagle.util.DefaultTimer
-import com.twitter.finagle.{Failure, FailureFlags, Filter, http}
+import com.twitter.finagle.{Backoff, Failure, FailureFlags, Filter, http}
 import com.twitter.io.ReaderDiscardedException
 import com.twitter.conversions.DurationOps._
 import com.twitter.util._
@@ -22,7 +23,7 @@ import scala.util.control.NonFatal
 private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch[O]: Ordering: TypeReference, G <: KubeMetadata: TypeReference] extends Resource {
   import Watchable._
 
-  protected def backoffs: Stream[Duration]
+  protected def backoffs: Backoff
   protected def stats: StatsReceiver
   protected implicit val timer = DefaultTimer
 
@@ -119,7 +120,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
     val close = new AtomicReference[Closable](Closable.nop)
 
     // Internal method used to recursively retry watches as needed on failures.
-    def _watch(resourceVersion: Option[String], backoffs0: Stream[Duration]): Future[Unit] = {
+    def _watch(resourceVersion: Option[String], backoffs0: Backoff): Future[Unit] = {
       val req = Api.mkreq(http.Method.Get, watchPath, None,
         LabelSelectorKey -> labelSelector,
         FieldSelectorKey -> fieldSelector,
@@ -157,8 +158,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
           case status =>
             rsp.reader.discard()
             log.warning("k8s failed to watch resource %s: %d %s", path, status.code, status.reason)
-            val sleep #:: backoffs1 = backoffs0
-            Future.sleep(sleep).before(_resourceVersionTooOld(backoffs1))
+            Future.sleep(backoffs0.duration).before(_resourceVersionTooOld(backoffs0.next))
         }
       }
     }
@@ -218,7 +218,7 @@ private[k8s] abstract class Watchable[O <: KubeObject: TypeReference, W <: Watch
       }
     }
 
-    def _resourceVersionTooOld(backoffs0: Stream[Duration]): Future[Unit] = {
+    def _resourceVersionTooOld(backoffs0: Backoff): Future[Unit] = {
       // Gone is returned by k8s to indicate the requested resource version is too old to watch.
       // A common scenario that exhibits this error is:
       //

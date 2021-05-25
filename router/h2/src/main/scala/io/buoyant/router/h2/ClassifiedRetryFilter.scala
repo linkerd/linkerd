@@ -5,10 +5,9 @@ import com.twitter.finagle.buoyant.h2.service.{H2Classifier, H2ReqRep, H2ReqRepF
 import com.twitter.finagle.buoyant.h2._
 import com.twitter.finagle.service.{ResponseClass, RetryBudget}
 import com.twitter.finagle.stats.StatsReceiver
-import com.twitter.finagle.{Service, SimpleFilter}
+import com.twitter.finagle.{Backoff, Service, SimpleFilter}
 import com.twitter.util._
 import scala.util.control.NonFatal
-import scala.{Stream => SStream}
 
 /**
  * The ClassifiedRetryFilter uses BufferedStreams to implement retries.  The request stream is
@@ -24,7 +23,7 @@ import scala.{Stream => SStream}
 class ClassifiedRetryFilter(
   stats: StatsReceiver,
   classifier: H2Classifier,
-  backoffs: SStream[Duration],
+  backoffs: Backoff,
   budget: RetryBudget,
   classificationTimeout: Duration = 100.millis,
   requestBufferSize: Long = ClassifiedRetryFilter.DefaultBufferSize,
@@ -58,7 +57,7 @@ class ClassifiedRetryFilter(
     val requestBuffer = new BufferedStream(request.stream, requestBufferSize)
     val fork = Future.const(requestBuffer.fork())
 
-    def dispatch(reqStream: Stream, backoffs: SStream[Duration], count: Int): Future[Response] = {
+    def dispatch(reqStream: Stream, backoffs: Backoff, count: Int): Future[Response] = {
       val req = Request(request.headers.dup(), reqStream)
 
       // Attempt to retry.
@@ -67,24 +66,23 @@ class ClassifiedRetryFilter(
       @inline def retry(orElse: => Future[Response], onRetry: => Unit = ()): Future[Response] = {
         requestBuffer.fork() match {
           case Return(s) =>
-            backoffs match {
-              case pause #:: rest =>
-                if (budget.tryWithdraw()) {
-                  // Retry!
-                  onRetry
-                  totalRetries.incr()
-                  schedule(pause)(dispatch(s, rest, count + 1))
-                } else {
-                  // Not enough retry budget to retry.
-                  budgetExhausted.incr()
-                  consumeAll(s)
-                  orElse
-                }
-              case _ =>
-                // We ran out of retries.
-                backoffsExhausted.incr()
+            if (backoffs.isExhausted) {
+              // We ran out of retries.
+              backoffsExhausted.incr()
+              consumeAll(s)
+              orElse
+            } else {
+              if (budget.tryWithdraw()) {
+                // Retry!
+                onRetry
+                totalRetries.incr()
+                schedule(backoffs.duration)(dispatch(s, backoffs.next, count + 1))
+              } else {
+                // Not enough retry budget to retry.
+                budgetExhausted.incr()
                 consumeAll(s)
                 orElse
+              }
             }
           case Throw(e) =>
             // We could not create a new child request stream so just return the response stream.

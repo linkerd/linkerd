@@ -1,8 +1,7 @@
 package io.buoyant.namer
 
 import com.fasterxml.jackson.annotation.{JsonIgnore, JsonSubTypes}
-import com.twitter.finagle.service.Backoff
-import com.twitter.util.Duration
+import com.twitter.finagle.Backoff
 import com.twitter.conversions.DurationOps._
 import io.buoyant.config.PolymorphicConfig
 
@@ -12,7 +11,7 @@ import io.buoyant.config.PolymorphicConfig
 ))
 abstract class BackoffConfig extends PolymorphicConfig {
   @JsonIgnore
-  def mk: Stream[Duration]
+  def mk: Backoff
 }
 
 case class ConstantBackoffConfig(ms: Int) extends BackoffConfig {

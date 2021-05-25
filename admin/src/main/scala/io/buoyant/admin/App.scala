@@ -9,5 +9,4 @@ trait App extends TApp
   with Logging
   with TimeZoneLogFormat
   with Hooks
-  with Lifecycle
   with Stats

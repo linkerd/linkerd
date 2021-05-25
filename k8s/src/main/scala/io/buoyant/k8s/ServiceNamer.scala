@@ -3,7 +3,7 @@ package io.buoyant.k8s
 import java.net.InetSocketAddress
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.buoyant.ExistentialStability._
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.finagle.{Service => _, _}
 import com.twitter.util._
@@ -22,7 +22,7 @@ class ServiceNamer(
   idPrefix: Path,
   labelName: Option[String],
   mkApi: String => NsApi,
-  backoff: Stream[Duration] = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
+  backoff: Backoff = Backoff.exponentialJittered(10.milliseconds, 10.seconds)
 )(implicit timer: Timer = DefaultTimer) extends Namer {
   import ServiceNamer._
 

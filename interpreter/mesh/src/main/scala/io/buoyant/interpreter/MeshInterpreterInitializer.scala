@@ -9,7 +9,7 @@ import com.twitter.finagle.buoyant.{H2, TlsClientConfig}
 import com.twitter.finagle.liveness.FailureDetector
 import com.twitter.finagle.liveness.FailureDetector.ThresholdConfig
 import com.twitter.finagle.naming.NameInterpreter
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.Backoff
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
 import io.buoyant.interpreter.mesh.Client

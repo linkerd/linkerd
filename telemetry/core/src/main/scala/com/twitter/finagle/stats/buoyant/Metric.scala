@@ -1,6 +1,6 @@
 package com.twitter.finagle.stats.buoyant
 
-import com.twitter.finagle.stats.{BucketAndCount, BucketedHistogram, Counter => FCounter, Stat => FStat}
+import com.twitter.finagle.stats.{BucketAndCount, BucketedHistogram, Metadata, NoMetadata, Counter => FCounter, Stat => FStat}
 import com.twitter.util.{Duration, Time}
 import java.util.concurrent.atomic.AtomicLong
 
@@ -16,6 +16,8 @@ object Metric {
       val _ = value.getAndAdd(delta)
     }
     def get: Long = value.get
+
+    def metadata: Metadata = NoMetadata
   }
 
   class Stat extends FStat with Metric {
@@ -66,6 +68,8 @@ object Metric {
     }
 
     def snapshottedSummary: HistogramSummary = summarySnapshot
+
+    def metadata: Metadata = NoMetadata
   }
 
   class Gauge(f: => Float) extends Metric {

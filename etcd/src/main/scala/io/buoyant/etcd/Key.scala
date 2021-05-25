@@ -3,7 +3,7 @@ package io.buoyant.etcd
 import com.twitter.conversions.DurationOps._
 import com.twitter.finagle.{Path, Service}
 import com.twitter.finagle.http._
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.Backoff
 import com.twitter.io.Buf
 import com.twitter.util._
 
@@ -201,14 +201,14 @@ class Key(key: Path, client: Service[Request, Response]) {
    */
   def events(
     recursive: Boolean = false,
-    backoff: Stream[Duration] = Backoff.exponentialJittered(10.millis, 10.minutes)
+    backoff: Backoff = Backoff.exponentialJittered(10.millis, 10.minutes)
   ): Event[Try[NodeOp]] = new Event[Try[NodeOp]] {
     private[this] val origBackoff = backoff
 
     def register(witness: Witness[Try[NodeOp]]) = {
       @volatile var closed = false
 
-      def loop(idx: Option[Long], backoff: Stream[Duration]): Future[Unit] =
+      def loop(idx: Option[Long], backoff: Backoff): Future[Unit] =
         if (!closed) {
           get(recursive, wait = idx.isDefined, waitIndex = idx).transform {
             case note@Return(op) =>
@@ -224,14 +224,12 @@ class Key(key: Path, client: Service[Request, Response]) {
               loop(Some(idx + 1), origBackoff)
 
             case note@Throw(NonFatal(e)) =>
-              backoff match {
-                case wait #:: backoff =>
-                  witness.notify(note)
-                  loop(None, backoff)
-
-                case _ =>
-                  witness.notify(Throw(BackoffsExhausted(key, e)))
-                  Future.Unit
+              if (backoff.isExhausted) {
+                witness.notify(Throw(BackoffsExhausted(key, e)))
+                Future.Unit
+              } else {
+                witness.notify(note)
+                loop(None, backoff.next)
               }
 
             case note@Throw(_) =>

@@ -1,6 +1,6 @@
 package io.buoyant.linkerd.protocol.http
 
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException
 import com.twitter.finagle.buoyant.Dst
 import com.twitter.finagle.http.param.{MaxInitialLineSize, Streaming}
 import com.twitter.finagle.http.{Method, Request}
@@ -129,7 +129,7 @@ class HttpConfigTest extends FunSuite with Awaits {
                   |- port: 5000
       """.stripMargin
 
-    intercept[InvalidDefinitionException] {
+    intercept[ValueInstantiationException] {
       parse(yaml)
     }
   }

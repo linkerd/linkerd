@@ -199,10 +199,10 @@ class HttpEndToEndTest
       assert(okrsp.status == Status.Ok)
       assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "requests")) == Some(1))
       assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "success")) == Some(1))
-      assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == None)
+      assert(stats.counters.get(Seq("rt", "http", "server", "127.0.0.1/0", "failures")) == Some(0))
       assert(stats.counters.get(Seq("rt", "http", "client", label, "requests")) == Some(1))
       assert(stats.counters.get(Seq("rt", "http", "client", label, "success")) == Some(1))
-      assert(stats.counters.get(Seq("rt", "http", "client", label, "failures")) == None)
+      assert(stats.counters.get(Seq("rt", "http", "client", label, "failures")) == Some(0))
 
       val errreq = Request()
       errreq.host = "dog"
@@ -320,7 +320,7 @@ class HttpEndToEndTest
         val name = "svc/dog"
         assert(stats.counters.get(Seq("rt", "http", "service", name, "requests")) == Some(1))
         assert(stats.counters.get(Seq("rt", "http", "service", name, "success")) == Some(1))
-        assert(stats.counters.get(Seq("rt", "http", "service", name, "failures")) == None)
+        assert(stats.counters.get(Seq("rt", "http", "service", name, "failures")).getOrElse(0) == 0)
         assert(stats.stats.get(Seq("rt", "http", "service", name, "retries", "per_request")) == Some(Seq(1.0)))
         assert(stats.counters.get(Seq("rt", "http", "service", name, "retries", "total")) == Some(1))
         withAnnotations { anns =>

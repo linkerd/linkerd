@@ -6,12 +6,12 @@ import com.timgroup.statsd.StatsDClient
 import com.twitter.finagle.stats.{
   Counter,
   CounterSchema,
+  GaugeSchema,
   HistogramSchema,
   Stat,
   StatsReceiverWithCumulativeGauges,
   Verbosity
 }
-
 import scala.jdk.CollectionConverters._
 
 private[telemetry] object StatsDStatsReceiver {
@@ -41,10 +41,10 @@ private[telemetry] class StatsDStatsReceiver(
   private[this] val gauges = new ConcurrentHashMap[String, Metric.Gauge]
   private[this] val stats = new ConcurrentHashMap[String, Metric.Stat]
 
-  protected[this] def registerGauge(verbosity: Verbosity, name: Seq[String], f: => Float): Unit = {
-    deregisterGauge(name)
+  protected[this] def registerGauge(schema: GaugeSchema, f: => Float): Unit = {
+    deregisterGauge(schema.metricBuilder.name)
 
-    val statsDName = mkName(name)
+    val statsDName = mkName(schema.metricBuilder.name)
     val _ = gauges.put(statsDName, new Metric.Gauge(statsDClient, statsDName, f))
   }
 

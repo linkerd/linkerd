@@ -16,7 +16,7 @@ class ClassifiedRetriesTest extends FunSuite {
     val stats = new InMemoryStatsReceiver
     val timer = new MockTimer
     val tracer = new BufferingTracer
-    var backoffs = 1.second #:: 2.seconds #:: Stream.Empty
+    var backoffs = Backoff.const(1.second).take(1) ++ Backoff.const(2.seconds).take(1)
     var budget = RetryBudget()
     private val classifier = ResponseClassifier.named("test") {
       case ReqRep("retry", Throw(_: Badness)) => ResponseClass.RetryableFailure

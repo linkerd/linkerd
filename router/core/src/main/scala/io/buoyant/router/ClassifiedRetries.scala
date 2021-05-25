@@ -12,9 +12,9 @@ object ClassifiedRetries {
    * A backoff policy to be used when retrying application-level
    * failures.
    *
-   * @see com.twitter.finagle.service.Backoff
+   * @see com.twitter.finagle.Backoff
    */
-  case class Backoffs(backoff: Stream[Duration])
+  case class Backoffs(backoff: Backoff)
   implicit object Backoffs extends Stack.Param[Backoffs] {
     val default = Backoffs(Backoff.const(Duration.Zero))
   }
@@ -41,7 +41,7 @@ object ClassifiedRetries {
   /**
    * A RetryPolicy that uses a ResponseClassifier.
    */
-  private class ClassifiedPolicy[Req, Rsp](backoff: Stream[Duration], classifier: ResponseClassifier)
+  private class ClassifiedPolicy[Req, Rsp](backoff: Backoff, classifier: ResponseClassifier)
     extends RetryPolicy[(Req, Try[Rsp])] {
 
     def apply(in: (Req, Try[Rsp])): Option[(Duration, RetryPolicy[(Req, Try[Rsp])])] = {
@@ -51,9 +51,10 @@ object ClassifiedRetries {
         case _ =>
           classifier.applyOrElse(ReqRep(req, rsp), ClassifiedRetries.Default) match {
             case ResponseClass.RetryableFailure =>
-              backoff match {
-                case pause #:: rest => Some((pause, new ClassifiedPolicy(rest, classifier)))
-                case _ => None
+              if (backoff.isExhausted) {
+                None
+              } else {
+                Some((backoff.duration, new ClassifiedPolicy(backoff.next, classifier)))
               }
             case _ => None
           }

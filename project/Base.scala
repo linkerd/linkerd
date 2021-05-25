@@ -163,6 +163,7 @@ class Base extends Build {
       case "BUILD" => MergeStrategy.discard
       case "com/twitter/common/args/apt/cmdline.arg.info.txt.1" => MergeStrategy.discard
       case "META-INF/io.netty.versions.properties" => MergeStrategy.last
+      case "module-info.class" => MergeStrategy.discard
       case path => (assemblyMergeStrategy in assembly).value(path)
     }
   )

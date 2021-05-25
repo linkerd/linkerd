@@ -39,7 +39,7 @@ private[consul] object SvcAddr {
    */
   def apply(
     consulApi: v1.ConsulApi,
-    apiBackoffs: Stream[Duration],
+    apiBackoffs: Backoff,
     datacenter: String,
     key: SvcKey,
     domain: Option[String],
@@ -82,7 +82,7 @@ private[consul] object SvcAddr {
       stats.opens.incr()
 
       @volatile var stopped: Boolean = false
-      def loop(blockingIndex: Option[String], backoffs: Stream[Duration], failureLogLevel: Level, currentState: Addr): Future[Unit] = {
+      def loop(blockingIndex: Option[String], backoffs: Backoff, failureLogLevel: Level, currentState: Addr): Future[Unit] = {
 
         if (stopped) Future.Unit
         else getAddresses(blockingIndex).transform {
@@ -113,9 +113,8 @@ private[consul] object SvcAddr {
               "consul datacenter '%s' service '%s' observation error %s. Current state is %s",
               datacenter, key.name, e, effectiveState
             )
-            val backoff #:: nextBackoffs = backoffs
             // subsequent errors are logged as DEBUG
-            Future.sleep(backoff).before(loop(None, nextBackoffs, Level.DEBUG, effectiveState))
+            Future.sleep(backoffs.duration).before(loop(None, backoffs.next, Level.DEBUG, effectiveState))
           case Return(v1.Indexed(_, None)) =>
             // If consul doesn't return an index, we're in bad shape.
             // TODO: do we want to revert to the last good state here, as well?

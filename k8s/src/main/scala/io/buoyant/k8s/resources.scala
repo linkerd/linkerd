@@ -1,8 +1,7 @@
 package io.buoyant.k8s
 
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.twitter.finagle.http
-import com.twitter.finagle.service.Backoff
+import com.twitter.finagle.{Backoff, http}
 import com.twitter.finagle.stats.{DefaultStatsReceiver, StatsReceiver}
 import com.twitter.finagle.tracing.Trace
 import com.twitter.conversions.DurationOps._
@@ -48,7 +47,7 @@ private[k8s] trait Version[O <: KubeObject] extends Resource {
   def withNamespace(ns: String) = new NsVersion[O](client, group, version, ns)
 
   def listResource[T <: O: TypeReference, W <: Watch[T]: TypeReference: Ordering, L <: KubeList[T]: TypeReference](
-    backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+    backoffs: Backoff = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) = new ListResource[T, W, L](this, backoffs, stats)
 }
@@ -75,14 +74,14 @@ private[k8s] class NsVersion[O <: KubeObject](
   override val watchPath = s"/$group/$version/watch/namespaces/$ns"
 
   def listResource[T <: O: TypeReference, W <: Watch[T]: Ordering: TypeReference, L <: KubeList[T]: TypeReference](
-    backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+    backoffs: Backoff = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]) =
     new NsListResource[T, W, L](this, backoffs, stats)
 
   def objectResource[T <: O: TypeReference, W <: Watch[T]: Ordering: TypeReference](
     name: String,
-    backoffs: Stream[Duration] = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
+    backoffs: Backoff = Backoff.exponentialJittered(1.milliseconds, 5.seconds),
     stats: StatsReceiver = DefaultStatsReceiver
   )(implicit od: ObjectDescriptor[T, W]): NsObjectResource[T, W] = {
     val listName = implicitly[ObjectDescriptor[T, W]].listName
@@ -135,7 +134,7 @@ class NsCustomResourceVersion[O <: KubeObject](client: Client, owner: String, ow
  */
 private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: Ordering: TypeReference, L <: KubeList[O]: TypeReference](
   parent: Resource,
-  protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
+  protected val backoffs: Backoff = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W])
   extends Watchable[O, W, L]
@@ -170,7 +169,7 @@ private[k8s] class ListResource[O <: KubeObject: TypeReference, W <: Watch[O]: O
  */
 private[k8s] class NsListResource[O <: KubeObject: TypeReference, W <: Watch[O]: Ordering: TypeReference, L <: KubeList[O]: TypeReference](
   parent: NsVersion[_],
-  backoffs: Stream[Duration] = Watchable.DefaultBackoff,
+  backoffs: Backoff = Watchable.DefaultBackoff,
   stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W]) extends ListResource[O, W, L](parent, backoffs, stats) {
 
@@ -197,7 +196,7 @@ private[k8s] class NsObjectResource[O <: KubeObject: TypeReference, W <: Watch[O
   parent: Resource,
   objectName: String,
   listName: Option[String] = None,
-  protected val backoffs: Stream[Duration] = Watchable.DefaultBackoff,
+  protected val backoffs: Backoff = Watchable.DefaultBackoff,
   protected val stats: StatsReceiver = DefaultStatsReceiver
 )(implicit od: ObjectDescriptor[O, W])
   extends Watchable[O, W, O]

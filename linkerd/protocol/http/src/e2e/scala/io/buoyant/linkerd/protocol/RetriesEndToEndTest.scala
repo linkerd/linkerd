@@ -41,9 +41,10 @@ class RetriesEndToEndTest extends FunSuite {
     val downstream = Downstream("ds", Service.mk { req =>
       val rsp = i match {
         case 0 => Future.value(Response()) // first request
-        case 1 => Future.exception(writeException)  // second request
-        case 2 => Future.value(Response()) // second request (requeue)
-        case 3 => Future.exception(writeException) // third request (budget exceeded)
+        case 1 => Future.value(Response()) // second request
+        case 2 => Future.exception(writeException)  // third request
+        case 3 => Future.value(Response()) // third request (requeue)
+        case 4 => Future.exception(writeException) // fourth request (budget exceeded)
       }
       i += 1
       rsp
@@ -99,12 +100,17 @@ class RetriesEndToEndTest extends FunSuite {
         assert(requeues == 0)
         assert(requestLimit == 0)
 
-        assert(await(client(req)).statusCode == 200) // second request (success after a requeue)
+        assert(await(client(req)).statusCode == 200) // second request (success, now there is budget for one requeue)
+        assert(budget() == 1) // (0.5).toInt
+        assert(requeues == 0)
+        assert(requestLimit == 0)
+
+        assert(await(client(req)).statusCode == 200) // third request (success after a requeue)
         assert(budget() == 0)
         assert(requeues == 1)
         assert(requestLimit == 0)
 
-        assert(await(client(req)).statusCode == 502) // third request (failed, no budget available for requeue)
+        assert(await(client(req)).statusCode == 502) // fourth request (failed, no budget available for requeue)
         assert(budget() == 0) // (0.5).toInt
         assert(requeues == 1)
         assert(requestLimit == 1)
@@ -124,14 +130,14 @@ class RetriesEndToEndTest extends FunSuite {
 
   test("per-client requeue policy") {
 
+    // Allow N-1 successful requests and fail Nth request
     class FailEveryN(n: Int) extends Service[Request, Response] {
       private[this] var i = 0
       def apply(req: Request): Future[Response] = {
+        i += 1
         if (i%n == 0) {
-          i += 1
           Future.exception(writeException)
         } else {
-          i += 1
           Future.value(Response())
         }
       }
@@ -193,16 +199,29 @@ class RetriesEndToEndTest extends FunSuite {
         val req = Request()
         req.host = "a"
 
+        // first request succeeds and increases requeue budget
+        assert(await(client(req)).statusCode == 200)
+        assert(budget(downstreamA)() == 1)
+        assert(requeues(downstreamA) == 0)
+        assert(requestLimit(downstreamA) == 0)
+
         for (i <- 1 to 10) {
           // each request initially fails and then succeeds after 1 requeue
+          // requeued request increases the budget back to 1
           assert(await(client(req)).statusCode == 200)
-          assert(budget(downstreamA)() == 0)
+          assert(budget(downstreamA)() == 1)
           assert(requeues(downstreamA) == i)
           assert(requestLimit(downstreamA) == 0)
         }
 
         req.host = "b"
         // budget == 0
+        assert(await(client(req)).statusCode == 200) // success on first try
+        assert(budget(downstreamB)() == 0)
+        assert(requeues(downstreamB) == 0)
+        assert(requestLimit(downstreamB) == 0)
+
+        // budget == 0.5
         assert(await(client(req)).statusCode == 502) // failure, no budget to requeue
         assert(budget(downstreamB)() == 0)
         assert(requeues(downstreamB) == 0)
@@ -214,20 +233,26 @@ class RetriesEndToEndTest extends FunSuite {
         assert(requeues(downstreamB) == 0)
         assert(requestLimit(downstreamB) == 1)
 
-        // budget == 1
+        // budget == 1.0
         assert(await(client(req)).statusCode == 200) // success after a requeue
         assert(budget(downstreamB)() == 0)
         assert(requeues(downstreamB) == 1)
         assert(requestLimit(downstreamB) == 1)
 
         // budget == 0.5
-        assert(await(client(req)).statusCode == 200) // success after a requeue
-        assert(budget(downstreamB)() == 0)
-        assert(requeues(downstreamB) == 2)
-        assert(requestLimit(downstreamB) == 1)
-
-        // budget == 0
         assert(await(client(req)).statusCode == 502) // failure, no budget to requeue
+        assert(budget(downstreamB)() == 0)
+        assert(requeues(downstreamB) == 1)
+        assert(requestLimit(downstreamB) == 2)
+
+        // budget == 0.5
+        assert(await(client(req)).statusCode == 200) // success on first try
+        assert(budget(downstreamB)() == 1)
+        assert(requeues(downstreamB) == 1)
+        assert(requestLimit(downstreamB) == 2)
+
+        // budget == 1.0
+        assert(await(client(req)).statusCode == 200) // success after a requeue
         assert(budget(downstreamB)() == 0)
         assert(requeues(downstreamB) == 2)
         assert(requestLimit(downstreamB) == 2)
