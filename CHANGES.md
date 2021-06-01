@@ -1,3 +1,14 @@
+## 1.7.5-rc1 2021-05-28
+Linkerd 1.7.5-rc1 is a release candidate for Linkerd 1.7.5
+
+This is a release candidate that updates the following dependencies:
+
+lodash: 4.17.15 -> 4.17.21
+Finagle: 20.4.1 -> 21.4.0
+handlebars: 4.7.6 -> 4.7.7
+y18n: 4.0.0 -> 4.0.1
+http-proxy: 1.18.0 -> 1.18.1
+
 ## 1.7.4 2020-05-28
 Linkerd 1.7.4 includes two fixes contributed by the open source community,
 which is so greatly appreciated. The first fix enables Linkerd to properly
