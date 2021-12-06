@@ -10,6 +10,7 @@ These organizations are publicly using Linkerd in production:
 - [ForeSee](https://www.foresee.com/)
 - [FOX](https://www.fox.com/)
 - [Houghton Mifflin Harcourt](https://www.hmhco.com)
+- [IHS Markit](https://ihsmarkit.com/)
 - [Medallia](https://www.medallia.com)
 - [Monzo](https://monzo.com)
 - [NCBI](https://www.ncbi.nlm.nih.gov)
