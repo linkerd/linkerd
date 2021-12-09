@@ -26,6 +26,7 @@ These organizations are publicly using Linkerd in production:
 - [WePay](https://www.wepay.com/)
 - [Yotpo](https://www.yotpo.com/)
 - [Zooz](https://www.zooz.com/)
+- [Samsung Research](https://www.sra.samsung.com/artificial-intelligence/)
 
 If you're using Linkerd and aren't on this list, feel free to
 [submit a pull request](https://github.com/linkerd/linkerd/pulls)!
