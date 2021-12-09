@@ -42,7 +42,7 @@ get_h2spec() {
         # if which found an h2spec executable, just return that path.
         H2SPEC_PATH="${which_h2spec}"
     else
-        local home_bin 
+        local home_bin
         home_bin="${HOME}/bin"
         # which didn't find a h2spec on the path. check if it exists in
         # ~/bin (which_h2spec may not be on the path) and if not, download it.
@@ -60,7 +60,7 @@ get_h2spec() {
                     echo "${PHASE} ${SEP} detected OS as linux"
                     h2spec_tar="h2spec_linux_amd64.tar.ghz"
                     ;;
-                *)  
+                *)
                     echo "${PHASE} ${ERR} unsupported OS detected!"
                     exit 1
                     ;;
@@ -113,11 +113,11 @@ get_l5d() {
     # esac
     # find the most recent linkerd executable.
     L5D_PATH=$(
-        # find all files matching the pattern `linkerd-*-exec` in the 
+        # find all files matching the pattern `linkerd-*-exec` in the
         # target directory.
         find linkerd/target/scala-2.12 -name 'linkerd-*-exec' -type f -print0 |
         # use ls -tr to order the files by oldest to newest
-        xargs -0 ls -tr | 
+        xargs -0 ls -tr |
         # take the last item --- the latest linkerd executable.
         tail -n 1
     )
@@ -125,7 +125,7 @@ get_l5d() {
     if ! [ -e "${L5D_PATH}" ]; then
         # if we couldn't find a linkerd-exec, build it.
         echo "${PHASE} ${SEP} linkerd executable not found!"
-        printf "%s %s building linkerd..." "${PHASE}" "${SEP}" 
+        printf "%s %s building linkerd..." "${PHASE}" "${SEP}"
         ./sbt linkerd/assembly > /dev/null 2>&1 &
         spin
         L5D_PATH=$(find linkerd/target/scala-2.12 -name 'linkerd-*-exec')
@@ -136,7 +136,7 @@ get_l5d() {
 }
 
 # start nghttpd + linkerd.
-# 
+#
 # sets trap to kill l5d/nghttpd on exit.
 setup() {
     PHASE="${BOLD}setup${UNBOLD}"
@@ -154,7 +154,7 @@ setup() {
     nghttpd_status=$?
     nghttpd_pid=$!
     set -e
-    if [ "${nghttpd_status}" != "0" ]; then 
+    if [ "${nghttpd_status}" != "0" ]; then
         echo "${PHASE} ${ERR} couldn't start nghttpd!"
         exit ${nghttpd_status}
     fi
@@ -214,11 +214,11 @@ while [ "$1" != "" ]; do
             fi
             ;;
         load)
-            PHASE="${BOLD}h2load${UNBOLD}"    
+            PHASE="${BOLD}h2load${UNBOLD}"
             printf "%s %s running h2load against linkerd..." "${PHASE}" "${SEP}"
             i=0
             while read -r line; do
-                case $line in 
+                case $line in
                     starting*)
                         printf "\r%s %s running h2load against linkerd %s" "${PHASE}" "${SEP}" "${LOAD:1:$i}" "${LOAD_REST}"
                         ;;
