@@ -15,7 +15,7 @@ These parameters are available to the namer regardless of kind. Namers may also 
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery), [`io.l5d.zkLeader`](#zookeeper-leader), [`io.l5d.curator`](#curator), [`io.l5d.rancher`](#rancher), or [`io.l5d.rewrite`](#rewrite).
+kind | _required_ | Either [`io.l5d.fs`](#file-based-service-discovery), [`io.l5d.serversets`](#zookeeper-serversets-service-discovery), [`io.l5d.consul`](#consul-service-discovery), [`io.l5d.k8s`](#kubernetes-service-discovery), [`io.l5d.marathon`](#marathon-service-discovery), [`io.l5d.curator`](#curator), [`io.l5d.rancher`](#rancher), or [`io.l5d.rewrite`](#rewrite).
 prefix | namer dependent | Resolves names with `/#/<prefix>`.
 experimental | `false` | Set this to `true` to enable the namer if it is experimental.
 transformers | No transformers | A list of [transformers](#transformer) to apply to the resolved addresses.
@@ -628,8 +628,6 @@ Further reading:
 * [Marathon basic HTTP Authentication Docs](https://mesosphere.github.io/marathon/docs/ssl-basic-access-authentication.html#enabling-basic-access-authentication)
 * [Mesosphere Universe Repo](https://github.com/mesosphere/universe/search?utf8=%E2%9C%93&q=DCOS_SERVICE_ACCOUNT_CREDENTIAL)
 
-<a name="zkLeader"></a>
-
 ## DNS SRV Records
 
 kind: `io.l5d.dnssrv`
@@ -680,32 +678,6 @@ Key | Required | Description
 --- | -------- | -----------
 prefix | yes | Tells Linkerd to resolve the request path using the marathon namer.
 address | yes | The DNS address of a SRV record. Linkerd resolves the record to one or more `address:port` tuples using a SRV lookup.
-
-## ZooKeeper Leader
-
-kind: `io.l5d.zkLeader`
-
-### ZK Leader Configuration
-
-A namer backed by ZooKeeper leader election.
-
-Key | Default Value | Description
---- | ------------- | -----------
-prefix | `io.l5d.zkLeader` | Resolves names with `/#/<prefix>`.
-zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
-
-### ZK Leader Path Parameters
-
-> Dtab Path Format
-
-```yaml
-/#/<prefix>/<zkPath>
-```
-
-Key | Required | Description
---- | -------- | -----------
-prefix | yes | Tells Linkerd to resolve the request path using the marathon namer.
-zkPath | yes | The ZooKeeper path of a leader group. This path can be multiple path segments long. The namer resolves to the address stored in the data of the leader.
 
 <a name="curator"></a>
 ## Curator

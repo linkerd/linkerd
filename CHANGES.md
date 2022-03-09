@@ -1,3 +1,10 @@
+## 1.7.6
+
+Linkerd 1.7.6 removes dependencies on Zookeeper and updates the netty version
+in order to address [CVE-2021-44228](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228)
+exposed by log4j.ll
+
+This removes support for Zookeeper namers going forward.
 ## 1.7.5-rc1 2021-05-28
 Linkerd 1.7.5-rc1 is a release candidate for Linkerd 1.7.5
 

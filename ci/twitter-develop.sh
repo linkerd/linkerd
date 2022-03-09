@@ -91,7 +91,6 @@ build finagle \
       finagle-http2/publishLocal \
       finagle-mux/publishLocal \
       finagle-stats/publishLocal \
-      finagle-serversets/publishLocal \
       finagle-thrift/publishLocal \
       finagle-thriftmux/publishLocal \
       finagle-zipkin-core/publishLocal \

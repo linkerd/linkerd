@@ -9,7 +9,7 @@ These parameters are available to the storage regardless of kind. Storage may al
 
 Key | Default Value | Description
 --- | ------------- | -----------
-kind | _required_ | Either [`io.l5d.inMemory`](#in-memory), [`io.l5d.k8s`](#kubernetes), [`io.l5d.zk`](#zookeeper), [`io.l5d.etcd`](#etcd) or [`io.l5d.consul`](#consul).
+kind | _required_ | Either [`io.l5d.inMemory`](#in-memory), [`io.l5d.k8s`](#kubernetes), [`io.l5d.etcd`](#etcd) or [`io.l5d.consul`](#consul).
 experimental | `false` | Set this to `true` to enable the storage if it is experimental.
 
 ## In Memory
@@ -124,35 +124,6 @@ spec:
 
 For a complete example configuration for `Namerd` configured with `k8s` storage,
 see the [linkerd-examples](https://github.com/linkerd/linkerd-examples/blob/master/k8s-daemonset/k8s/namerd.yml) repo.
-
-## ZooKeeper
-
-kind: `io.l5d.zk`
-
-Stores the dtab in ZooKeeper.
-
-Key | Default Value | Description
---- | ------------- | -----------
-zkAddrs | _required_ | A list of ZooKeeper addresses, each of which have `host` and `port` parameters.
-pathPrefix | `/dtabs` | The ZooKeeper path under which dtabs should be stored.
-sessionTimeoutMs | `10000` | ZooKeeper session timeout in milliseconds.
-authInfo | no auth when logging | Configures the authentication information to use when logging. See [authInfo](#authInfo).
-acls | an empty list | A list of ACLs to set on each dtab znode created. See [acls](#acls).
-
-### authInfo
-
-Key | Default Value | Description
---- | ------------- | -----------
-scheme | _required_ | The ZooKeeper auth scheme to use.
-auth | _required_ | The ZooKeeper auth value to use.
-
-### acls
-
-Key | Default Value | Description
---- | ------------- | -----------
-scheme | _required_ | The ACL auth scheme to use.
-id | _required_ | The ACL id to use.
-perms | _required_ | A subset of the string "crwda" representing the permissions of this ACL. The characters represent create, read, write, delete, and admin, respectively.
 
 ## Etcd
 

@@ -109,22 +109,12 @@ object LinkerdBuild extends Base {
       .withLib(Deps.jwt)
       .withTests()
 
-    val serversets = projectDir("namer/serversets")
-      .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
-      .withTests()
-      .dependsOn(core % "compile->compile;test->test")
-
-    val zkLeader = projectDir("namer/zk-leader")
-      .dependsOn(core)
-      .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
-      .withTests()
-
     val rancher = projectDir("namer/rancher")
       .dependsOn(core)
       .withTwitterLib(Deps.finagle("http"))
       .withTests()
 
-    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader, rancher)
+    val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, rancher)
 
   }
 
@@ -370,12 +360,7 @@ object LinkerdBuild extends Base {
         .dependsOn(LinkerdBuild.k8s)
         .withTests()
 
-      val zk = projectDir("namerd/storage/zk")
-        .dependsOn(core)
-        .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
-        .withTests()
-
-      val all = aggregateDir("namerd/storage", consul, etcd, inMemory, k8s, zk)
+      val all = aggregateDir("namerd/storage", consul, etcd, inMemory, k8s)
     }
 
     object Iface {
@@ -446,10 +431,10 @@ object LinkerdBuild extends Base {
     val BundleProjects = Seq[ProjectReference](
       core, main, Namer.fs, Storage.inMemory, Router.http,
       Iface.controlHttp, Iface.interpreterThrift, Iface.mesh, Iface.destination,
-      Namer.consul, Namer.k8s, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.dnssrv, Namer.rancher,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.dnssrv, Namer.rancher,
       Iface.mesh,
       Interpreter.perHost, Interpreter.k8s,
-      Storage.etcd, Storage.inMemory, Storage.k8s, Storage.zk, Storage.consul,
+      Storage.etcd, Storage.inMemory, Storage.k8s, Storage.consul,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
     )
 
@@ -500,7 +485,7 @@ object LinkerdBuild extends Base {
       ).stripMargin
 
     val dcosBootstrap = projectDir("namerd/dcos-bootstrap")
-      .dependsOn(core, admin, configCore, Storage.zk)
+      .dependsOn(core, admin, configCore)
 
     val DcosSettings = BundleSettings ++ Seq(
       assemblyExecScript := dcosExecScript.split("\n").toSeq,
@@ -646,14 +631,6 @@ object LinkerdBuild extends Base {
       val all = aggregateDir("linkerd/protocol", benchmark, h2, http, mux, thrift, thriftMux)
     }
 
-    object Announcer {
-      val serversets = projectDir("linkerd/announcer/serversets")
-        .withTwitterLib(Deps.finagle("serversets").exclude("org.slf4j", "slf4j-jdk14"))
-        .dependsOn(core)
-
-      val all = aggregateDir("linkerd/announcer", serversets)
-    }
-
     val admin = projectDir("linkerd/admin")
       .withTwitterLib(Deps.twitterServer)
       .withTests()
@@ -701,10 +678,9 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
-      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.curator, Namer.dnssrv, Namer.rancher,
       Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet, Interpreter.consul,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
-      Announcer.serversets,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
       tls,
       failureAccrual
@@ -730,7 +706,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls,
-        Announcer.all, Namer.all, Protocol.all)
+        Namer.all, Protocol.all)
       .configs(Bundle, Jdk, LowMem, OpenJ9)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
@@ -814,8 +790,6 @@ object LinkerdBuild extends Base {
   val namerK8s = Namer.k8s
   val namerIstio = Namer.istio
   val namerMarathon = Namer.marathon
-  val namerServersets = Namer.serversets
-  val namerZkLeader = Namer.zkLeader
   val namerRancher = Namer.rancher
 
   val namerd = Namerd.all
@@ -831,7 +805,6 @@ object LinkerdBuild extends Base {
   val namerdStorageEtcd = Namerd.Storage.etcd
   val namerdStorageInMemory = Namerd.Storage.inMemory
   val namerdStorageK8s = Namerd.Storage.k8s
-  val namerdStorageZk = Namerd.Storage.zk
   val namerdStorageConsul = Namerd.Storage.consul
   val namerdStorage = Namerd.Storage.all
   val namerdMain = Namerd.main
@@ -859,8 +832,8 @@ object LinkerdBuild extends Base {
   val linkerdProtocolMux = Linkerd.Protocol.mux
   val linkerdProtocolThrift = Linkerd.Protocol.thrift
   val linkerdProtocolThriftMux = Linkerd.Protocol.thriftMux
-  val linkerdAnnouncer = Linkerd.Announcer.all
-  val linkerdAnnouncerServersets = Linkerd.Announcer.serversets
+
+
   val linkerdTls = Linkerd.tls
   val linkerdFailureAccrual = Linkerd.failureAccrual
 
