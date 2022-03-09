@@ -1,4 +1,4 @@
-## 1.7.6
+## 1.7.6 2022-03-09
 
 Linkerd 1.7.6 removes dependencies on Zookeeper and updates the netty version
 in order to address [CVE-2021-44228](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228)
