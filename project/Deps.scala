@@ -2,9 +2,9 @@ import sbt._
 
 object Deps {
 
-  val curatorFramework = "org.apache.curator" % "curator-framework" % "4.1.0"
-  val curatorClient = "org.apache.curator" % "curator-client" % "4.1.0"
-  val curatorDiscovery = "org.apache.curator" % "curator-x-discovery" % "4.1.0"
+  val curatorFramework = "org.apache.curator" % "curator-framework" % "5.2.0"
+  val curatorClient = "org.apache.curator" % "curator-client" % "5.2.0"
+  val curatorDiscovery = "org.apache.curator" % "curator-x-discovery" % "5.2.0"
 
   // process lifecycle
   val twitterServer =

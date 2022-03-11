@@ -551,26 +551,26 @@ object LinkerdBuild extends Base {
         dockerPush := (dockerPush in Bundle).value
       )
 
-    // val noZk = aggregateDir("namerd",
-    //     core, dcosBootstrap, main, Storage.noZk, Interpreter.all, Iface.all)
-    //   .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9)
-    //   // Bundle includes all of the supported features:
-    //   .configDependsOn(Bundle)(BundleProjectsNoZk: _*)
-    //   .settings(inConfig(Bundle)(BundleSettings))
-    //   .configDependsOn(Jdk)(BundleProjectsNoZk: _*)
-    //   .settings(inConfig(Jdk)(JdkSettings))
-    //   .configDependsOn(LowMem)(BundleProjectsNoZk: _*)
-    //   .settings(inConfig(LowMem)(LowMemSettings))
-    //   .configDependsOn(OpenJ9)(BundleProjectsNoZk: _*)
-    //   .settings(inConfig(OpenJ9)(OpenJ9Settings))
-    //   .configDependsOn(Dcos)(dcosBootstrap)
-    //   .settings(inConfig(Dcos)(DcosSettings))
-    //   .settings(
-    //     assembly := (assembly in Bundle).value,
-    //     docker := (docker in Bundle).value,
-    //     dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
-    //     dockerPush := (dockerPush in Bundle).value
-    //   )
+    val noZk = aggregateDir("namerd",
+        core, dcosBootstrap, main, Storage.noZk, Interpreter.all, Iface.all)
+      .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9)
+      // Bundle includes all of the supported features:
+      .configDependsOn(Bundle)(BundleProjectsNoZk: _*)
+      .settings(inConfig(Bundle)(NoZkSettings))
+      .configDependsOn(Jdk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(Jdk)(JdkSettings))
+      .configDependsOn(LowMem)(BundleProjectsNoZk: _*)
+      .settings(inConfig(LowMem)(LowMemSettings))
+      .configDependsOn(OpenJ9)(BundleProjectsNoZk: _*)
+      .settings(inConfig(OpenJ9)(OpenJ9Settings))
+      .configDependsOn(Dcos)(dcosBootstrap)
+      .settings(inConfig(Dcos)(DcosSettings))
+      .settings(
+        assembly := (assembly in Bundle).value,
+        docker := (docker in Bundle).value,
+        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
+        dockerPush := (dockerPush in Bundle).value
+      )
 
     // Find example configurations by searching the examples directory for config files.
     val exampleConfigs = file("namerd/examples").list().toSeq.collect {
