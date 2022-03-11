@@ -29,4 +29,5 @@ addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
 // our grpc building extends the wrapped sbt-protobuf
 addSbtPlugin("com.github.gseitz" % "sbt-protobuf" % "0.5.3")
 
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
+// generate dependency graphs
+// addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
