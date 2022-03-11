@@ -15,6 +15,7 @@ object LinkerdBuild extends Base {
   val Jdk = config("jdk") extend Bundle
   val LowMem = config("lowmem") extend Bundle
   val OpenJ9 = config("openj9") extend Bundle
+  val NoZk = config("nozk") extend Bundle
 
   val configCore = projectDir("config")
     .dependsOn(Finagle.buoyantCore)
@@ -125,6 +126,8 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader, rancher)
+
+    val noZk = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, rancher)
 
   }
 
@@ -376,6 +379,8 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = aggregateDir("namerd/storage", consul, etcd, inMemory, k8s, zk)
+
+      val noZk = aggregateDir("namerd/storage", consul, etcd, inMemory, k8s)
     }
 
     object Iface {
@@ -453,6 +458,16 @@ object LinkerdBuild extends Base {
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
     )
 
+    val BundleProjectsNoZk = Seq[ProjectReference](
+      core, main, Namer.fs, Storage.inMemory, Router.http,
+      Iface.controlHttp, Iface.interpreterThrift, Iface.mesh, Iface.destination,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.dnssrv, Namer.rancher,
+      Iface.mesh,
+      Interpreter.perHost, Interpreter.k8s,
+      Storage.consul, Storage.inMemory, Storage.etcd, Storage.k8s,
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
+    )
+
     val JdkSettings = BundleSettings ++ Seq(
       dockerJavaImage := s"openjdk:${openJdkVersion}-jdk",
       dockerTag := s"${version.value}-jdk",
@@ -469,6 +484,11 @@ object LinkerdBuild extends Base {
       dockerJavaImage := s"adoptopenjdk/openjdk8-openj9:${openJ9Version}",
       dockerTag := s"${version.value}-openj9-experimental",
       assemblyJarName in assembly := s"${name.value}-${version.value}-openj9-experimental"
+    )
+
+    val NoZkSettings = BundleSettings ++ Seq(
+      dockerTag := s"${version.value}-no-zk",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-no-zk"
     )
 
     /**
@@ -510,7 +530,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("namerd",
         core, dcosBootstrap, main, Storage.all, Interpreter.all, Iface.all)
-      .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9)
+      .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9, NoZk)
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -522,12 +542,35 @@ object LinkerdBuild extends Base {
       .settings(inConfig(OpenJ9)(OpenJ9Settings))
       .configDependsOn(Dcos)(dcosBootstrap)
       .settings(inConfig(Dcos)(DcosSettings))
+      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(NoZk)(NoZkSettings))
       .settings(
         assembly := (assembly in Bundle).value,
         docker := (docker in Bundle).value,
         dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
         dockerPush := (dockerPush in Bundle).value
       )
+
+    // val noZk = aggregateDir("namerd",
+    //     core, dcosBootstrap, main, Storage.noZk, Interpreter.all, Iface.all)
+    //   .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9)
+    //   // Bundle includes all of the supported features:
+    //   .configDependsOn(Bundle)(BundleProjectsNoZk: _*)
+    //   .settings(inConfig(Bundle)(BundleSettings))
+    //   .configDependsOn(Jdk)(BundleProjectsNoZk: _*)
+    //   .settings(inConfig(Jdk)(JdkSettings))
+    //   .configDependsOn(LowMem)(BundleProjectsNoZk: _*)
+    //   .settings(inConfig(LowMem)(LowMemSettings))
+    //   .configDependsOn(OpenJ9)(BundleProjectsNoZk: _*)
+    //   .settings(inConfig(OpenJ9)(OpenJ9Settings))
+    //   .configDependsOn(Dcos)(dcosBootstrap)
+    //   .settings(inConfig(Dcos)(DcosSettings))
+    //   .settings(
+    //     assembly := (assembly in Bundle).value,
+    //     docker := (docker in Bundle).value,
+    //     dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
+    //     dockerPush := (dockerPush in Bundle).value
+    //   )
 
     // Find example configurations by searching the examples directory for config files.
     val exampleConfigs = file("namerd/examples").list().toSeq.collect {
@@ -540,6 +583,12 @@ object LinkerdBuild extends Base {
       .configDependsOn(Test)(BundleProjects: _*)
       .settings(publishArtifact := false)
       .withTests()
+
+    // val examplesNoZk = projectDir("namerd/examples")
+    //   .withExamples(Namerd.noZk, exampleConfigs)
+    //   .configDependsOn(Test)(BundleProjectsNoZk: _*)
+    //   .settings(publishArtifact := false)
+    //   .withTests()
   }
 
   object Interpreter {
@@ -701,10 +750,20 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
-      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
+      Namer.all, Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
       Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet, Interpreter.consul,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
-      Announcer.serversets,
+      Announcer.all, Announcer.serversets,
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
+      tls,
+      failureAccrual
+    )
+
+    val BundleProjectsNoZk = Seq[ProjectReference](
+      admin, core, main, configCore,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.curator, Namer.dnssrv, Namer.rancher,
+      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet, Interpreter.consul,
+      Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
       tls,
       failureAccrual
@@ -728,13 +787,39 @@ object LinkerdBuild extends Base {
       assemblyJarName in assembly := s"${name.value}-${version.value}-openj9-experimental"
     )
 
+    val NoZkSettings = BundleSettings ++ Seq(
+      dockerTag := s"${version.value}-no-zk",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-no-zk-exec"
+    )
+
     val all = aggregateDir("linkerd",
-        admin, configCore, core, failureAccrual, main, tls,
-        Announcer.all, Namer.all, Protocol.all)
-      .configs(Bundle, Jdk, LowMem, OpenJ9)
+        admin, configCore, core, failureAccrual, main, tls, Protocol.all)
+      .configs(Bundle, Jdk, LowMem, OpenJ9,NoZk)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
+      .configDependsOn(Jdk)(BundleProjects: _*)
+      .settings(inConfig(Jdk)(JdkSettings))
+      .configDependsOn(LowMem)(BundleProjects: _*)
+      .settings(inConfig(LowMem)(LowMemSettings))
+      .configDependsOn(OpenJ9)(BundleProjects: _*)
+      .settings(inConfig(OpenJ9)(OpenJ9Settings))
+      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(NoZk)(NoZkSettings))
+      .settings(
+        assembly := (assembly in Bundle).value,
+        docker := (docker in Bundle).value,
+        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
+        dockerPush := (dockerPush in Bundle).value
+      )
+
+    val noZk = aggregateDir("linkerd",
+        admin, configCore, core, failureAccrual, main, tls,
+        Namer.noZk, Protocol.all)
+      .configs(Bundle, Jdk, LowMem, OpenJ9,NoZk)
+      // Bundle is includes all of the supported features:
+      .configDependsOn(Bundle)(BundleProjectsNoZk: _*)
+      .settings(inConfig(Bundle)(NoZkSettings))
       .configDependsOn(Jdk)(BundleProjects: _*)
       .settings(inConfig(Jdk)(JdkSettings))
       .configDependsOn(LowMem)(BundleProjects: _*)
@@ -806,6 +891,7 @@ object LinkerdBuild extends Base {
   val telemetryZipkin = Telemetry.zipkin
 
   val namer = Namer.all
+  val namerNoZk = Namer.noZk
   val namerCore = Namer.core
   val namerConsul = Namer.consul
   val namerCurator = Namer.curator
@@ -817,6 +903,7 @@ object LinkerdBuild extends Base {
   val namerServersets = Namer.serversets
   val namerZkLeader = Namer.zkLeader
   val namerRancher = Namer.rancher
+
 
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples
@@ -847,6 +934,7 @@ object LinkerdBuild extends Base {
   val interpreterSubnet = Interpreter.subnet
 
   val linkerd = Linkerd.all
+  val linkerdNoZk = Linkerd.noZk
   val linkerdBenchmark = Linkerd.Protocol.benchmark
   val linkerdExamples = Linkerd.examples
   val linkerdAdmin = Linkerd.admin
@@ -885,6 +973,32 @@ object LinkerdBuild extends Base {
       Linkerd.examples,
       Namer.all,
       Namerd.all,
+      Namerd.examples,
+      Router.all,
+      Telemetry.all,
+      Mesh.all
+    )
+
+  val noZk = project("linkerd-no-zk", file("no-zk"))
+    .settings(aggregateSettings ++ unidocSettings)
+    .aggregate(
+      admin,
+      adminNames,
+      configCore,
+      consul,
+      etcd,
+      k8s,
+      istio,
+      istioProto,
+      marathon,
+      testUtil,
+      Finagle.all,
+      Grpc.all,
+      Interpreter.all,
+      Linkerd.noZk,
+      Linkerd.examples,
+      Namer.noZk,
+      Namerd.Storage.noZk,
       Namerd.examples,
       Router.all,
       Telemetry.all,
