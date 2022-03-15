@@ -15,7 +15,7 @@ object LinkerdBuild extends Base {
   val Jdk = config("jdk") extend Bundle
   val LowMem = config("lowmem") extend Bundle
   val OpenJ9 = config("openj9") extend Bundle
-  val NoZk = config("nozk") extend Bundle
+  val NoZk = config("nozk") 
 
   val configCore = projectDir("config")
     .dependsOn(Finagle.buoyantCore)
@@ -530,7 +530,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("namerd",
         core, dcosBootstrap, main, Storage.all, Interpreter.all, Iface.all)
-      .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9, NoZk)
+      .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9)
       // Bundle includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -542,8 +542,6 @@ object LinkerdBuild extends Base {
       .settings(inConfig(OpenJ9)(OpenJ9Settings))
       .configDependsOn(Dcos)(dcosBootstrap)
       .settings(inConfig(Dcos)(DcosSettings))
-      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
-      .settings(inConfig(NoZk)(NoZkSettings))
       .settings(
         assembly := (assembly in Bundle).value,
         docker := (docker in Bundle).value,
@@ -551,25 +549,23 @@ object LinkerdBuild extends Base {
         dockerPush := (dockerPush in Bundle).value
       )
 
-    val noZk = aggregateDir("namerd",
-        core, dcosBootstrap, main, Storage.noZk, Interpreter.all, Iface.all)
-      .configs(Bundle, Dcos, Jdk, LowMem, OpenJ9)
+    val noZk = aggregateDir("namerd-no-zk",
+      core, dcosBootstrap, main, Storage.noZk, Interpreter.all, Iface.all)
+      .configs(Bundle, NoZk, Dcos, Jdk, LowMem, OpenJ9)
       // Bundle includes all of the supported features:
-      .configDependsOn(Bundle)(BundleProjectsNoZk: _*)
-      .settings(inConfig(Bundle)(NoZkSettings))
+      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(NoZk)(NoZkSettings))
       .configDependsOn(Jdk)(BundleProjectsNoZk: _*)
       .settings(inConfig(Jdk)(JdkSettings))
       .configDependsOn(LowMem)(BundleProjectsNoZk: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
       .configDependsOn(OpenJ9)(BundleProjectsNoZk: _*)
       .settings(inConfig(OpenJ9)(OpenJ9Settings))
-      .configDependsOn(Dcos)(dcosBootstrap)
-      .settings(inConfig(Dcos)(DcosSettings))
       .settings(
-        assembly := (assembly in Bundle).value,
-        docker := (docker in Bundle).value,
-        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
-        dockerPush := (dockerPush in Bundle).value
+        assembly := (assembly in NoZk).value,
+        docker := (docker in NoZk).value,
+        dockerBuildAndPush := (dockerBuildAndPush in NoZk).value,
+        dockerPush := (dockerPush in NoZk).value
       )
 
     // Find example configurations by searching the examples directory for config files.
@@ -794,7 +790,7 @@ object LinkerdBuild extends Base {
 
     val all = aggregateDir("linkerd",
         admin, configCore, core, failureAccrual, main, tls, Protocol.all)
-      .configs(Bundle, Jdk, LowMem, OpenJ9,NoZk)
+      .configs(Bundle, Jdk, LowMem, OpenJ9)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
       .settings(inConfig(Bundle)(BundleSettings))
@@ -804,8 +800,6 @@ object LinkerdBuild extends Base {
       .settings(inConfig(LowMem)(LowMemSettings))
       .configDependsOn(OpenJ9)(BundleProjects: _*)
       .settings(inConfig(OpenJ9)(OpenJ9Settings))
-      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
-      .settings(inConfig(NoZk)(NoZkSettings))
       .settings(
         assembly := (assembly in Bundle).value,
         docker := (docker in Bundle).value,
@@ -813,24 +807,23 @@ object LinkerdBuild extends Base {
         dockerPush := (dockerPush in Bundle).value
       )
 
-    val noZk = aggregateDir("linkerd",
-        admin, configCore, core, failureAccrual, main, tls,
-        Namer.noZk, Protocol.all)
-      .configs(Bundle, Jdk, LowMem, OpenJ9,NoZk)
+    val noZk = aggregateDir("linkerd-no-zk",
+        admin, configCore, core, failureAccrual, main, tls, Protocol.all)
+      .configs(Bundle, Jdk, LowMem, OpenJ9, NoZk)
       // Bundle is includes all of the supported features:
-      .configDependsOn(Bundle)(BundleProjectsNoZk: _*)
-      .settings(inConfig(Bundle)(NoZkSettings))
-      .configDependsOn(Jdk)(BundleProjects: _*)
+      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(NoZk)(NoZkSettings))
+      .configDependsOn(Jdk)(BundleProjectsNoZk: _*)
       .settings(inConfig(Jdk)(JdkSettings))
-      .configDependsOn(LowMem)(BundleProjects: _*)
+      .configDependsOn(LowMem)(BundleProjectsNoZk: _*)
       .settings(inConfig(LowMem)(LowMemSettings))
-      .configDependsOn(OpenJ9)(BundleProjects: _*)
+      .configDependsOn(OpenJ9)(BundleProjectsNoZk: _*)
       .settings(inConfig(OpenJ9)(OpenJ9Settings))
       .settings(
-        assembly := (assembly in Bundle).value,
-        docker := (docker in Bundle).value,
-        dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
-        dockerPush := (dockerPush in Bundle).value
+        assembly := (assembly in NoZk).value,
+        docker := (docker in NoZk).value,
+        dockerBuildAndPush := (dockerBuildAndPush in NoZk).value,
+        dockerPush := (dockerPush in NoZk).value
       )
 
     // Find example configurations by searching the examples directory for config files.
@@ -904,7 +897,7 @@ object LinkerdBuild extends Base {
   val namerZkLeader = Namer.zkLeader
   val namerRancher = Namer.rancher
 
-
+  val namerdNoZk = Namerd.noZk
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples
   val namerdCore = Namerd.core
@@ -933,8 +926,8 @@ object LinkerdBuild extends Base {
   val interpreterPerHost = Interpreter.perHost
   val interpreterSubnet = Interpreter.subnet
 
-  val linkerd = Linkerd.all
   val linkerdNoZk = Linkerd.noZk
+  val linkerd = Linkerd.all
   val linkerdBenchmark = Linkerd.Protocol.benchmark
   val linkerdExamples = Linkerd.examples
   val linkerdAdmin = Linkerd.admin
@@ -973,32 +966,6 @@ object LinkerdBuild extends Base {
       Linkerd.examples,
       Namer.all,
       Namerd.all,
-      Namerd.examples,
-      Router.all,
-      Telemetry.all,
-      Mesh.all
-    )
-
-  val noZk = project("linkerd-no-zk", file("no-zk"))
-    .settings(aggregateSettings ++ unidocSettings)
-    .aggregate(
-      admin,
-      adminNames,
-      configCore,
-      consul,
-      etcd,
-      k8s,
-      istio,
-      istioProto,
-      marathon,
-      testUtil,
-      Finagle.all,
-      Grpc.all,
-      Interpreter.all,
-      Linkerd.noZk,
-      Linkerd.examples,
-      Namer.noZk,
-      Namerd.Storage.noZk,
       Namerd.examples,
       Router.all,
       Telemetry.all,
