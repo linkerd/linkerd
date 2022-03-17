@@ -2,9 +2,9 @@ import sbt._
 
 object Deps {
 
-  val curatorFramework = "org.apache.curator" % "curator-framework" % "5.2.0"
-  val curatorClient = "org.apache.curator" % "curator-client" % "5.2.0"
-  val curatorDiscovery = "org.apache.curator" % "curator-x-discovery" % "5.2.0"
+  val curatorFramework = "org.apache.curator" % "curator-framework" % "4.1.0"
+  val curatorClient = "org.apache.curator" % "curator-client" % "4.1.0"
+  val curatorDiscovery = "org.apache.curator" % "curator-x-discovery" % "4.1.0"
 
   // process lifecycle
   val twitterServer =
@@ -19,9 +19,9 @@ object Deps {
     "com.twitter" %% s"finagle-$mod" % "21.4.0"
 
   def netty4(mod: String) =
-    "io.netty" % s"netty-$mod" % "4.1.74.Final"
+    "io.netty" % s"netty-$mod" % "4.1.59.Final"
 
-  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.48.Final"
+  val boringssl = "io.netty" % "netty-tcnative-boringssl-static" % "2.0.35.Final"
 
   // Jackson (parsing)
   val jacksonVersion = "2.11.2"
