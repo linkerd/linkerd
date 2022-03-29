@@ -15,6 +15,7 @@ object LinkerdBuild extends Base {
   val Jdk = config("jdk") extend Bundle
   val LowMem = config("lowmem") extend Bundle
   val OpenJ9 = config("openj9") extend Bundle
+  val NoZk = config("nozk") 
 
   val configCore = projectDir("config")
     .dependsOn(Finagle.buoyantCore)
@@ -125,6 +126,8 @@ object LinkerdBuild extends Base {
       .withTests()
 
     val all = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, serversets, zkLeader, rancher)
+
+    val noZk = aggregateDir("namer", core, consul, curator, dnssrv, fs, k8s, istio, marathon, rancher)
 
   }
 
@@ -376,6 +379,8 @@ object LinkerdBuild extends Base {
         .withTests()
 
       val all = aggregateDir("namerd/storage", consul, etcd, inMemory, k8s, zk)
+
+      val noZk = aggregateDir("namerd/storage", consul, etcd, inMemory, k8s)
     }
 
     object Iface {
@@ -453,6 +458,16 @@ object LinkerdBuild extends Base {
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
     )
 
+    val BundleProjectsNoZk = Seq[ProjectReference](
+      core, main, Namer.fs, Storage.inMemory, Router.http,
+      Iface.controlHttp, Iface.interpreterThrift, Iface.mesh, Iface.destination,
+      Namer.consul, Namer.k8s, Namer.marathon, Namer.dnssrv, Namer.rancher,
+      Iface.mesh,
+      Interpreter.perHost, Interpreter.k8s,
+      Storage.consul, Storage.inMemory, Storage.etcd, Storage.k8s,
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin
+    )
+
     val JdkSettings = BundleSettings ++ Seq(
       dockerJavaImage := s"openjdk:${openJdkVersion}-jdk",
       dockerTag := s"${version.value}-jdk",
@@ -469,6 +484,11 @@ object LinkerdBuild extends Base {
       dockerJavaImage := s"adoptopenjdk/openjdk8-openj9:${openJ9Version}",
       dockerTag := s"${version.value}-openj9-experimental",
       assemblyJarName in assembly := s"${name.value}-${version.value}-openj9-experimental"
+    )
+
+    val NoZkSettings = BundleSettings ++ Seq(
+      dockerTag := s"${version.value}-no-zk",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-no-zk"
     )
 
     /**
@@ -529,6 +549,25 @@ object LinkerdBuild extends Base {
         dockerPush := (dockerPush in Bundle).value
       )
 
+    val noZk = aggregateDir("namerd-no-zk",
+      core, dcosBootstrap, main, Storage.noZk, Interpreter.all, Iface.all)
+      .configs(Bundle, NoZk, Dcos, Jdk, LowMem, OpenJ9)
+      // Bundle includes all of the supported features:
+      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(NoZk)(NoZkSettings))
+      .configDependsOn(Jdk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(Jdk)(JdkSettings))
+      .configDependsOn(LowMem)(BundleProjectsNoZk: _*)
+      .settings(inConfig(LowMem)(LowMemSettings))
+      .configDependsOn(OpenJ9)(BundleProjectsNoZk: _*)
+      .settings(inConfig(OpenJ9)(OpenJ9Settings))
+      .settings(
+        assembly := (assembly in NoZk).value,
+        docker := (docker in NoZk).value,
+        dockerBuildAndPush := (dockerBuildAndPush in NoZk).value,
+        dockerPush := (dockerPush in NoZk).value
+      )
+
     // Find example configurations by searching the examples directory for config files.
     val exampleConfigs = file("namerd/examples").list().toSeq.collect {
       case ConfigFileRE(name) => config(name) -> exampleConfig(name)
@@ -540,6 +579,12 @@ object LinkerdBuild extends Base {
       .configDependsOn(Test)(BundleProjects: _*)
       .settings(publishArtifact := false)
       .withTests()
+
+    // val examplesNoZk = projectDir("namerd/examples")
+    //   .withExamples(Namerd.noZk, exampleConfigs)
+    //   .configDependsOn(Test)(BundleProjectsNoZk: _*)
+    //   .settings(publishArtifact := false)
+    //   .withTests()
   }
 
   object Interpreter {
@@ -701,10 +746,20 @@ object LinkerdBuild extends Base {
 
     val BundleProjects = Seq[ProjectReference](
       admin, core, main, configCore,
-      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
+      Namer.all, Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.serversets, Namer.zkLeader, Namer.curator, Namer.dnssrv, Namer.rancher,
       Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet, Interpreter.consul,
       Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
-      Announcer.serversets,
+      Announcer.all, Announcer.serversets,
+      Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
+      tls,
+      failureAccrual
+    )
+
+    val BundleProjectsNoZk = Seq[ProjectReference](
+      admin, core, main, configCore,
+      Namer.consul, Namer.fs, Namer.k8s, Namer.istio, Namer.marathon, Namer.dnssrv, Namer.rancher,
+      Interpreter.fs, Interpreter.k8s, Interpreter.istio, Interpreter.mesh, Interpreter.namerd, Interpreter.perHost, Interpreter.subnet, Interpreter.consul,
+      Protocol.h2, Protocol.http, Protocol.mux, Protocol.thrift, Protocol.thriftMux,
       Telemetry.adminMetricsExport, Telemetry.core, Telemetry.influxdb, Telemetry.prometheus, Telemetry.recentRequests, Telemetry.statsd, Telemetry.tracelog, Telemetry.zipkin,
       tls,
       failureAccrual
@@ -728,9 +783,13 @@ object LinkerdBuild extends Base {
       assemblyJarName in assembly := s"${name.value}-${version.value}-openj9-experimental"
     )
 
+    val NoZkSettings = BundleSettings ++ Seq(
+      dockerTag := s"${version.value}-no-zk",
+      assemblyJarName in assembly := s"${name.value}-${version.value}-no-zk-exec"
+    )
+
     val all = aggregateDir("linkerd",
-        admin, configCore, core, failureAccrual, main, tls,
-        Announcer.all, Namer.all, Protocol.all)
+        admin, configCore, core, failureAccrual, main, tls, Protocol.all)
       .configs(Bundle, Jdk, LowMem, OpenJ9)
       // Bundle is includes all of the supported features:
       .configDependsOn(Bundle)(BundleProjects: _*)
@@ -746,6 +805,25 @@ object LinkerdBuild extends Base {
         docker := (docker in Bundle).value,
         dockerBuildAndPush := (dockerBuildAndPush in Bundle).value,
         dockerPush := (dockerPush in Bundle).value
+      )
+
+    val noZk = aggregateDir("linkerd-no-zk",
+        admin, configCore, core, failureAccrual, main, tls, Protocol.all)
+      .configs(Bundle, Jdk, LowMem, OpenJ9, NoZk)
+      // Bundle is includes all of the supported features:
+      .configDependsOn(NoZk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(NoZk)(NoZkSettings))
+      .configDependsOn(Jdk)(BundleProjectsNoZk: _*)
+      .settings(inConfig(Jdk)(JdkSettings))
+      .configDependsOn(LowMem)(BundleProjectsNoZk: _*)
+      .settings(inConfig(LowMem)(LowMemSettings))
+      .configDependsOn(OpenJ9)(BundleProjectsNoZk: _*)
+      .settings(inConfig(OpenJ9)(OpenJ9Settings))
+      .settings(
+        assembly := (assembly in NoZk).value,
+        docker := (docker in NoZk).value,
+        dockerBuildAndPush := (dockerBuildAndPush in NoZk).value,
+        dockerPush := (dockerPush in NoZk).value
       )
 
     // Find example configurations by searching the examples directory for config files.
@@ -806,6 +884,7 @@ object LinkerdBuild extends Base {
   val telemetryZipkin = Telemetry.zipkin
 
   val namer = Namer.all
+  val namerNoZk = Namer.noZk
   val namerCore = Namer.core
   val namerConsul = Namer.consul
   val namerCurator = Namer.curator
@@ -818,6 +897,7 @@ object LinkerdBuild extends Base {
   val namerZkLeader = Namer.zkLeader
   val namerRancher = Namer.rancher
 
+  val namerdNoZk = Namerd.noZk
   val namerd = Namerd.all
   val namerdExamples = Namerd.examples
   val namerdCore = Namerd.core
@@ -846,6 +926,7 @@ object LinkerdBuild extends Base {
   val interpreterPerHost = Interpreter.perHost
   val interpreterSubnet = Interpreter.subnet
 
+  val linkerdNoZk = Linkerd.noZk
   val linkerd = Linkerd.all
   val linkerdBenchmark = Linkerd.Protocol.benchmark
   val linkerdExamples = Linkerd.examples

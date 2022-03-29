@@ -190,6 +190,24 @@ Similarly, a Namerd executable can be produced with the command:
 > namerd/assembly
 ```
 
+##### Building Without Zookeeper #####
+
+If you are not using Zookeeper, you can build linkerd and namerd witnout the
+Zookeeper dependencies using the `linkerd-no-zk` and `namerd-no-zk` projects:
+
+for linkerd:
+```bash
+./sbt linkerd-no-zk/assembly
+```
+
+for namerd:
+```bash
+./sbt namerd-no-zk/assembly
+```
+
+These commands create executables in the `linkerd-no-zk` and `namerd-no-zk`
+directories, respectively.
+
 #### Releasing ####
 
 Before releasing ensure that [CHANGES.md](CHANGES.md) is updated to include the
@@ -261,6 +279,21 @@ $ ./sbt 'set Base.dockerJavaImage in (linkerd, Bundle) := "myFromImage"' linkerd
 ```
 
 _NOTE:_ The same setting applies to all apps and configs, i.e. `set ... (linkerd|namerd, Bundle|LowMem|Jdk) ...`.
+
+##### Creating Images Without Zookeeper #####
+
+The docker images can be built without the Zookeeper dependencies with these
+commands:
+
+for linkerd:
+```bash
+./sbt linkerd-no-zk/docker
+```
+
+for namerd:
+```bash
+./sbt namerd-no-zk/docker
+```
 
 #### DCOS ####
 
