@@ -1,3 +1,8 @@
+## 1.7.5 2022-05-24
+Linkerd 1.7.5 i a maintenance release which adds an option to build the Linkerd
+and Namerd executable jar files without including the Zookeeper libraries which
+depend on an old version of log4j
+
 ## 1.7.5-rc1 2021-05-28
 Linkerd 1.7.5-rc1 is a release candidate for Linkerd 1.7.5
 
