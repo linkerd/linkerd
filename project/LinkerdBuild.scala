@@ -488,7 +488,7 @@ object LinkerdBuild extends Base {
 
     val NoZkSettings = BundleSettings ++ Seq(
       dockerTag := s"${version.value}-no-zk",
-      assemblyJarName in assembly := s"${name.value}-${version.value}-no-zk"
+      assemblyJarName in assembly := s"${name.value}-${version.value}-exec"
     )
 
     /**
@@ -785,7 +785,7 @@ object LinkerdBuild extends Base {
 
     val NoZkSettings = BundleSettings ++ Seq(
       dockerTag := s"${version.value}-no-zk",
-      assemblyJarName in assembly := s"${name.value}-${version.value}-no-zk-exec"
+      assemblyJarName in assembly := s"${name.value}-${version.value}-exec"
     )
 
     val all = aggregateDir("linkerd",
